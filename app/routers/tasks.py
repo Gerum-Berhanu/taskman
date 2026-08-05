@@ -24,3 +24,8 @@ async def read_task_by_id(task_id: UUID4) -> dict:
             detail=f"Task not found"
         )
     return task
+
+
+@router.get("", response_model=list[TaskRead])
+async def read_all_tasks() -> list[dict]:
+    return st.list_all()
