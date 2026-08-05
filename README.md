@@ -1,5 +1,21 @@
 # **Task Management System: Backend API Requirements**
 
+## Table of Contents
+
+- [1. System Overview & Objective](#1-system-overview--objective)
+- [2. Tech Stack](#2-tech-stack)
+- [3. Database Models (Schema)](#3-database-models-schema)
+  - [User Table](#user-table)
+  - [Workspace Table](#workspace-table-new)
+  - [WorkspaceMember Table](#workspacemember-table-many-to-many-association-for-rbac)
+  - [Task Table](#task-table)
+- [4. API Endpoints & Request/Response Contracts](#4-api-endpoints--requestresponse-contracts)
+  - [Authentication Endpoints](#authentication-endpoints)
+  - [Workspace & Team Endpoints](#workspace--team-endpoints-new-for-rbac)
+  - [Task Endpoints](#task-endpoints-protected-by-jwt--rbac)
+  - [Advanced Feature Endpoints](#advanced-feature-endpoints)
+- [5. Curriculum Feature Mapping](#5-curriculum-feature-mapping-the-how-to)
+
 ## **1. System Overview & Objective**
 
 This project is a RESTful API for a Task Management System. It is designed to act as the capstone project for the backend learning track. By building this system, students will practically apply every concept from the curriculum: from Python type hints and dependency injection to database migrations, JWT authentication, background processing, Docker containerization, and advanced Role-Based Access Control (RBAC).
