@@ -21,7 +21,7 @@ async def read_task_by_id(task_id: UUID4) -> dict:
     if task is None:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
-            detail=f"Task not found"
+            detail="Task not found"
         )
     return task
 
