@@ -41,9 +41,9 @@ The system utilizes a relational database architecture. Students must use Alembi
 | :---- | :---- | :---- |
 | id | UUID / Integer | Primary Key |
 | email | String | Unique, Not Null, Indexed |
-| hashed\_password | String | Not Null |
-| is\_active | Boolean | Default: True |
-| created\_at | DateTime | Default: UTC Now |
+| hashed_password | String | Not Null |
+| is_active | Boolean | Default: True |
+| created_at | DateTime | Default: UTC Now |
 
 ### **Workspace Table (New)**
 
@@ -51,16 +51,16 @@ The system utilizes a relational database architecture. Students must use Alembi
 | :---- | :---- | :---- |
 | id | UUID / Integer | Primary Key |
 | name | String | Not Null, Max length 255 (e.g., "Engineering Team") |
-| created\_at | DateTime | Default: UTC Now |
+| created_at | DateTime | Default: UTC Now |
 
 ### **WorkspaceMember Table (Many-to-Many Association for RBAC)**
 
 | Field Name | Data Type | Constraints & Details |
 | :---- | :---- | :---- |
-| workspace\_id | UUID / Integer | Foreign Key referencing Workspace.id, Primary Key part 1 |
-| user\_id | UUID / Integer | Foreign Key referencing User.id, Primary Key part 2 |
+| workspace_id | UUID / Integer | Foreign Key referencing Workspace.id, Primary Key part 1 |
+| user_id | UUID / Integer | Foreign Key referencing User.id, Primary Key part 2 |
 | role | String | Enum: 'owner', 'editor', 'viewer' (Not Null) |
-| joined\_at | DateTime | Default: UTC Now |
+| joined_at | DateTime | Default: UTC Now |
 
 ### **Task Table**
 
@@ -69,12 +69,12 @@ The system utilizes a relational database architecture. Students must use Alembi
 | id | UUID / Integer | Primary Key |
 | title | String | Not Null, Max length 255 |
 | description | Text | Nullable |
-| status | String | Default: 'pending' (Enum: pending, in\_progress, completed) |
-| due\_date | DateTime | Nullable |
-| workspace\_id | UUID / Integer | Foreign Key referencing Workspace.id |
-| assigned\_user\_id | UUID / Integer | Foreign Key referencing User.id (Nullable) |
-| created\_at | DateTime | Default: UTC Now |
-| updated\_at | DateTime | On update current timestamp |
+| status | String | Default: 'pending' (Enum: pending, in_progress, completed) |
+| due_date | DateTime | Nullable |
+| workspace_id | UUID / Integer | Foreign Key referencing Workspace.id |
+| assigned_user_id | UUID / Integer | Foreign Key referencing User.id (Nullable) |
+| created_at | DateTime | Default: UTC Now |
+| updated_at | DateTime | On update current timestamp |
 
 ## **4. API Endpoints & Request/Response Contracts**
 
@@ -94,31 +94,31 @@ The system utilizes a relational database architecture. Students must use Alembi
 > **POST /workspaces/**  
   * *Action:* Creates a new workspace. The user who creates it is automatically added to WorkspaceMember with the 'owner' role.  
 
-> **POST /workspaces/{workspace\_id}/members**  
-  * *Request:* {"user\_id": 2, "role": "editor"}  
+> **POST /workspaces/{workspace_id}/members**  
+  * *Request:* {"user_id": 2, "role": "editor"}  
   * *Action:* Adds a user to the workspace. ONLY users with the 'owner' role can perform this action.
 
 ### **Task Endpoints (Protected by JWT & RBAC)**
 
-> **POST /workspaces/{workspace\_id}/tasks/**  
+> **POST /workspaces/{workspace_id}/tasks/**  
   * *Request:* {"title": "Learn FastAPI", "description": "Finish docs"}  
   * *Action:* Validates that the current user has at least the 'editor' role in this workspace before creating the task.  
 
-> **GET /workspaces/{workspace\_id}/tasks/**  
+> **GET /workspaces/{workspace_id}/tasks/**  
   * *Action:* Fetches tasks for a specific workspace. Validates the user has at least 'viewer' role. Uses Redis caching.  
 
-> **PUT /workspaces/{workspace\_id}/tasks/{task\_id}**  
+> **PUT /workspaces/{workspace_id}/tasks/{task_id}**  
   * *Action:* Update a task. Requires 'editor' or 'owner' role. Invalidates Redis cache.  
 
-> **DELETE /workspaces/{workspace\_id}/tasks/{task\_id}**  
+> **DELETE /workspaces/{workspace_id}/tasks/{task_id}**  
   * *Action:* Delete task. Requires 'owner' role. Invalidates cache.
 
 ### **Advanced Feature Endpoints**
 
-> **GET /workspaces/{workspace\_id}/tasks/summary**  
+> **GET /workspaces/{workspace_id}/tasks/summary**  
   * *Action:* Aggregates task statuses for a workspace. Results are cached in Redis for 5 minutes.  
 
-> **POST /workspaces/{workspace\_id}/tasks/export**  
+> **POST /workspaces/{workspace_id}/tasks/export**  
   * *Action:* Instant 202 Accepted. Triggers a Background Task to generate a CSV of the workspace tasks and email it to the requester.
 
 ## **5. Curriculum Feature Mapping (The "How-To")**
@@ -126,7 +126,7 @@ The system utilizes a relational database architecture. Students must use Alembi
 Students must explicitly implement the following features to pass the project requirements:
 
 > 1. **Strict Pydantic V2 Validation:** All requests and responses modeled strictly using Pydantic.
-> 2. **Role-Based Access Control (RBAC) via Dependencies:** Create advanced FastAPI dependencies to check permissions. E.g., Depends(RequireRole("editor")). This function must verify the JWT, check the database for the user's role in the requested workspace\_id, and raise a 403 Forbidden if they lack permissions.  
+> 2. **Role-Based Access Control (RBAC) via Dependencies:** Create advanced FastAPI dependencies to check permissions. E.g., Depends(RequireRole("editor")). This function must verify the JWT, check the database for the user's role in the requested workspace_id, and raise a 403 Forbidden if they lack permissions.  
 > 3. **Many-to-Many Database Schema Design:** Effectively design and query the association table (WorkspaceMember) bridging Users and Workspaces using SQLAlchemy/SQLModel.  
 > 4. **Advanced Background Tasks:** Use BackgroundTasks for sending welcome emails, notifications, and executing the heavy bulk CSV export.  
 > 5. **Aggressive Redis Caching & Invalidation:** Cache the outputs of task fetches and summaries. Invalidate specific workspace cache keys upon task mutation.  
