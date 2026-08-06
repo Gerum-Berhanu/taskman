@@ -1,12 +1,8 @@
 """Pydantic request and response schemas."""
 
+from datetime import datetime
 from enum import Enum
 from pydantic import UUID4, BaseModel, Field
-
-
-class TaskCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
 
 
 class TaskStatus(str, Enum):
@@ -15,11 +11,18 @@ class TaskStatus(str, Enum):
     completed = "completed"
 
 
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+
 class TaskRead(BaseModel):
     id: UUID4
     title: str
     description: str | None
     status: TaskStatus
+    created_at: datetime
+    updated_at: datetime | None
 
 
 class TaskUpdate(BaseModel):
