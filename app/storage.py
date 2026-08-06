@@ -1,21 +1,17 @@
 """Temporary in-memory store. Replaced by the database in a later slice."""
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from pydantic import UUID4
+import app.timeutils as tu
 
 
 _tasks: dict[UUID4, dict] = {}
 
 
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
 def create(data: dict) -> dict:
     task_id = uuid4()
-    task = {**data, "id": task_id, "status": "pending", "created_at": _utcnow(), "updated_at": None}
+    task = {**data, "id": task_id, "status": "pending", "created_at": tu.utcnow(), "updated_at": None}
     _tasks[task_id] = task
     return task
 
@@ -33,7 +29,7 @@ def update(task_id: UUID4, fields: dict) -> dict:
     if not fields:
         return task
     task.update(fields)
-    task["updated_at"] = _utcnow()
+    task["updated_at"] = tu.utcnow()
     return task
 
 
