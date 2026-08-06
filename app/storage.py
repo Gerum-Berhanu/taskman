@@ -26,3 +26,7 @@ def update(task_id: UUID4, fields: dict) -> dict:
     task = _tasks[task_id]
     task.update(fields)
     return task
+
+
+def delete(task_id: UUID4):
+    del _tasks[task_id]
