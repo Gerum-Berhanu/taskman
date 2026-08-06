@@ -20,3 +20,9 @@ class TaskRead(BaseModel):
     title: str
     description: str | None
     status: TaskStatus
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: TaskStatus | None = None

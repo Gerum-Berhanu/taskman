@@ -20,3 +20,9 @@ def get(task_id: UUID4) -> dict | None:
 
 def list_all() -> list[dict]:
     return list(_tasks.values())
+
+
+def update(task_id: UUID4, fields: dict) -> dict:
+    task = _tasks[task_id]
+    task.update(fields)
+    return task
