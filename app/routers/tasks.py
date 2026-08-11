@@ -15,7 +15,7 @@ def get_storage() -> TaskStore:
     return task_store # this will later use yield for a real DB session
 
 
-StorageDep = Annotated[Any, Depends(get_storage)]
+StorageDep = Annotated[TaskStore, Depends(get_storage)]
 
 
 def get_task_or_404(task_id: UUID4, storage: StorageDep) -> dict:
