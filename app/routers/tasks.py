@@ -6,13 +6,13 @@ from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 
 from app.schemas import TaskCreate, TaskRead, TaskUpdate
-import app.storage as st
+from app.storage import TaskStore, task_store
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def get_storage():
-    return st # this will later use yield for a real DB session
+def get_storage() -> TaskStore:
+    return task_store # this will later use yield for a real DB session
 
 
 StorageDep = Annotated[Any, Depends(get_storage)]
