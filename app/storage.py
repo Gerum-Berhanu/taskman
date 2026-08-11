@@ -1,10 +1,12 @@
 """Temporary in-memory store. Replaced by the database in a later slice."""
 
-from uuid import uuid4
+from typing import Any
+from uuid import UUID, uuid4
 
 from pydantic import UUID4
 
 import app.timeutils as tu
+from app.security import get_password_hash
 
 
 class TaskStore:
@@ -42,3 +44,29 @@ class TaskStore:
 
 
 task_store = TaskStore()  # singleton for process lifetime
+
+
+class UserStore:
+    def __init__(self) -> None:
+        self._users: dict[UUID4, dict] = {}
+
+    def get_by_email(self, email: str) -> dict[str, Any] | None:
+        for user in self._users.values():
+            if user["email"] == email:
+                return user
+        return None
+
+    def create(self, data: dict) -> dict:
+        user_id = uuid4()
+        user = {
+            "id": user_id,
+            "email": data["email"],
+            "hashed_password": get_password_hash(data["password"]),
+            "is_active": True,
+            "created_at": tu.utcnow()
+        }
+        self._users[user_id] = user
+        return user
+
+
+user_store = UserStore()

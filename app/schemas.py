@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from pydantic import UUID4, BaseModel, Field
+from pydantic import UUID4, BaseModel, EmailStr, Field
 
 
 class TaskStatus(str, Enum):
@@ -32,3 +32,17 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: TaskStatus | None = None
     due_date: datetime | None = None
+
+
+# ---
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class UserCreateResponse(BaseModel):
+    id: UUID4
+    email: EmailStr
+    message: str = "User registered successfully"
