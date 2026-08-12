@@ -53,6 +53,13 @@ class UserAuthenticate(BaseModel):
     password: str = Field(min_length=8)
 
 
+class UserRead(BaseModel):
+    id: UUID4
+    email: EmailStr
+    is_active: bool
+    created_at: datetime
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
