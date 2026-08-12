@@ -5,10 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 
+from app.deps import get_current_user
 from app.schemas import TaskCreate, TaskRead, TaskUpdate
 from app.storage import TaskStore, task_store
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
 
 def get_storage() -> TaskStore:
