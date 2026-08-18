@@ -32,16 +32,21 @@ class InMemoryTaskRepository:
     def list_all(self) -> list[TaskRecord]:
         return list(self._tasks.values())
 
-    def update(self, task_id: UUID4, fields: dict) -> TaskRecord:
-        task = self._tasks[task_id]
+    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
+        task = self._tasks.get(task_id)
+        if task is None:
+            return None
         if not fields:
             return task
         task.update(fields)
         task["updated_at"] = tu.utcnow()
         return task
 
-    def delete(self, task_id: UUID4) -> None:
+    def delete(self, task_id: UUID4) -> bool:
+        if task_id not in self._tasks:
+            return False
         del self._tasks[task_id]
+        return True
 
 
 class InMemoryUserRepository:

@@ -3,3 +3,7 @@
 
 class EmailAlreadyRegisteredError(Exception):
     pass
+
+
+class TaskNotFoundError(Exception):
+    pass
