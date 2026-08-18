@@ -15,7 +15,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserCreateResponse, status_code=HTTP_201_CREATED)
-async def register_user(user_in: UserCreate, user_service: UserServiceDep) -> dict:
+async def register_user(
+    user_in: UserCreate, user_service: UserServiceDep
+) -> UserCreateResponse:
     try:
         user = user_service.register(user_in)
     except EmailAlreadyRegisteredError:
@@ -24,18 +26,14 @@ async def register_user(user_in: UserCreate, user_service: UserServiceDep) -> di
             detail="Account with this email already exists",
         )
 
-    return {
-        "id": user["id"],
-        "email": user["email"],
-        "message": "User registered successfully",
-    }
+    return UserCreateResponse(id=user["id"], email=user["email"])
 
 
-@router.post("/login")
+@router.post("/login", response_model=Token)
 async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
-):
+) -> Token:
     valid_form = UserAuthenticate(
         email=form_data.username,
         password=form_data.password,
