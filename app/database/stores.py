@@ -1,12 +1,11 @@
-"""Temporary in-memory store. Replaced by the database in a later slice."""
+"""Temporary in-memory persistence. Replaced by SQLAlchemy in a later slice."""
 
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from pydantic import UUID4
 
-import app.timeutils as tu
-from app.security import get_password_hash
+from app.core import timeutils as tu
 
 
 class TaskStore:
@@ -43,7 +42,7 @@ class TaskStore:
         del self._tasks[task_id]
 
 
-task_store = TaskStore()  # singleton for process lifetime
+task_store = TaskStore()
 
 
 class UserStore:
@@ -56,14 +55,14 @@ class UserStore:
                 return user
         return None
 
-    def create(self, data: dict) -> dict:
+    def create(self, *, email: str, hashed_password: str) -> dict:
         user_id = uuid4()
         user = {
             "id": user_id,
-            "email": data["email"],
-            "hashed_password": get_password_hash(data["password"]),
+            "email": email,
+            "hashed_password": hashed_password,
             "is_active": True,
-            "created_at": tu.utcnow()
+            "created_at": tu.utcnow(),
         }
         self._users[user_id] = user
         return user

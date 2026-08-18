@@ -1,0 +1,58 @@
+from datetime import timedelta
+from typing import Any
+
+import jwt
+from pydantic import EmailStr
+
+from app.core.config import settings
+from app.core.security import get_dummy_hash, verify_password
+from app.core.timeutils import utcnow
+from app.services.user_service import UserService
+
+
+DUMMY_HASH = get_dummy_hash("my_dummy_password")
+
+
+class AuthService:
+    def __init__(self, user_service: UserService) -> None:
+        self._user_service = user_service
+
+    def authenticate(self, email: EmailStr, password: str) -> dict[str, Any] | None:
+        user = self._user_service.get_by_email(email)
+        if not user:
+            verify_password(password, DUMMY_HASH)
+            return None
+        if not verify_password(password, user["hashed_password"]):
+            return None
+        return user
+
+    def create_access_token(
+        self, data: dict[str, Any], expires_delta: timedelta | None = None
+    ) -> str:
+        to_encode = data.copy()
+
+        expire = utcnow()
+        expire += (
+            expires_delta
+            if expires_delta is not None
+            else timedelta(minutes=settings.access_token_expire_minutes)
+        )
+
+        to_encode.update({"exp": expire})
+        return jwt.encode(
+            payload=to_encode,
+            key=settings.secret_key,
+            algorithm=settings.algorithm,
+        )
+
+    def get_email_from_token(self, token: str) -> str | None:
+        try:
+            payload = jwt.decode(
+                token, settings.secret_key, algorithms=[settings.algorithm]
+            )
+            email = payload.get("sub")
+            if not isinstance(email, str):
+                return None
+            return email
+        except jwt.InvalidTokenError:
+            return None
