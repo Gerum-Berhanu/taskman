@@ -41,9 +41,9 @@ def get_user_service(
 
 
 def get_auth_service(
-    user_service: Annotated[UserService, Depends(get_user_service)],
+    repository: Annotated[UserRepository, Depends(get_user_repository)],
 ) -> AuthService:
-    return AuthService(user_service)
+    return AuthService(repository)
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
@@ -53,8 +53,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    auth_service: AuthServiceDep,
-    user_service: UserServiceDep,
+    auth_service: AuthServiceDep
 ) -> dict[str, Any]:
     credentials_exception = HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
@@ -62,11 +61,7 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    email = auth_service.get_email_from_token(token)
-    if email is None:
-        raise credentials_exception
-
-    user = user_service.get_by_email(email)
+    user = auth_service.get_user_from_token(token)
     if user is None:
         raise credentials_exception
     return user

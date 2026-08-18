@@ -7,18 +7,18 @@ from pydantic import EmailStr
 from app.core.config import settings
 from app.core.security import get_dummy_hash, verify_password
 from app.core.timeutils import utcnow
-from app.services.user_service import UserService
+from app.database.repositories import UserRepository
 
 
 DUMMY_HASH = get_dummy_hash("my_dummy_password")
 
 
 class AuthService:
-    def __init__(self, user_service: UserService) -> None:
-        self._user_service = user_service
+    def __init__(self, repository: UserRepository) -> None:
+        self._repository = repository
 
     def authenticate(self, email: EmailStr, password: str) -> dict[str, Any] | None:
-        user = self._user_service.get_by_email(email)
+        user = self._repository.get_by_email(email)
         if not user:
             verify_password(password, DUMMY_HASH)
             return None
@@ -56,3 +56,9 @@ class AuthService:
             return email
         except jwt.InvalidTokenError:
             return None
+
+    def get_user_from_token(self, token: str) -> dict[str, Any] | None:
+        email = self.get_email_from_token(token)
+        if email is None:
+            return None
+        return self._repository.get_by_email(email)

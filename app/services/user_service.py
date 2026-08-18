@@ -10,9 +10,6 @@ class UserService:
     def __init__(self, repository: UserRepository) -> None:
         self._repository = repository
 
-    def get_by_email(self, email: str) -> dict[str, Any] | None:
-        return self._repository.get_by_email(email)
-
     def register(self, data: UserCreate) -> dict[str, Any]:
         if self._repository.get_by_email(data.email) is not None:
             raise EmailAlreadyRegisteredError(data.email)
