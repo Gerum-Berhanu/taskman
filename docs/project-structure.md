@@ -13,7 +13,7 @@ task_mng/
 ├── .env.example            # safe template for env vars
 ├── app/
 │   ├── main.py             # app entrypoint — create FastAPI app, register routers
-│   ├── deps.py             # dependency injection — wire stores → services → routes
+│   ├── deps.py             # dependency injection — wire repos → services → routes
 │   │
 │   ├── api/v1/             # HTTP layer (routes only)
 │   │   ├── auth.py         # POST /auth/register, /auth/login; GET /auth/me
@@ -28,9 +28,12 @@ task_mng/
 │   │   └── exceptions.py   # app-level errors (mapped to HTTP in routes)
 │   │
 │   ├── database/           # persistence layer
-│   │   ├── stores.py       # in-memory TaskStore / UserStore (temporary)
+│   │   ├── records.py      # TypedDict row shapes (TaskRecord, UserRecord)
 │   │   ├── session.py      # SQLAlchemy engine + session (future)
-│   │   └── models.py       # ORM table models (future)
+│   │   ├── models.py       # ORM table models (future)
+│   │   └── repositories/
+│   │       ├── protocols.py    # TaskRepository / UserRepository contracts
+│   │       └── memory.py       # in-memory implementations (temporary)
 │   │
 │   ├── models/             # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
@@ -45,7 +48,7 @@ task_mng/
 └── docs/                   # handbook
 ```
 
-> **Naming note:** `app/models/` holds **Pydantic schemas** (API contract). `app/database/models.py` will hold **ORM models** (database tables). Same word, different layers — check the path.
+> **Naming note:** `app/models/` holds **Pydantic schemas** (API contract). `app/database/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` will hold **ORM models** (database tables). Check the path.
 
 ---
 
@@ -80,7 +83,7 @@ deps.py          ← inject TaskService, UserService, AuthService, current user
 services/*.py    ← business logic (register user, authenticate, CRUD tasks)
   │
   ▼
-database/*       ← read/write data (stores today, SQLAlchemy later)
+database/repositories/  ← persist/retrieve (in-memory today, SQLAlchemy later)
   │
   ▼
 models/*.py      ← shape the JSON response (response_model)
@@ -93,9 +96,9 @@ Client
 
 1. `tasks.py` receives JSON → validated as `TaskCreate` (from `models/task.py`).
 2. `deps.py` resolves `TaskServiceDep` and ensures `get_current_user` ran (router-level dependency).
-3. `TaskService.create()` calls `TaskStore.create()` with the task fields.
-4. `TaskStore` assigns `id`, `status`, timestamps and saves to the in-memory dict.
-5. Route returns the dict; FastAPI serializes it as `TaskRead`.
+3. `TaskService.create()` calls `TaskRepository.create()` with the task fields.
+4. The in-memory repository assigns `id`, `status`, timestamps and saves a `TaskRecord`.
+5. Route returns the record; FastAPI serializes it as `TaskRead`.
 
 ---
 
@@ -112,14 +115,14 @@ Client
 
 The **wiring layer**. FastAPI `Depends()` functions live here:
 
-- `get_task_store` / `get_user_store` → return singleton stores.
+- `get_task_repository` / `get_user_repository` → return singleton in-memory repos.
 - `get_task_service` / `get_user_service` / `get_auth_service` → build services with their dependencies.
 - `get_current_user` → decode JWT, load user (used by protected routes).
 - `get_task_or_404` → shared 404 lookup for task routes.
 
 Routes import typed aliases like `TaskServiceDep` instead of constructing services themselves.
 
-When you swap in-memory stores for a real DB session, you change wiring **here** — routes and services stay the same.
+When you swap in-memory repos for SQLAlchemy, you change wiring **here** — routes and services stay the same.
 
 ### `api/v1/`
 
@@ -127,7 +130,7 @@ One file per resource. Each file defines an `APIRouter` with a URL prefix.
 
 **Do here:** route decorators, `response_model`, status codes, map domain errors → `HTTPException`.
 
-**Don't do here:** password hashing, JWT encoding, direct store access, complex validation rules.
+**Don't do here:** password hashing, JWT encoding, direct repository access, complex validation rules.
 
 ### `services/`
 
@@ -135,23 +138,27 @@ One service class per resource (or cross-cutting concern like auth).
 
 | Service | Responsibility |
 |---|---|
-| `TaskService` | Task CRUD — delegates to `TaskStore` |
-| `UserService` | User lookup, registration (hashing password before save) |
-| `AuthService` | Login verification, JWT create/decode |
+| `TaskService` | Task CRUD — delegates to `TaskRepository` |
+| `UserService` | Registration (hash password, reject duplicate email) |
+| `AuthService` | Login verification, JWT create/decode, load user from token |
 
 Services raise **domain exceptions** (e.g. `EmailAlreadyRegisteredError`). Routes catch those and pick the HTTP status.
 
-Services are easy to unit-test: pass a fake store, no HTTP involved.
+Services are easy to unit-test: pass a fake repository, no HTTP involved.
 
 ### `database/`
 
 | File | Status | Purpose |
 |---|---|---|
-| `stores.py` | **Active** | In-memory `TaskStore` / `UserStore` — temporary until SQLAlchemy |
+| `records.py` | **Active** | `TaskRecord` / `UserRecord` TypedDicts — persistence row shapes |
+| `repositories/protocols.py` | **Active** | `TaskRepository` / `UserRepository` method contracts |
+| `repositories/memory.py` | **Active** | In-memory dict implementations — temporary until SQLAlchemy |
 | `session.py` | Placeholder | Engine + `get_db()` session factory |
 | `models.py` | Placeholder | SQLAlchemy / SQLModel table classes |
 
-Stores should only **persist and retrieve** — no password hashing (that lives in `UserService`).
+Repositories should only **persist and retrieve** — no password hashing (that lives in `UserService`).
+
+Services depend on the **protocol**, not `InMemoryTaskRepository`. A future `SqlAlchemyTaskRepository` implements the same methods; `deps.py` swaps the instance.
 
 ### `models/` (Pydantic)
 
@@ -161,7 +168,7 @@ Request and response schemas per resource. FastAPI uses these for:
 - OpenAPI docs at `/docs`.
 - Serializing outgoing responses (`response_model=...`).
 
-If you add a field to the API, start here.
+If you add a field to the API, start here. Do **not** reuse these as storage types (`UserRead` has no `hashed_password`; `UserRecord` does).
 
 ### `core/`
 
@@ -180,11 +187,12 @@ Shared infrastructure with no feature-specific knowledge:
 Use this checklist when building a new feature (e.g. workspaces):
 
 1. **`models/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
-2. **`database/stores.py`** (or future ORM repo) — persistence methods.
-3. **`services/workspace_service.py`** — business rules.
-4. **`deps.py`** — `get_workspace_service`, `WorkspaceServiceDep`.
-5. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
-6. **`main.py`** — `app.include_router(workspaces.router)` (already registered).
+2. **`database/records.py`** — `WorkspaceRecord` if needed.
+3. **`database/repositories/`** — protocol + in-memory (later ORM) methods.
+4. **`services/workspace_service.py`** — business rules.
+5. **`deps.py`** — `get_workspace_service`, `WorkspaceServiceDep`.
+6. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
+7. **`main.py`** — `app.include_router(workspaces.router)` (already registered).
 
 For a new endpoint on an existing resource, touch `models/` → `services/` → `api/v1/` in that order.
 
@@ -200,10 +208,10 @@ Current chain:
 Route
   └─ TaskServiceDep
        └─ get_task_service
-            └─ TaskStore (singleton via get_task_store)
+            └─ TaskRepository (InMemoryTaskRepository singleton via get_task_repository)
 ```
 
-For tests, override dependencies on the app — e.g. swap `get_task_store` with a fresh in-memory store — without changing route code.
+For tests, override dependencies on the app — e.g. swap `get_task_repository` with a fresh in-memory repo — without changing route code.
 
 ---
 
@@ -211,8 +219,8 @@ For tests, override dependencies on the app — e.g. swap `get_task_store` with 
 
 | Today | Next slice |
 |---|---|
-| `database/stores.py` (in-memory dicts) | `database/session.py` + `database/models.py` (SQLAlchemy) |
-| Services call `TaskStore` directly | Services call store/repo through a DB session from `deps.py` |
+| `repositories/memory.py` (in-memory dicts) | `database/session.py` + `database/models.py` (SQLAlchemy) |
+| Services call repository protocols | Same protocols; `deps.py` injects a SQLAlchemy implementation |
 | No `tests/` yet | `tests/api/v1/` mirroring `app/api/v1/` |
 
 The layer boundaries stay the same; only the persistence implementation swaps out.
@@ -222,10 +230,10 @@ The layer boundaries stay the same; only the persistence implementation swaps ou
 ## Quick rules
 
 1. **Routes stay thin** — call a service, return a schema.
-2. **Business logic lives in services** — not in routes or stores.
-3. **Stores/repos only persist** — no hashing, no JWT, no HTTP.
-4. **Pydantic in `app/models/`** — ORM in `app/database/models.py`.
-5. **Wire in `deps.py`** — routes never import singleton stores directly.
+2. **Business logic lives in services** — not in routes or repositories.
+3. **Repos only persist** — no hashing, no JWT, no HTTP.
+4. **Pydantic in `app/models/`** — records in `database/records.py` — ORM in `database/models.py`.
+5. **Wire in `deps.py`** — routes never import singleton repositories directly.
 6. **Shared utilities in `core/`** — not scattered across services.
 
 Project title: **Taskman**
