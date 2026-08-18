@@ -1,0 +1,23 @@
+"""Repository interfaces — persistence contracts for services."""
+
+from typing import Any, Protocol
+
+from pydantic import UUID4
+
+
+class TaskRepository(Protocol):
+    def create(self, data: dict) -> dict: ...
+
+    def get(self, task_id: UUID4) -> dict | None: ...
+
+    def list_all(self) -> list[dict]: ...
+
+    def update(self, task_id: UUID4, fields: dict) -> dict: ...
+
+    def delete(self, task_id: UUID4) -> None: ...
+
+
+class UserRepository(Protocol):
+    def get_by_email(self, email: str) -> dict[str, Any] | None: ...
+
+    def create(self, *, email: str, hashed_password: str) -> dict: ...

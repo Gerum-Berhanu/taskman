@@ -7,7 +7,12 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import UUID4
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
 
-from app.database.stores import TaskStore, UserStore, task_store, user_store
+from app.database.repositories import (
+    TaskRepository,
+    UserRepository,
+    task_repository,
+    user_repository,
+)
 from app.services.auth_service import AuthService
 from app.services.task_service import TaskService
 from app.services.user_service import UserService
@@ -15,20 +20,24 @@ from app.services.user_service import UserService
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-def get_task_store() -> TaskStore:
-    return task_store
+def get_task_repository() -> TaskRepository:
+    return task_repository
 
 
-def get_user_store() -> UserStore:
-    return user_store
+def get_user_repository() -> UserRepository:
+    return user_repository
 
 
-def get_task_service(store: Annotated[TaskStore, Depends(get_task_store)]) -> TaskService:
-    return TaskService(store)
+def get_task_service(
+    repository: Annotated[TaskRepository, Depends(get_task_repository)],
+) -> TaskService:
+    return TaskService(repository)
 
 
-def get_user_service(store: Annotated[UserStore, Depends(get_user_store)]) -> UserService:
-    return UserService(store)
+def get_user_service(
+    repository: Annotated[UserRepository, Depends(get_user_repository)],
+) -> UserService:
+    return UserService(repository)
 
 
 def get_auth_service(

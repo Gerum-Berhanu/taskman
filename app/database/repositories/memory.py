@@ -1,4 +1,4 @@
-"""Temporary in-memory persistence. Replaced by SQLAlchemy in a later slice."""
+"""In-memory repository implementations. Replaced by SQLAlchemy in a later slice."""
 
 from typing import Any
 from uuid import uuid4
@@ -8,7 +8,7 @@ from pydantic import UUID4
 from app.core import timeutils as tu
 
 
-class TaskStore:
+class InMemoryTaskRepository:
     def __init__(self) -> None:
         self._tasks: dict[UUID4, dict] = {}
 
@@ -42,10 +42,7 @@ class TaskStore:
         del self._tasks[task_id]
 
 
-task_store = TaskStore()
-
-
-class UserStore:
+class InMemoryUserRepository:
     def __init__(self) -> None:
         self._users: dict[UUID4, dict] = {}
 
@@ -68,4 +65,5 @@ class UserStore:
         return user
 
 
-user_store = UserStore()
+task_repository = InMemoryTaskRepository()
+user_repository = InMemoryUserRepository()
