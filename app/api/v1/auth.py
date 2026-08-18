@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
 from app.core.exceptions import EmailAlreadyRegisteredError
+from app.database.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.models.user import Token, UserAuthenticate, UserCreate, UserCreateResponse, UserRead
 
@@ -53,5 +54,5 @@ async def login_user(
 
 
 @router.get("/me", response_model=UserRead)
-async def get_me(user: CurrentUserDep) -> dict:
+async def get_me(user: CurrentUserDep) -> UserRecord:
     return user

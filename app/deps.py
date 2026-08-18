@@ -1,12 +1,13 @@
 """Dependency injection wiring for services and auth."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import UUID4
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
 
+from app.database.records import TaskRecord, UserRecord
 from app.database.repositories import (
     TaskRepository,
     UserRepository,
@@ -54,7 +55,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep
-) -> dict[str, Any]:
+) -> UserRecord:
     credentials_exception = HTTPException(
         status_code=HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -67,13 +68,13 @@ async def get_current_user(
     return user
 
 
-CurrentUserDep = Annotated[dict[str, Any], Depends(get_current_user)]
+CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]
 
 
 def get_task_or_404(
     task_id: UUID4,
     service: TaskServiceDep,
-) -> dict[str, Any]:
+) -> TaskRecord:
     task = service.get(task_id)
     if task is None:
         raise HTTPException(
@@ -83,4 +84,4 @@ def get_task_or_404(
     return task
 
 
-TaskDep = Annotated[dict[str, Any], Depends(get_task_or_404)]
+TaskDep = Annotated[TaskRecord, Depends(get_task_or_404)]

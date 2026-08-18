@@ -1,22 +1,24 @@
 """In-memory repository implementations. Replaced by SQLAlchemy in a later slice."""
 
-from typing import Any
 from uuid import uuid4
 
 from pydantic import UUID4
 
 from app.core import timeutils as tu
+from app.database.records import TaskRecord, UserRecord
 
 
 class InMemoryTaskRepository:
     def __init__(self) -> None:
-        self._tasks: dict[UUID4, dict] = {}
+        self._tasks: dict[UUID4, TaskRecord] = {}
 
-    def create(self, data: dict) -> dict:
+    def create(self, data: dict) -> TaskRecord:
         task_id = uuid4()
-        task = {
-            **data,
+        task: TaskRecord = {
             "id": task_id,
+            "title": data["title"],
+            "description": data.get("description"),
+            "due_date": data.get("due_date"),
             "status": "pending",
             "created_at": tu.utcnow(),
             "updated_at": None,
@@ -24,13 +26,13 @@ class InMemoryTaskRepository:
         self._tasks[task_id] = task
         return task
 
-    def get(self, task_id: UUID4) -> dict | None:
+    def get(self, task_id: UUID4) -> TaskRecord | None:
         return self._tasks.get(task_id)
 
-    def list_all(self) -> list[dict]:
+    def list_all(self) -> list[TaskRecord]:
         return list(self._tasks.values())
 
-    def update(self, task_id: UUID4, fields: dict) -> dict:
+    def update(self, task_id: UUID4, fields: dict) -> TaskRecord:
         task = self._tasks[task_id]
         if not fields:
             return task
@@ -44,17 +46,17 @@ class InMemoryTaskRepository:
 
 class InMemoryUserRepository:
     def __init__(self) -> None:
-        self._users: dict[UUID4, dict] = {}
+        self._users: dict[UUID4, UserRecord] = {}
 
-    def get_by_email(self, email: str) -> dict[str, Any] | None:
+    def get_by_email(self, email: str) -> UserRecord | None:
         for user in self._users.values():
             if user["email"] == email:
                 return user
         return None
 
-    def create(self, *, email: str, hashed_password: str) -> dict:
+    def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user_id = uuid4()
-        user = {
+        user: UserRecord = {
             "id": user_id,
             "email": email,
             "hashed_password": hashed_password,
