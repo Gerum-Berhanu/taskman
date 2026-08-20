@@ -5,7 +5,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.database.records import TaskRecord
 from app.deps import TaskDep, TaskServiceDep, get_current_user
-from app.models.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
 router = APIRouter(
     prefix="/tasks",

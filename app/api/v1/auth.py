@@ -9,7 +9,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UN
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.database.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
-from app.models.user import Token, UserAuthenticate, UserCreate, UserCreateResponse, UserRead
+from app.schemas.user import Token, UserAuthenticate, UserCreate, UserCreateResponse, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

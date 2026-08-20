@@ -35,7 +35,7 @@ task_mng/
 │   │       ├── protocols.py    # TaskRepository / UserRepository contracts
 │   │       └── memory.py       # in-memory implementations (temporary)
 │   │
-│   ├── models/             # Pydantic API contracts (request/response shapes)
+│   ├── schemas/            # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
 │   │   └── user.py         # UserCreate, UserRead, Token, etc.
 │   │
@@ -48,7 +48,7 @@ task_mng/
 └── docs/                   # handbook
 ```
 
-> **Naming note:** `app/models/` holds **Pydantic schemas** (API contract). `app/database/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` will hold **ORM models** (database tables). Check the path.
+> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). `app/database/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` will hold **ORM models** (database tables). Check the path.
 
 ---
 
@@ -59,7 +59,7 @@ task_mng/
 | HTTP | `api/v1/` | HTTP status codes, request/response shapes, auth headers | Business rules, DB queries, password hashing |
 | Services | `services/` | Domain rules, orchestration | FastAPI types, HTTP exceptions (mostly) |
 | Persistence | `database/` | How data is stored and retrieved | HTTP concerns, route logic |
-| API contract | `models/` | Validation of JSON in/out | Business logic, SQL |
+| API contract | `schemas/` | Validation of JSON in/out | Business logic, SQL |
 | Cross-cutting | `core/` | Config, logging, crypto, shared errors | Feature-specific logic |
 | Wiring | `deps.py`, `main.py` | How layers connect | Business logic |
 
@@ -86,7 +86,7 @@ services/*.py    ← business logic (register user, authenticate, CRUD tasks)
 database/repositories/  ← persist/retrieve (in-memory today, SQLAlchemy later)
   │
   ▼
-models/*.py      ← shape the JSON response (response_model)
+schemas/*.py     ← shape the JSON response (response_model)
   │
   ▼
 Client
@@ -94,7 +94,7 @@ Client
 
 **Example — `POST /tasks` (authenticated):**
 
-1. `tasks.py` receives JSON → validated as `TaskCreate` (from `models/task.py`).
+1. `tasks.py` receives JSON → validated as `TaskCreate` (from `schemas/task.py`).
 2. `deps.py` resolves `TaskServiceDep` and ensures `get_current_user` ran (router-level dependency).
 3. `TaskService.create()` calls `TaskRepository.create()` with the task fields.
 4. The in-memory repository assigns `id`, `status`, timestamps and saves a `TaskRecord`.
@@ -160,7 +160,7 @@ Repositories should only **persist and retrieve** — no password hashing (that 
 
 Services depend on the **protocol**, not `InMemoryTaskRepository`. A future `SqlAlchemyTaskRepository` implements the same methods; `deps.py` swaps the instance.
 
-### `models/` (Pydantic)
+### `schemas/` (Pydantic)
 
 Request and response schemas per resource. FastAPI uses these for:
 
@@ -186,7 +186,7 @@ Shared infrastructure with no feature-specific knowledge:
 
 Use this checklist when building a new feature (e.g. workspaces):
 
-1. **`models/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
+1. **`schemas/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
 2. **`database/records.py`** — `WorkspaceRecord` if needed.
 3. **`database/repositories/`** — protocol + in-memory (later ORM) methods.
 4. **`services/workspace_service.py`** — business rules.
@@ -194,7 +194,7 @@ Use this checklist when building a new feature (e.g. workspaces):
 6. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
 7. **`main.py`** — `app.include_router(workspaces.router)` (already registered).
 
-For a new endpoint on an existing resource, touch `models/` → `services/` → `api/v1/` in that order.
+For a new endpoint on an existing resource, touch `schemas/` → `services/` → `api/v1/` in that order.
 
 ---
 
@@ -232,7 +232,7 @@ The layer boundaries stay the same; only the persistence implementation swaps ou
 1. **Routes stay thin** — call a service, return a schema.
 2. **Business logic lives in services** — not in routes or repositories.
 3. **Repos only persist** — no hashing, no JWT, no HTTP.
-4. **Pydantic in `app/models/`** — records in `database/records.py` — ORM in `database/models.py`.
+4. **Pydantic in `app/schemas/`** — records in `database/records.py` — ORM in `database/models.py`.
 5. **Wire in `deps.py`** — routes never import singleton repositories directly.
 6. **Shared utilities in `core/`** — not scattered across services.
 

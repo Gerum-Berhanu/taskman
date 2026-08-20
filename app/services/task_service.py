@@ -3,7 +3,7 @@ from pydantic import UUID4
 from app.core.exceptions import TaskNotFoundError
 from app.database.records import TaskRecord
 from app.database.repositories.protocols import TaskRepository
-from app.models.task import TaskCreate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskUpdate
 
 
 class TaskService:
