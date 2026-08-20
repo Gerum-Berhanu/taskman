@@ -6,9 +6,10 @@ from pydantic import UUID4
 
 from app.core import timeutils as tu
 from app.database.records import TaskRecord, UserRecord
+from app.database.repositories import TaskRepository, UserRepository
 
 
-class InMemoryTaskRepository:
+class InMemoryTaskRepository(TaskRepository):
     def __init__(self) -> None:
         self._tasks: dict[UUID4, TaskRecord] = {}
 
@@ -49,7 +50,7 @@ class InMemoryTaskRepository:
         return True
 
 
-class InMemoryUserRepository:
+class InMemoryUserRepository(UserRepository):
     def __init__(self) -> None:
         self._users: dict[UUID4, UserRecord] = {}
 
