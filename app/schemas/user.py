@@ -5,20 +5,23 @@ from datetime import datetime
 from pydantic import UUID4, BaseModel, EmailStr, Field
 
 
-class UserCreate(BaseModel):
+class _UserCredentials(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+
+
+class UserCreate(_UserCredentials):
+    pass
+
+
+class UserAuthenticate(_UserCredentials):
+    pass
 
 
 class UserCreateResponse(BaseModel):
     id: UUID4
     email: EmailStr
     message: str = "User registered successfully"
-
-
-class UserAuthenticate(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8)
 
 
 class UserRead(BaseModel):
