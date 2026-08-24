@@ -5,7 +5,7 @@ from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.database.records import TaskRecord
-from app.deps import TaskDep, TaskServiceDep, get_current_user
+from app.deps import TaskServiceDep, get_current_user
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 
 router = APIRouter(
@@ -21,8 +21,8 @@ async def create_task(new_task: TaskCreate, service: TaskServiceDep) -> TaskReco
 
 
 @router.get("/{task_id}", response_model=TaskRead)
-async def read_task_by_id(task: TaskDep) -> TaskRecord:
-    return task
+async def read_task_by_id(task_id: UUID4, service: TaskServiceDep) -> TaskRecord:
+    return service.get(task_id)
 
 
 @router.get("", response_model=list[TaskRead])

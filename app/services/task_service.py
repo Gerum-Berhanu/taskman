@@ -13,8 +13,11 @@ class TaskService:
     def create(self, data: TaskCreate) -> TaskRecord:
         return self._repository.create(data.model_dump())
 
-    def get(self, task_id: UUID4) -> TaskRecord | None:
-        return self._repository.get(task_id)
+    def get(self, task_id: UUID4) -> TaskRecord:
+        task = self._repository.get(task_id)
+        if not task:
+            raise TaskNotFoundError
+        return task
 
     def list_all(self) -> list[TaskRecord]:
         return self._repository.list_all()

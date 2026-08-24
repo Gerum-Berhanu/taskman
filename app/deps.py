@@ -4,12 +4,10 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import UUID4
 from sqlmodel import Session
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.core.exceptions import TaskNotFoundError
-from app.database.records import TaskRecord, UserRecord
+from app.database.records import UserRecord
 from app.database.repositories.protocols import TaskRepository, UserRepository
 from app.database.repositories.sql import SqlTaskRepository, SqlUserRepository
 from app.database.session import engine
@@ -76,16 +74,3 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]
-
-
-def get_task_or_404(
-    task_id: UUID4,
-    service: TaskServiceDep,
-) -> TaskRecord:
-    task = service.get(task_id)
-    if task is None:
-        raise TaskNotFoundError
-    return task
-
-
-TaskDep = Annotated[TaskRecord, Depends(get_task_or_404)]
