@@ -19,7 +19,7 @@ class AuthService:
     def __init__(self, repository: UserRepository) -> None:
         self._repository = repository
 
-    def authenticate(self, email: EmailStr, password: str) -> UserRecord | None:
+    def authenticate(self, email: EmailStr, password: str) -> UserRecord:
         user = self._repository.get_by_email(email)
         if not user:
             verify_password(password, _DUMMY_HASH)

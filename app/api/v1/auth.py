@@ -32,7 +32,7 @@ async def login_user(
     )
 
     user = auth_service.authenticate(valid_form.email, valid_form.password)
-    access_token = auth_service.create_access_token(data={"sub": valid_form.email})
+    access_token = auth_service.create_access_token(data={"sub": user["email"]})
     return Token(access_token=access_token, token_type="bearer")
 
 
