@@ -6,8 +6,9 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import UUID4
 from sqlmodel import Session
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_401_UNAUTHORIZED
 
+from app.core.exceptions import TaskNotFoundError
 from app.database.records import TaskRecord, UserRecord
 from app.database.repositories.protocols import TaskRepository, UserRepository
 from app.database.repositories.sql import SqlTaskRepository, SqlUserRepository
@@ -83,10 +84,7 @@ def get_task_or_404(
 ) -> TaskRecord:
     task = service.get(task_id)
     if task is None:
-        raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+        raise TaskNotFoundError
     return task
 
 

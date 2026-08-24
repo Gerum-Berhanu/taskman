@@ -11,7 +11,7 @@ class UserService:
 
     def register(self, data: UserCreate) -> UserRecord:
         if self._repository.get_by_email(data.email) is not None:
-            raise EmailAlreadyRegisteredError(data.email)
+            raise EmailAlreadyRegisteredError
 
         hashed_password = get_password_hash(data.password)
         return self._repository.create(email=data.email, hashed_password=hashed_password)

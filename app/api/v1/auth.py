@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED
 
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.database.records import UserRecord
@@ -18,14 +18,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register_user(
     user_in: UserCreate, user_service: UserServiceDep
 ) -> UserCreateResponse:
-    try:
-        user = user_service.register(user_in)
-    except EmailAlreadyRegisteredError:
-        raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
-            detail="Account with this email already exists",
-        )
-
+    user = user_service.register(user_in)
     return UserCreateResponse(id=user["id"], email=user["email"])
 
 

@@ -1,6 +1,7 @@
 """Tasks HTTP endpoints."""
 
 from fastapi import APIRouter, Depends
+from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.database.records import TaskRecord
@@ -31,13 +32,13 @@ async def read_all_tasks(service: TaskServiceDep) -> list[TaskRecord]:
 
 @router.patch("/{task_id}", response_model=TaskRead)
 async def update_task(
-    task: TaskDep,
+    task_id: UUID4,
     task_in: TaskUpdate,
     service: TaskServiceDep,
 ) -> TaskRecord:
-    return service.update(task["id"], task_in)
+    return service.update(task_id, task_in)
 
 
 @router.delete("/{task_id}", status_code=HTTP_204_NO_CONTENT)
-async def delete_task(task: TaskDep, service: TaskServiceDep) -> None:
-    service.delete(task["id"])
+async def delete_task(task_id: UUID4, service: TaskServiceDep) -> None:
+    service.delete(task_id)
