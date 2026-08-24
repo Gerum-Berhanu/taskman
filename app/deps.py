@@ -2,10 +2,9 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
-from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.database.records import UserRecord
 from app.database.repositories.protocols import TaskRepository, UserRepository
@@ -61,16 +60,7 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep
 ) -> UserRecord:
-    credentials_exception = HTTPException(
-        status_code=HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    user = auth_service.get_user_from_token(token)
-    if user is None:
-        raise credentials_exception
-    return user
+    return auth_service.get_user_from_token(token)
 
 
 CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]

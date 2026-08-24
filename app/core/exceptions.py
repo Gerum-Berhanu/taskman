@@ -23,3 +23,9 @@ class InvalidCredentialsError(AppError):
     status_code = HTTP_401_UNAUTHORIZED
     detail = "Incorrect email or password"
     headers = {"WWW-Authenticate": "Bearer"}
+
+
+class InvalidTokenError(AppError):
+    status_code = HTTP_401_UNAUTHORIZED
+    detail = "Could not validate credentials"
+    headers = {"WWW-Authenticate": "Bearer"}

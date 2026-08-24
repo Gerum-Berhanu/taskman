@@ -5,7 +5,7 @@ import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
-from app.core.exceptions import InvalidCredentialsError
+from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import get_password_hash, verify_password
 from app.core.timeutils import utcnow
 from app.database.records import UserRecord
@@ -47,20 +47,21 @@ class AuthService:
             algorithm=settings.algorithm,
         )
 
-    def get_email_from_token(self, token: str) -> str | None:
+    def _get_email_from_token(self, token: str) -> str:
         try:
             payload = jwt.decode(
                 token, settings.secret_key, algorithms=[settings.algorithm]
             )
             email = payload.get("sub")
             if not isinstance(email, str):
-                return None
+                raise InvalidTokenError
             return email
         except jwt.InvalidTokenError:
-            return None
+            raise InvalidTokenError
 
-    def get_user_from_token(self, token: str) -> UserRecord | None:
-        email = self.get_email_from_token(token)
-        if email is None:
-            return None
-        return self._repository.get_by_email(email)
+    def get_user_from_token(self, token: str) -> UserRecord:
+        email = self._get_email_from_token(token)
+        user = self._repository.get_by_email(email)
+        if user is None:
+            raise InvalidTokenError
+        return user
