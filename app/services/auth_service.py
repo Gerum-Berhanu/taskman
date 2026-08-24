@@ -5,6 +5,7 @@ import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
+from app.core.exceptions import InvalidCredentialsError
 from app.core.security import get_password_hash, verify_password
 from app.core.timeutils import utcnow
 from app.database.records import UserRecord
@@ -22,9 +23,9 @@ class AuthService:
         user = self._repository.get_by_email(email)
         if not user:
             verify_password(password, _DUMMY_HASH)
-            return None
+            raise InvalidCredentialsError
         if not verify_password(password, user["hashed_password"]):
-            return None
+            raise InvalidCredentialsError
         return user
 
     def create_access_token(

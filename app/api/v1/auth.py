@@ -2,11 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from starlette.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_201_CREATED
 
-from app.core.exceptions import EmailAlreadyRegisteredError
 from app.database.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.schemas.user import Token, UserAuthenticate, UserCreate, UserCreateResponse, UserRead
@@ -33,13 +32,6 @@ async def login_user(
     )
 
     user = auth_service.authenticate(valid_form.email, valid_form.password)
-    if not user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
     access_token = auth_service.create_access_token(data={"sub": valid_form.email})
     return Token(access_token=access_token, token_type="bearer")
 
