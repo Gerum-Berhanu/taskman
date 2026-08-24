@@ -1,4 +1,4 @@
-"""Persistence record shapes for in-memory storage.
+"""Row shape repos return to services.
 
 TypedDict describes the keys and value types of each stored row. At runtime
 these are still plain dicts, but the type checker can catch typos like
