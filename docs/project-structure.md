@@ -27,13 +27,15 @@ task_mng/
 │   │   ├── timeutils.py    # utcnow() helper
 │   │   └── exceptions.py   # app-level errors (mapped to HTTP in routes)
 │   │
-│   ├── database/           # persistence layer
+│   ├── database/           # SQL wiring (engine, ORM models)
+│   │   ├── session.py      # SQLModel engine + create_db_and_tables
+│   │   └── models.py       # ORM table models (User, Task)
+│   │
+│   ├── repositories/       # persistence contracts + implementations
 │   │   ├── records.py      # TypedDict row shapes (TaskRecord, UserRecord)
-│   │   ├── session.py      # SQLAlchemy engine + session (future)
-│   │   ├── models.py       # ORM table models (future)
-│   │   └── repositories/
-│   │       ├── protocols.py    # TaskRepository / UserRepository contracts
-│   │       └── memory.py       # in-memory implementations (temporary)
+│   │   ├── protocols.py    # TaskRepository / UserRepository contracts
+│   │   ├── sql.py          # SQLModel implementations
+│   │   └── memory.py       # in-memory implementations (tests / fallback)
 │   │
 │   ├── schemas/            # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
@@ -48,7 +50,7 @@ task_mng/
 └── docs/                   # handbook
 ```
 
-> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). `app/database/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` will hold **ORM models** (database tables). Check the path.
+> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). `app/repositories/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` holds **ORM models** (database tables). Check the path.
 
 ---
 
@@ -58,7 +60,7 @@ task_mng/
 |---|---|---|---|
 | HTTP | `api/v1/` | HTTP status codes, request/response shapes, auth headers | Business rules, DB queries, password hashing |
 | Services | `services/` | Domain rules, orchestration | FastAPI types, HTTP exceptions (mostly) |
-| Persistence | `database/` | How data is stored and retrieved | HTTP concerns, route logic |
+| Persistence | `repositories/` + `database/` | How data is stored and retrieved | HTTP concerns, route logic |
 | API contract | `schemas/` | Validation of JSON in/out | Business logic, SQL |
 | Cross-cutting | `core/` | Config, logging, crypto, shared errors | Feature-specific logic |
 | Wiring | `deps.py`, `main.py` | How layers connect | Business logic |
@@ -83,7 +85,7 @@ deps.py          ← inject TaskService, UserService, AuthService, current user
 services/*.py    ← business logic (register user, authenticate, CRUD tasks)
   │
   ▼
-database/repositories/  ← persist/retrieve (in-memory today, SQLAlchemy later)
+repositories/        ← persist/retrieve (SQL repos; memory kept for tests)
   │
   ▼
 schemas/*.py     ← shape the JSON response (response_model)
@@ -158,7 +160,7 @@ Services are easy to unit-test: pass a fake repository, no HTTP involved.
 
 Repositories should only **persist and retrieve** — no password hashing (that lives in `UserService`).
 
-Services depend on the **protocol**, not `InMemoryTaskRepository`. A future `SqlAlchemyTaskRepository` implements the same methods; `deps.py` swaps the instance.
+Services depend on the **protocol**, not a concrete repo class. `SqlTaskRepository` (and `InMemoryTaskRepository` for tests) implement the same methods; `deps.py` chooses which instance to inject.
 
 ### `schemas/` (Pydantic)
 
@@ -187,8 +189,8 @@ Shared infrastructure with no feature-specific knowledge:
 Use this checklist when building a new feature (e.g. workspaces):
 
 1. **`schemas/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
-2. **`database/records.py`** — `WorkspaceRecord` if needed.
-3. **`database/repositories/`** — protocol + in-memory (later ORM) methods.
+2. **`repositories/records.py`** — `WorkspaceRecord` if needed.
+3. **`repositories/`** — protocol + SQL (and memory) methods.
 4. **`services/workspace_service.py`** — business rules.
 5. **`deps.py`** — `get_workspace_service`, `WorkspaceServiceDep`.
 6. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
@@ -208,7 +210,7 @@ Current chain:
 Route
   └─ TaskServiceDep
        └─ get_task_service
-            └─ TaskRepository (InMemoryTaskRepository singleton via get_task_repository)
+            └─ TaskRepository (SqlTaskRepository via get_task_repository)
 ```
 
 For tests, override dependencies on the app — e.g. swap `get_task_repository` with a fresh in-memory repo — without changing route code.
@@ -219,8 +221,8 @@ For tests, override dependencies on the app — e.g. swap `get_task_repository` 
 
 | Today | Next slice |
 |---|---|
-| `repositories/memory.py` (in-memory dicts) | `database/session.py` + `database/models.py` (SQLAlchemy) |
-| Services call repository protocols | Same protocols; `deps.py` injects a SQLAlchemy implementation |
+| `repositories/memory.py` available for tests | `repositories/sql.py` wired in `deps.py` |
+| Services call repository protocols | Same protocols; swap implementation in `deps.py` |
 | No `tests/` yet | `tests/api/v1/` mirroring `app/api/v1/` |
 
 The layer boundaries stay the same; only the persistence implementation swaps out.
@@ -232,7 +234,7 @@ The layer boundaries stay the same; only the persistence implementation swaps ou
 1. **Routes stay thin** — call a service, return a schema.
 2. **Business logic lives in services** — not in routes or repositories.
 3. **Repos only persist** — no hashing, no JWT, no HTTP.
-4. **Pydantic in `app/schemas/`** — records in `database/records.py` — ORM in `database/models.py`.
+4. **Pydantic in `app/schemas/`** — records in `repositories/records.py` — ORM in `database/models.py`.
 5. **Wire in `deps.py`** — routes never import singleton repositories directly.
 6. **Shared utilities in `core/`** — not scattered across services.
 

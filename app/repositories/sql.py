@@ -5,8 +5,8 @@ from sqlmodel import Session, select
 
 from app.core import timeutils as tu
 from app.database.models import Task, User
-from app.database.records import TaskRecord, UserRecord
-from app.database.repositories.protocols import TaskRepository, UserRepository
+from app.repositories.protocols import TaskRepository, UserRepository
+from app.repositories.records import TaskRecord, UserRecord
 
 
 def _to_task_record(task: Task) -> TaskRecord:

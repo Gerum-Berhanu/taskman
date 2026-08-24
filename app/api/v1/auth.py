@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.status import HTTP_201_CREATED
 
-from app.database.records import UserRecord
+from app.repositories.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.schemas.user import Token, UserAuthenticate, UserCreate, UserCreateResponse, UserRead
 

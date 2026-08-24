@@ -8,8 +8,8 @@ from app.core.config import settings
 from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import get_password_hash, verify_password
 from app.core.timeutils import utcnow
-from app.database.records import UserRecord
-from app.database.repositories import UserRepository
+from app.repositories import UserRepository
+from app.repositories.records import UserRecord
 
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")

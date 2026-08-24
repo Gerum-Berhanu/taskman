@@ -6,10 +6,10 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 
-from app.database.records import UserRecord
-from app.database.repositories.protocols import TaskRepository, UserRepository
-from app.database.repositories.sql import SqlTaskRepository, SqlUserRepository
 from app.database.session import engine
+from app.repositories.protocols import TaskRepository, UserRepository
+from app.repositories.records import UserRecord
+from app.repositories.sql import SqlTaskRepository, SqlUserRepository
 from app.services.auth_service import AuthService
 from app.services.task_service import TaskService
 from app.services.user_service import UserService

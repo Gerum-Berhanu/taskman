@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
-from app.database.records import TaskRecord
+from app.repositories.records import TaskRecord
 from app.deps import TaskServiceDep, get_current_user
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 

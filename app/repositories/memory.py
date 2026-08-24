@@ -5,8 +5,8 @@ from uuid import uuid4
 from pydantic import UUID4
 
 from app.core import timeutils as tu
-from app.database.records import TaskRecord, UserRecord
-from app.database.repositories.protocols import TaskRepository, UserRepository
+from app.repositories.protocols import TaskRepository, UserRepository
+from app.repositories.records import TaskRecord, UserRecord
 
 
 class InMemoryTaskRepository(TaskRepository):

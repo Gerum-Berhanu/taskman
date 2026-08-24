@@ -4,7 +4,7 @@ from typing import Protocol
 
 from pydantic import UUID4
 
-from app.database.records import TaskRecord, UserRecord
+from app.repositories.records import TaskRecord, UserRecord
 
 
 class TaskRepository(Protocol):
