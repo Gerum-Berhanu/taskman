@@ -5,15 +5,13 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import UUID4
+from sqlmodel import Session
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
 
 from app.database.records import TaskRecord, UserRecord
-from app.database.repositories import (
-    TaskRepository,
-    UserRepository,
-    task_repository,
-    user_repository,
-)
+from app.database.repositories.protocols import TaskRepository, UserRepository
+from app.database.repositories.sql import SqlTaskRepository, SqlUserRepository
+from app.database.session import engine
 from app.services.auth_service import AuthService
 from app.services.task_service import TaskService
 from app.services.user_service import UserService
@@ -21,12 +19,20 @@ from app.services.user_service import UserService
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-def get_task_repository() -> TaskRepository:
-    return task_repository
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 
-def get_user_repository() -> UserRepository:
-    return user_repository
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def get_task_repository(session: SessionDep) -> TaskRepository:
+    return SqlTaskRepository(session)
+
+
+def get_user_repository(session: SessionDep) -> UserRepository:
+    return SqlUserRepository(session)
 
 
 def get_task_service(
