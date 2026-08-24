@@ -5,13 +5,13 @@ import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
-from app.core.security import get_dummy_hash, verify_password
+from app.core.security import get_password_hash, verify_password
 from app.core.timeutils import utcnow
 from app.database.records import UserRecord
 from app.database.repositories import UserRepository
 
 
-DUMMY_HASH = get_dummy_hash("my_dummy_password")
+_DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
 class AuthService:
@@ -21,7 +21,7 @@ class AuthService:
     def authenticate(self, email: EmailStr, password: str) -> UserRecord | None:
         user = self._repository.get_by_email(email)
         if not user:
-            verify_password(password, DUMMY_HASH)
+            verify_password(password, _DUMMY_HASH)
             return None
         if not verify_password(password, user["hashed_password"]):
             return None
