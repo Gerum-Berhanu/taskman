@@ -1,7 +1,7 @@
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
-from app.repositories.protocols import UserRepository
 from app.repositories.records import UserRecord
+from app.repositories.user_repo import UserRepository
 from app.schemas.user import UserCreate
 
 

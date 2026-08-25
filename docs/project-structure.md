@@ -33,9 +33,8 @@ task_mng/
 │   │
 │   ├── repositories/       # persistence contracts + implementations
 │   │   ├── records.py      # TypedDict row shapes (TaskRecord, UserRecord)
-│   │   ├── protocols.py    # TaskRepository / UserRepository contracts
-│   │   ├── sql.py          # SQLModel implementations
-│   │   └── memory.py       # in-memory implementations (tests / fallback)
+│   │   ├── task_repo.py    # TaskRepository protocol + in-memory + SQL
+│   │   └── user_repo.py    # UserRepository protocol + in-memory + SQL
 │   │
 │   ├── schemas/            # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
@@ -152,11 +151,16 @@ Services are easy to unit-test: pass a fake repository, no HTTP involved.
 
 | File | Status | Purpose |
 |---|---|---|
+| `session.py` | **Active** | SQLModel engine + `create_db_and_tables()` |
+| `models.py` | **Active** | ORM table classes (`User`, `Task`) |
+
+### `repositories/`
+
+| File | Status | Purpose |
+|---|---|---|
 | `records.py` | **Active** | `TaskRecord` / `UserRecord` TypedDicts — persistence row shapes |
-| `repositories/protocols.py` | **Active** | `TaskRepository` / `UserRepository` method contracts |
-| `repositories/memory.py` | **Active** | In-memory dict implementations — temporary until SQLAlchemy |
-| `session.py` | Placeholder | Engine + `get_db()` session factory |
-| `models.py` | Placeholder | SQLAlchemy / SQLModel table classes |
+| `task_repo.py` | **Active** | `TaskRepository` protocol + `InMemoryTaskRepository` + `SqlTaskRepository` |
+| `user_repo.py` | **Active** | `UserRepository` protocol + `InMemoryUserRepository` + `SqlUserRepository` |
 
 Repositories should only **persist and retrieve** — no password hashing (that lives in `UserService`).
 
@@ -190,7 +194,7 @@ Use this checklist when building a new feature (e.g. workspaces):
 
 1. **`schemas/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
 2. **`repositories/records.py`** — `WorkspaceRecord` if needed.
-3. **`repositories/`** — protocol + SQL (and memory) methods.
+3. **`repositories/workspace_repo.py`** — protocol + SQL (and memory) implementations.
 4. **`services/workspace_service.py`** — business rules.
 5. **`deps.py`** — `get_workspace_service`, `WorkspaceServiceDep`.
 6. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
@@ -221,8 +225,8 @@ For tests, override dependencies on the app — e.g. swap `get_task_repository` 
 
 | Today | Next slice |
 |---|---|
-| `repositories/memory.py` available for tests | `repositories/sql.py` wired in `deps.py` |
-| Services call repository protocols | Same protocols; swap implementation in `deps.py` |
+| `Sql*Repository` wired in `deps.py` | Alembic migrations; later Postgres |
+| `InMemory*Repository` kept for tests | Override `get_*_repository` in tests |
 | No `tests/` yet | `tests/api/v1/` mirroring `app/api/v1/` |
 
 The layer boundaries stay the same; only the persistence implementation swaps out.

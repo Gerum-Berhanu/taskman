@@ -1,8 +1,8 @@
 from pydantic import UUID4
 
 from app.core.exceptions import TaskNotFoundError
-from app.repositories.protocols import TaskRepository
 from app.repositories.records import TaskRecord
+from app.repositories.task_repo import TaskRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 
 

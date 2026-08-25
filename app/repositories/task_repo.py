@@ -1,16 +1,29 @@
-"""SQLModel repository implementations."""
+"""Task repository: protocol, in-memory, and SQL implementations."""
+
+from typing import Protocol
+from uuid import uuid4
 
 from pydantic import UUID4
 from sqlmodel import Session, select
 
 from app.core import timeutils as tu
-from app.database.models import Task, User
-from app.repositories.protocols import TaskRepository, UserRepository
-from app.repositories.records import TaskRecord, UserRecord
+from app.database.models import Task
+from app.repositories.records import TaskRecord
+
+
+class TaskRepository(Protocol):
+    def create(self, data: dict) -> TaskRecord: ...
+
+    def get(self, task_id: UUID4) -> TaskRecord | None: ...
+
+    def list_all(self) -> list[TaskRecord]: ...
+
+    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None: ...
+
+    def delete(self, task_id: UUID4) -> bool: ...
 
 
 def _to_task_record(task: Task) -> TaskRecord:
-    """From raw ORM to service usable dict"""
     return TaskRecord(
         id=task.id,
         title=task.title,
@@ -22,15 +35,45 @@ def _to_task_record(task: Task) -> TaskRecord:
     )
 
 
-def _to_user_record(user: User) -> UserRecord:
-    """From raw ORM to service usable dict"""
-    return UserRecord(
-        id=user.id,
-        email=user.email,
-        hashed_password=user.hashed_password,
-        is_active=user.is_active,
-        created_at=user.created_at,
-    )
+class InMemoryTaskRepository(TaskRepository):
+    def __init__(self) -> None:
+        self._tasks: dict[UUID4, TaskRecord] = {}
+
+    def create(self, data: dict) -> TaskRecord:
+        task_id = uuid4()
+        task: TaskRecord = {
+            "id": task_id,
+            "title": data["title"],
+            "description": data.get("description"),
+            "due_date": data.get("due_date"),
+            "status": "pending",
+            "created_at": tu.utcnow(),
+            "updated_at": None,
+        }
+        self._tasks[task_id] = task
+        return task
+
+    def get(self, task_id: UUID4) -> TaskRecord | None:
+        return self._tasks.get(task_id)
+
+    def list_all(self) -> list[TaskRecord]:
+        return list(self._tasks.values())
+
+    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
+        task = self._tasks.get(task_id)
+        if task is None:
+            return None
+        if not fields:
+            return task
+        task.update(fields)
+        task["updated_at"] = tu.utcnow()
+        return task
+
+    def delete(self, task_id: UUID4) -> bool:
+        if task_id not in self._tasks:
+            return False
+        del self._tasks[task_id]
+        return True
 
 
 class SqlTaskRepository(TaskRepository):
@@ -81,22 +124,3 @@ class SqlTaskRepository(TaskRepository):
         self._session.delete(task)
         self._session.commit()
         return True
-
-
-class SqlUserRepository(UserRepository):
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def get_by_email(self, email: str) -> UserRecord | None:
-        statement = select(User).where(User.email == email)
-        user = self._session.exec(statement).first()
-        if user is None:
-            return None
-        return _to_user_record(user)
-
-    def create(self, *, email: str, hashed_password: str) -> UserRecord:
-        user = User(email=email, hashed_password=hashed_password)
-        self._session.add(user)
-        self._session.commit()
-        self._session.refresh(user)
-        return _to_user_record(user)
