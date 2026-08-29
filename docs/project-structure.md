@@ -45,7 +45,9 @@ task_mng/
 │       ├── user_service.py
 │       └── auth_service.py
 │
-├── tests/                  # automated tests (mirror app/ layout when added)
+├── tests/                  # pytest API tests with isolated temporary databases
+│   ├── conftest.py         # test database and client fixtures
+│   └── test_api.py         # endpoint behavior tests
 └── docs/                   # handbook
 ```
 
@@ -227,7 +229,7 @@ For tests, override dependencies on the app — e.g. swap `get_task_repository` 
 |---|---|
 | `Sql*Repository` wired in `deps.py` | Alembic migrations; later Postgres |
 | `InMemory*Repository` kept for tests | Override `get_*_repository` in tests |
-| No `tests/` yet | `tests/api/v1/` mirroring `app/api/v1/` |
+| Basic API tests with temporary SQLite | Expand coverage as features are added |
 
 The layer boundaries stay the same; only the persistence implementation swaps out.
 
