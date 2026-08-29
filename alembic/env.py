@@ -13,8 +13,8 @@ import app.database.models
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
-config.set_main_option("sqlalchemy.url", settings.database_url)
+sync_database_url = settings.database_url.replace("+aiosqlite", "") # alembic should stay sync
+config.set_main_option("sqlalchemy.url", sync_database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

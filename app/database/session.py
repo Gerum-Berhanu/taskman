@@ -1,14 +1,16 @@
 """Database engine and session helpers."""
 
-from sqlmodel import SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
-import app.database.models # run the class bodies/definitions so registration happens
-
-connect_args = {"check_same_thread": False} # sqlite only, postgres doesn't need check_same_thread
-
-engine = create_engine(url=settings.database_url, connect_args=connect_args)
 
 
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+engine = create_async_engine(url=settings.database_url)
+
+
+async_session_factory = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)

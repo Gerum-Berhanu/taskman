@@ -4,7 +4,8 @@ from typing import Protocol
 from uuid import uuid4
 
 from pydantic import UUID4
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
 from app.database.models import Task
@@ -12,15 +13,15 @@ from app.repositories.records import TaskRecord
 
 
 class TaskRepository(Protocol):
-    def create(self, data: dict) -> TaskRecord: ...
+    async def create(self, data: dict) -> TaskRecord: ...
 
-    def get(self, task_id: UUID4) -> TaskRecord | None: ...
+    async def get(self, task_id: UUID4) -> TaskRecord | None: ...
 
-    def list_all(self) -> list[TaskRecord]: ...
+    async def list_all(self) -> list[TaskRecord]: ...
 
-    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None: ...
+    async def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None: ...
 
-    def delete(self, task_id: UUID4) -> bool: ...
+    async def delete(self, task_id: UUID4) -> bool: ...
 
 
 def _to_task_record(task: Task) -> TaskRecord:
@@ -39,7 +40,7 @@ class InMemoryTaskRepository(TaskRepository):
     def __init__(self) -> None:
         self._tasks: dict[UUID4, TaskRecord] = {}
 
-    def create(self, data: dict) -> TaskRecord:
+    async def create(self, data: dict) -> TaskRecord:
         task_id = uuid4()
         task: TaskRecord = {
             "id": task_id,
@@ -53,13 +54,13 @@ class InMemoryTaskRepository(TaskRepository):
         self._tasks[task_id] = task
         return task
 
-    def get(self, task_id: UUID4) -> TaskRecord | None:
+    async def get(self, task_id: UUID4) -> TaskRecord | None:
         return self._tasks.get(task_id)
 
-    def list_all(self) -> list[TaskRecord]:
+    async def list_all(self) -> list[TaskRecord]:
         return list(self._tasks.values())
 
-    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
+    async def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
         task = self._tasks.get(task_id)
         if task is None:
             return None
@@ -69,7 +70,7 @@ class InMemoryTaskRepository(TaskRepository):
         task["updated_at"] = tu.utcnow()
         return task
 
-    def delete(self, task_id: UUID4) -> bool:
+    async def delete(self, task_id: UUID4) -> bool:
         if task_id not in self._tasks:
             return False
         del self._tasks[task_id]
@@ -77,32 +78,36 @@ class InMemoryTaskRepository(TaskRepository):
 
 
 class SqlTaskRepository(TaskRepository):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def create(self, data: dict) -> TaskRecord:
+    async def create(self, data: dict) -> TaskRecord:
         task = Task(
             title=data["title"],
             description=data.get("description"),
             due_date=data.get("due_date"),
         )
-        self._session.add(task)
-        self._session.commit()
-        self._session.refresh(task)
+        self._session.add(task) 
+        # add() only places the object in the session’s in-memory unit of work, so it is not awaitable.
+        await self._session.commit()
+        await self._session.refresh(task)
         return _to_task_record(task)
 
-    def get(self, task_id: UUID4) -> TaskRecord | None:
-        task = self._session.get(Task, task_id)
+    async def get(self, task_id: UUID4) -> TaskRecord | None:
+        task = await self._session.get(Task, task_id)
         if task is None:
             return None
         return _to_task_record(task)
 
-    def list_all(self) -> list[TaskRecord]:
-        tasks = self._session.exec(select(Task)).all()
+    async def list_all(self) -> list[TaskRecord]:
+        result = await self._session.exec(select(Task))
+        tasks = result.all()
+        # .exec() performs asynchronous database I/O, so it requires await. 
+        # Methods such as .first() and .all() operate on the already-loaded result and are synchronous.
         return [_to_task_record(task) for task in tasks]
 
-    def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
-        task = self._session.get(Task, task_id)
+    async def update(self, task_id: UUID4, fields: dict) -> TaskRecord | None:
+        task = await self._session.get(Task, task_id)
         if task is None:
             return None
         if not fields:
@@ -113,14 +118,14 @@ class SqlTaskRepository(TaskRepository):
         task.updated_at = tu.utcnow()
 
         self._session.add(task)
-        self._session.commit()
-        self._session.refresh(task)
+        await self._session.commit()
+        await self._session.refresh(task)
         return _to_task_record(task)
 
-    def delete(self, task_id: UUID4) -> bool:
-        task = self._session.get(Task, task_id)
+    async def delete(self, task_id: UUID4) -> bool:
+        task = await self._session.get(Task, task_id)
         if task is None:
             return False
-        self._session.delete(task)
-        self._session.commit()
+        await self._session.delete(task)
+        await self._session.commit()
         return True

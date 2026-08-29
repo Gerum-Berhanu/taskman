@@ -19,8 +19,8 @@ class AuthService:
     def __init__(self, repository: UserRepository) -> None:
         self._repository = repository
 
-    def authenticate(self, email: EmailStr, password: str) -> UserRecord:
-        user = self._repository.get_by_email(email)
+    async def authenticate(self, email: EmailStr, password: str) -> UserRecord:
+        user = await self._repository.get_by_email(email)
         if not user:
             verify_password(password, _DUMMY_HASH)
             raise InvalidCredentialsError
@@ -59,9 +59,9 @@ class AuthService:
         except jwt.InvalidTokenError:
             raise InvalidTokenError
 
-    def get_user_from_token(self, token: str) -> UserRecord:
+    async def get_user_from_token(self, token: str) -> UserRecord:
         email = self._get_email_from_token(token)
-        user = self._repository.get_by_email(email)
+        user = await self._repository.get_by_email(email)
         if user is None:
             raise InvalidTokenError
         return user

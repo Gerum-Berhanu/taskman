@@ -10,24 +10,24 @@ class TaskService:
     def __init__(self, repository: TaskRepository) -> None:
         self._repository = repository
 
-    def create(self, data: TaskCreate) -> TaskRecord:
-        return self._repository.create(data.model_dump())
+    async def create(self, data: TaskCreate) -> TaskRecord:
+        return await self._repository.create(data.model_dump())
 
-    def get(self, task_id: UUID4) -> TaskRecord:
-        task = self._repository.get(task_id)
+    async def get(self, task_id: UUID4) -> TaskRecord:
+        task = await self._repository.get(task_id)
         if not task:
             raise TaskNotFoundError
         return task
 
-    def list_all(self) -> list[TaskRecord]:
-        return self._repository.list_all()
+    async def list_all(self) -> list[TaskRecord]:
+        return await self._repository.list_all()
 
-    def update(self, task_id: UUID4, data: TaskUpdate) -> TaskRecord:
-        task = self._repository.update(task_id, data.model_dump(exclude_unset=True))
+    async def update(self, task_id: UUID4, data: TaskUpdate) -> TaskRecord:
+        task = await self._repository.update(task_id, data.model_dump(exclude_unset=True))
         if task is None:
             raise TaskNotFoundError
         return task
 
-    def delete(self, task_id: UUID4) -> None:
-        if not self._repository.delete(task_id):
+    async def delete(self, task_id: UUID4) -> None:
+        if not await self._repository.delete(task_id):
             raise TaskNotFoundError

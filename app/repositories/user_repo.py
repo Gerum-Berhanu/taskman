@@ -4,7 +4,8 @@ from typing import Protocol
 from uuid import uuid4
 
 from pydantic import UUID4
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
 from app.database.models import User
@@ -12,9 +13,9 @@ from app.repositories.records import UserRecord
 
 
 class UserRepository(Protocol):
-    def get_by_email(self, email: str) -> UserRecord | None: ...
+    async def get_by_email(self, email: str) -> UserRecord | None: ...
 
-    def create(self, *, email: str, hashed_password: str) -> UserRecord: ...
+    async def create(self, *, email: str, hashed_password: str) -> UserRecord: ...
 
 
 def _to_user_record(user: User) -> UserRecord:
@@ -31,13 +32,13 @@ class InMemoryUserRepository(UserRepository):
     def __init__(self) -> None:
         self._users: dict[UUID4, UserRecord] = {}
 
-    def get_by_email(self, email: str) -> UserRecord | None:
+    async def get_by_email(self, email: str) -> UserRecord | None:
         for user in self._users.values():
             if user["email"] == email:
                 return user
         return None
 
-    def create(self, *, email: str, hashed_password: str) -> UserRecord:
+    async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user_id = uuid4()
         user: UserRecord = {
             "id": user_id,
@@ -51,19 +52,20 @@ class InMemoryUserRepository(UserRepository):
 
 
 class SqlUserRepository(UserRepository):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def get_by_email(self, email: str) -> UserRecord | None:
+    async def get_by_email(self, email: str) -> UserRecord | None:
         statement = select(User).where(User.email == email)
-        user = self._session.exec(statement).first()
+        result = await self._session.exec(statement)
+        user = result.first()
         if user is None:
             return None
         return _to_user_record(user)
 
-    def create(self, *, email: str, hashed_password: str) -> UserRecord:
+    async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user = User(email=email, hashed_password=hashed_password)
         self._session.add(user)
-        self._session.commit()
-        self._session.refresh(user)
+        await self._session.commit()
+        await self._session.refresh(user)
         return _to_user_record(user)

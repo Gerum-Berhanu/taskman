@@ -17,7 +17,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register_user(
     user_in: UserCreate, user_service: UserServiceDep
 ) -> UserCreateResponse:
-    user = user_service.register(user_in)
+    user = await user_service.register(user_in)
     return UserCreateResponse(id=user["id"], email=user["email"])
 
 
@@ -31,7 +31,7 @@ async def login_user(
         password=form_data.password,
     )
 
-    user = auth_service.authenticate(valid_form.email, valid_form.password)
+    user = await auth_service.authenticate(valid_form.email, valid_form.password)
     access_token = auth_service.create_access_token(data={"sub": user["email"]})
     return Token(access_token=access_token, token_type="bearer")
 

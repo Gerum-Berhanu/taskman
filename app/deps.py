@@ -1,12 +1,13 @@
 """Dependency injection wiring for services and auth."""
 
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.database.session import engine
+from app.database.session import async_session_factory
 from app.repositories.records import UserRecord
 from app.repositories.task_repo import SqlTaskRepository, TaskRepository
 from app.repositories.user_repo import SqlUserRepository, UserRepository
@@ -17,12 +18,12 @@ from app.services.user_service import UserService
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-def get_session():
-    with Session(engine) as session:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_factory() as session:
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
 def get_task_repository(session: SessionDep) -> TaskRepository:
@@ -60,7 +61,7 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep
 ) -> UserRecord:
-    return auth_service.get_user_from_token(token)
+    return await auth_service.get_user_from_token(token)
 
 
 CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]
