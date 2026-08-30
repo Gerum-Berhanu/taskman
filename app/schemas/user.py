@@ -1,36 +1,17 @@
-"""Pydantic request and response schemas for users and auth."""
+"""Pydantic request and response schemas for users."""
 
 from datetime import datetime
 
-from pydantic import UUID4, BaseModel, EmailStr, Field
+from pydantic import UUID4, Field
+
+from app.schemas.base import UserBase
 
 
-class _UserCredentials(BaseModel):
-    email: EmailStr
+class UserCreate(UserBase):
     password: str = Field(min_length=8)
 
 
-class UserCreate(_UserCredentials):
-    pass
-
-
-class UserAuthenticate(_UserCredentials):
-    pass
-
-
-class UserCreateResponse(BaseModel):
+class UserRead(UserBase):
     id: UUID4
-    email: EmailStr
-    message: str = "User registered successfully"
-
-
-class UserRead(BaseModel):
-    id: UUID4
-    email: EmailStr
     is_active: bool
     created_at: datetime
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
