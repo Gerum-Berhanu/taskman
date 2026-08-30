@@ -1,9 +1,7 @@
 """User repository: protocol, in-memory, and SQL implementations."""
 
 from typing import Protocol
-from uuid import uuid4
-
-from pydantic import UUID4
+from uuid import UUID, uuid4
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -30,7 +28,7 @@ def _to_user_record(user: User) -> UserRecord:
 
 class InMemoryUserRepository(UserRepository):
     def __init__(self) -> None:
-        self._users: dict[UUID4, UserRecord] = {}
+        self._users: dict[UUID, UserRecord] = {}
 
     async def get_by_email(self, email: str) -> UserRecord | None:
         for user in self._users.values():

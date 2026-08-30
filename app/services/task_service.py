@@ -1,4 +1,4 @@
-from pydantic import UUID4
+from uuid import UUID
 
 from app.core.exceptions import TaskNotFoundError
 from app.repositories.records import TaskRecord
@@ -13,7 +13,7 @@ class TaskService:
     async def create(self, data: TaskCreate) -> TaskRecord:
         return await self._repository.create(data.model_dump())
 
-    async def get(self, task_id: UUID4) -> TaskRecord:
+    async def get(self, task_id: UUID) -> TaskRecord:
         task = await self._repository.get(task_id)
         if not task:
             raise TaskNotFoundError
@@ -22,12 +22,12 @@ class TaskService:
     async def list_all(self) -> list[TaskRecord]:
         return await self._repository.list_all()
 
-    async def update(self, task_id: UUID4, data: TaskUpdate) -> TaskRecord:
+    async def update(self, task_id: UUID, data: TaskUpdate) -> TaskRecord:
         task = await self._repository.update(task_id, data.model_dump(exclude_unset=True))
         if task is None:
             raise TaskNotFoundError
         return task
 
-    async def delete(self, task_id: UUID4) -> None:
+    async def delete(self, task_id: UUID) -> None:
         if not await self._repository.delete(task_id):
             raise TaskNotFoundError

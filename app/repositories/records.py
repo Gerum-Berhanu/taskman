@@ -7,12 +7,11 @@ task["titl"] or access to fields that do not exist on the record.
 
 from datetime import datetime
 from typing import TypedDict
-
-from pydantic import UUID4
+from uuid import UUID
 
 
 class TaskRecord(TypedDict):
-    id: UUID4
+    id: UUID
     title: str
     description: str | None
     status: str
@@ -22,7 +21,7 @@ class TaskRecord(TypedDict):
 
 
 class UserRecord(TypedDict):
-    id: UUID4
+    id: UUID
     email: str
     hashed_password: str
     is_active: bool
