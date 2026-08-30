@@ -4,8 +4,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED
 
+from app.core.exceptions import InvalidCredentialsError
 from app.repositories.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.schemas.auth import LoginCredentials, Token, UserCreateResponse
@@ -27,10 +29,14 @@ async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
 ) -> Token:
-    valid_form = LoginCredentials(
-        email=form_data.username,
-        password=form_data.password,
-    )
+    try:
+        valid_form = LoginCredentials(
+            email=form_data.username,
+            password=form_data.password,
+        )
+    except ValidationError as exc:
+        raise InvalidCredentialsError from exc
+        # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
     user = await auth_service.authenticate(valid_form.email, valid_form.password)
     access_token = auth_service.create_access_token(data={"sub": user["email"]})
