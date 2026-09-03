@@ -8,19 +8,19 @@ from app.core.config import settings
 from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import get_password_hash, verify_password
 from app.core.timeutils import utcnow
+from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord
-from app.repositories.user_repo import UserRepository
 
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
 class AuthService:
-    def __init__(self, repository: UserRepository) -> None:
-        self._repository = repository
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
 
     async def authenticate(self, email: EmailStr, password: str) -> UserRecord:
-        user = await self._repository.get_by_email(email)
+        user = await self._uow.users.get_by_email(email)
         if not user:
             verify_password(password, _DUMMY_HASH)
             raise InvalidCredentialsError
@@ -61,7 +61,7 @@ class AuthService:
 
     async def get_user_from_token(self, token: str) -> UserRecord:
         email = self._get_email_from_token(token)
-        user = await self._repository.get_by_email(email)
+        user = await self._uow.users.get_by_email(email)
         if user is None:
             raise InvalidTokenError
         return user

@@ -8,9 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database.session import async_session_factory
+from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord
-from app.repositories.task_repo import SqlTaskRepository, TaskRepository
-from app.repositories.user_repo import SqlUserRepository, UserRepository
 from app.services.auth_service import AuthService
 from app.services.task_service import TaskService
 from app.services.user_service import UserService
@@ -20,41 +19,30 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+        yield session
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-def get_task_repository(session: SessionDep) -> TaskRepository:
-    return SqlTaskRepository(session)
+async def get_uow(session: SessionDep) -> AsyncGenerator[UnitOfWork, None]:
+    async with UnitOfWork(session) as uow:
+        yield uow
 
 
-def get_user_repository(session: SessionDep) -> UserRepository:
-    return SqlUserRepository(session)
+UowDep = Annotated[UnitOfWork, Depends(get_uow)]
 
 
-def get_task_service(
-    repository: Annotated[TaskRepository, Depends(get_task_repository)],
-) -> TaskService:
-    return TaskService(repository)
+def get_task_service(uow: UowDep) -> TaskService:
+    return TaskService(uow)
 
 
-def get_user_service(
-    repository: Annotated[UserRepository, Depends(get_user_repository)],
-) -> UserService:
-    return UserService(repository)
+def get_user_service(uow: UowDep) -> UserService:
+    return UserService(uow)
 
 
-def get_auth_service(
-    repository: Annotated[UserRepository, Depends(get_user_repository)],
-) -> AuthService:
-    return AuthService(repository)
+def get_auth_service(uow: UowDep) -> AuthService:
+    return AuthService(uow)
 
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]

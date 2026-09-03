@@ -10,7 +10,8 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import app.database.models  # noqa: F401
-from app.deps import get_session
+from app.database.unit_of_work import UnitOfWork
+from app.deps import get_uow
 from app.main import app
 
 
@@ -30,16 +31,12 @@ def client(tmp_path: Path) -> Generator[TestClient, None, None]:
 
     asyncio.run(create_tables())
 
-    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_uow() -> AsyncGenerator[UnitOfWork, None]:
         async with test_session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
+            async with UnitOfWork(session) as uow:
+                yield uow
 
-    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_uow] = override_get_uow
 
     try:
         with TestClient(app) as test_client:
