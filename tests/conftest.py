@@ -32,7 +32,12 @@ def client(tmp_path: Path) -> Generator[TestClient, None, None]:
 
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         async with test_session_factory() as session:
-            yield session
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
     app.dependency_overrides[get_session] = override_get_session
 
