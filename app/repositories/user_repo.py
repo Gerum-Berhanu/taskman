@@ -64,6 +64,6 @@ class SqlUserRepository(UserRepository):
     async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user = User(email=email, hashed_password=hashed_password)
         self._session.add(user)
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(user)
         return _to_user_record(user)

@@ -87,7 +87,7 @@ class SqlTaskRepository(TaskRepository):
         )
         self._session.add(task) 
         # add() only places the object in the session’s in-memory unit of work, so it is not awaitable.
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(task)
         return _to_task_record(task)
 
@@ -116,7 +116,7 @@ class SqlTaskRepository(TaskRepository):
         task.updated_at = tu.utcnow()
 
         self._session.add(task)
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(task)
         return _to_task_record(task)
 
@@ -125,5 +125,5 @@ class SqlTaskRepository(TaskRepository):
         if task is None:
             return False
         await self._session.delete(task)
-        await self._session.commit()
+        await self._session.flush()
         return True
