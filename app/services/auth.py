@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Any
+import logging
 
 import jwt
 from pydantic import EmailStr
@@ -13,6 +14,7 @@ from app.repositories.records import UserRecord
 from app.schemas.auth import Token
 
 
+logger = logging.getLogger(__name__)
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
@@ -55,9 +57,12 @@ class AuthService:
 
         user = await self._uow.users.get_by_id(updated_family["user_id"])
         if user is None:
-            # this is something serious to look at because
-            # how can there be a user_id in a login session
-            # which isn't related to any real user?
+            # Invariant: session.user_id must exist; data integrity problem if not.
+            logger.error(
+                "Refresh session %s references missing user %s",
+                updated_family["id"],
+                updated_family["user_id"],
+            )
             raise InvalidTokenError
 
         new_access_token = self.create_access_token({"sub": user["email"]})
