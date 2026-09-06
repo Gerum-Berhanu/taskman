@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
-from starlette.status import HTTP_201_CREATED
+from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.core.exceptions import InvalidCredentialsError
 from app.repositories.records import UserRecord
@@ -48,6 +48,15 @@ async def refresh_token(
 ) -> Token:
     token = refresh_payload.refresh_token
     return await auth_service.refresh(token)
+
+
+@router.post("/logout", status_code=HTTP_204_NO_CONTENT)
+async def logout_user(
+    refresh_payload: RefreshTokenPayload,
+    auth_service: AuthServiceDep
+) -> None:
+    token = refresh_payload.refresh_token
+    await auth_service.logout(token)
 
 
 @router.get("/me", response_model=UserRead)

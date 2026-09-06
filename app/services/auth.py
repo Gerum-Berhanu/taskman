@@ -17,7 +17,7 @@ from app.core.security import (
 )
 from app.core.timeutils import utcnow
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.records import UserRecord
+from app.repositories.records import UserRecord, UserSessionRecord
 from app.schemas.auth import Token
 
 
@@ -89,12 +89,38 @@ class AuthService:
                 refresh_token=new_refresh_token,
             )
 
-        if any(entry["hash"] == presented_hash for entry in family["used_token_hashes"]):
-            await self._uow.user_sessions.update(family_id, {"is_revoked": True})
-            logger.warning("Refresh token reuse detected for session %s", family_id)
+        await self._revoke_on_reuse(family, presented_hash)
+        raise InvalidTokenError
+
+    async def logout(self, token: str) -> None:
+        try:
+            family_id = extract_family_id(token)
+        except ValueError:
+            raise InvalidTokenError from None
+
+        family = await self._uow.user_sessions.get(family_id)
+        if family is None:
             raise InvalidTokenError
 
+        if family["is_revoked"]:
+            return  # idempotent
+
+        presented_hash = hash_refresh_token(token)
+        if presented_hash == family["active_token_hash"]:
+            await self._uow.user_sessions.update(family_id, {"is_revoked": True})
+            return
+
+        await self._revoke_on_reuse(family, presented_hash)
         raise InvalidTokenError
+
+    async def _revoke_on_reuse(
+        self, family: UserSessionRecord, presented_hash: str
+    ) -> None:
+        """If this hash was already rotated away, revoke the family and raise."""
+        if any(entry["hash"] == presented_hash for entry in family["used_token_hashes"]):
+            await self._uow.user_sessions.update(family["id"], {"is_revoked": True})
+            logger.warning("Refresh token reuse detected for session %s", family["id"])
+            raise InvalidTokenError
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
