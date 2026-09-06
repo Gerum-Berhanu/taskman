@@ -10,9 +10,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.database.session import async_session_factory
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord
-from app.services.auth_service import AuthService
-from app.services.task_service import TaskService
-from app.services.user_service import UserService
+from app.services.auth import AuthService
+from app.services.task import TaskService
+from app.services.user import UserService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

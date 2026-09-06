@@ -1,7 +1,7 @@
 """Persistence repositories."""
 
-from app.repositories.task_repo import TaskRepository
-from app.repositories.user_repo import UserRepository
+from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
 
 __all__ = [
     "TaskRepository",

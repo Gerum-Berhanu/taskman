@@ -33,17 +33,17 @@ task_mng/
 │   │
 │   ├── repositories/       # persistence contracts + implementations
 │   │   ├── records.py      # TypedDict row shapes (TaskRecord, UserRecord)
-│   │   ├── task_repo.py    # TaskRepository protocol + in-memory + SQL
-│   │   └── user_repo.py    # UserRepository protocol + in-memory + SQL
+│   │   ├── task.py         # TaskRepository protocol + in-memory + SQL
+│   │   └── user.py         # UserRepository protocol + in-memory + SQL
 │   │
 │   ├── schemas/            # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
 │   │   └── user.py         # UserCreate, UserRead, Token, etc.
 │   │
 │   └── services/           # business logic ("the business seam")
-│       ├── task_service.py
-│       ├── user_service.py
-│       └── auth_service.py
+│       ├── task.py
+│       ├── user.py
+│       └── auth.py
 │
 ├── tests/                  # pytest API tests with isolated temporary databases
 │   ├── conftest.py         # test database and client fixtures
@@ -161,8 +161,8 @@ Services are easy to unit-test: pass a fake repository, no HTTP involved.
 | File | Status | Purpose |
 |---|---|---|
 | `records.py` | **Active** | `TaskRecord` / `UserRecord` TypedDicts — persistence row shapes |
-| `task_repo.py` | **Active** | `TaskRepository` protocol + `InMemoryTaskRepository` + `SqlTaskRepository` |
-| `user_repo.py` | **Active** | `UserRepository` protocol + `InMemoryUserRepository` + `SqlUserRepository` |
+| `task.py` | **Active** | `TaskRepository` protocol + `InMemoryTaskRepository` + `SqlTaskRepository` |
+| `user.py` | **Active** | `UserRepository` protocol + `InMemoryUserRepository` + `SqlUserRepository` |
 
 Repositories should only **persist and retrieve** — no password hashing (that lives in `UserService`).
 

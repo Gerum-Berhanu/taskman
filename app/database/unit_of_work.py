@@ -2,8 +2,8 @@
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.repositories.task_repo import SqlTaskRepository
-from app.repositories.user_repo import SqlUserRepository
+from app.repositories.task import SqlTaskRepository
+from app.repositories.user import SqlUserRepository
 
 
 class UnitOfWork:
