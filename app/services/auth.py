@@ -1,5 +1,4 @@
 from datetime import timedelta
-from token import AWAIT
 from typing import Any
 import logging
 from uuid import UUID, uuid4
@@ -16,7 +15,7 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from app.core.timeutils import utcnow
+from app.core.timeutils import ensure_utc, utcnow
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord, UserSessionRecord
 from app.schemas.auth import Token
@@ -62,7 +61,11 @@ class AuthService:
             raise InvalidTokenError from None
 
         family = await self._uow.user_sessions.get(family_id)
-        if family is None or family["is_revoked"] or family["expires_at"] <= utcnow():
+        if (
+            family is None
+            or family["is_revoked"]
+            or ensure_utc(family["expires_at"]) <= utcnow()
+        ):
             raise InvalidTokenError
 
         presented_hash = hash_refresh_token(token)
@@ -120,9 +123,13 @@ class AuthService:
     async def _revoke_on_reuse(
         self, family: UserSessionRecord, presented_hash: str
     ) -> None:
-        """If this hash was already rotated away, revoke the family and raise."""
+        """If this hash was already rotated away, revoke the family.
+
+        Commits before raising so the revoke survives UnitOfWork rollback on error.
+        """
         if any(entry["hash"] == presented_hash for entry in family["used_token_hashes"]):
             await self._uow.user_sessions.update(family["id"], {"is_revoked": True})
+            await self._uow.session.commit()
             logger.warning("Refresh token reuse detected for session %s", family["id"])
             raise InvalidTokenError
 
