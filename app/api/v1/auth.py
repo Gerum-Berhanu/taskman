@@ -59,6 +59,14 @@ async def logout_user(
     await auth_service.logout(token)
 
 
+@router.post("/logout-all", status_code=HTTP_204_NO_CONTENT)
+async def logout_all_sessions(
+    user: CurrentUserDep,
+    auth_service: AuthServiceDep,
+) -> None:
+    await auth_service.logout_all(user["id"])
+
+
 @router.get("/me", response_model=UserRead)
 async def get_me(user: CurrentUserDep) -> UserRecord:
     return user

@@ -1,7 +1,8 @@
 from datetime import timedelta
+from token import AWAIT
 from typing import Any
 import logging
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import jwt
 from pydantic import EmailStr
@@ -112,6 +113,9 @@ class AuthService:
 
         await self._revoke_on_reuse(family, presented_hash)
         raise InvalidTokenError
+
+    async def logout_all(self, user_id: UUID) -> None:
+        await self._uow.user_sessions.revoke_all_by_user(user_id)
 
     async def _revoke_on_reuse(
         self, family: UserSessionRecord, presented_hash: str

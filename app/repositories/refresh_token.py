@@ -23,6 +23,8 @@ class RefreshTokenRepository(Protocol):
 
     async def get_by_active_token_hash(self, token: str) -> UserSessionRecord | None: ...
 
+    async def revoke_all_by_user(self, user_id: UUID) -> int: ...
+
     async def update(
         self, family_id: UUID, fields: RefreshTokenUpdateData
     ) -> UserSessionRecord | None: ...
@@ -79,6 +81,19 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
         if user_session is None:
             return None
         return _to_user_session_record(user_session)
+
+    async def revoke_all_by_user(self, user_id: UUID) -> int:
+        statement = select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.is_revoked == False,
+        )
+        result = await self._session.exec(statement)
+        sessions = result.all()
+        for session in sessions:
+            session.is_revoked = True
+            self._session.add(session)
+        await self._session.flush()
+        return len(sessions)
 
     async def update(
         self, family_id: UUID, fields: RefreshTokenUpdateData
