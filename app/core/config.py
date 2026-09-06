@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = Field(default="")
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 5
+    refresh_token_expire_minutes: int = 10_080 # 7 days
     database_url: str = "sqlite:///./database.db"
 
     @field_validator("secret_key")
