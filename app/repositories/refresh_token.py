@@ -17,6 +17,8 @@ class RefreshTokenRepository(Protocol):
 
     async def get_all_by_user(self, user_id: UUID) -> list[UserSessionRecord]: ...
 
+    async def get_by_active_token_hash(self, token: str) -> UserSessionRecord | None: ...
+
     async def update(
         self, family_id: UUID, fields: RefreshTokenUpdateData
     ) -> UserSessionRecord | None: ...
@@ -58,6 +60,15 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
         result = await self._session.exec(statement)
         user_sessions = result.all()
         return [_to_user_session_record(s) for s in user_sessions]
+
+    async def get_by_active_token_hash(self, token: str) -> UserSessionRecord | None:
+        token_hash = hash_refresh_token(token)
+        statement = select(UserSession).where(UserSession.active_token_hash == token_hash)
+        result = await self._session.exec(statement)
+        user_session = result.first()
+        if user_session is None:
+            return None
+        return _to_user_session_record(user_session)
 
     async def update(
         self, family_id: UUID, fields: RefreshTokenUpdateData
