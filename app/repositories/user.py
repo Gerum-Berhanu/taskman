@@ -17,6 +17,8 @@ class UserRepository(Protocol):
 
     async def create(self, *, email: str, hashed_password: str) -> UserRecord: ...
 
+    async def set_is_active(self, user_id: UUID, *, is_active: bool) -> UserRecord | None: ...
+
 
 def _to_user_record(user: User) -> UserRecord:
     return UserRecord(
@@ -56,6 +58,13 @@ class InMemoryUserRepository(UserRepository):
         self._users[user_id] = user
         return user
 
+    async def set_is_active(self, user_id: UUID, is_active: bool) -> UserRecord | None:
+        user = self._users.get(user_id)
+        if user is None:
+            return None
+        user["is_active"] = is_active
+        return user
+
 
 class SqlUserRepository(UserRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -79,6 +88,16 @@ class SqlUserRepository(UserRepository):
 
     async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user = User(email=email, hashed_password=hashed_password)
+        self._session.add(user)
+        await self._session.flush()
+        await self._session.refresh(user)
+        return _to_user_record(user)
+
+    async def set_is_active(self, user_id: UUID, is_active: bool) -> UserRecord | None:
+        user = await self._session.get(User, user_id)
+        if user is None:
+            return None
+        user.is_active = is_active
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)

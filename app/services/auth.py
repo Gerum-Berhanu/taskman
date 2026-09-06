@@ -36,6 +36,9 @@ class AuthService:
             raise InvalidCredentialsError
         if not verify_password(password, user["hashed_password"]):
             raise InvalidCredentialsError
+        # Same error as bad credentials — don't leak that the account is disabled.
+        if not user["is_active"]:
+            raise InvalidCredentialsError
         return user
 
     async def login(self, email: EmailStr, password: str) -> Token:
@@ -71,21 +74,23 @@ class AuthService:
         presented_hash = hash_refresh_token(token)
 
         if presented_hash == family["active_token_hash"]:
+            user = await self._uow.users.get_by_id(family["user_id"])
+            if user is None:
+                # Invariant: session.user_id must exist; data integrity problem if not.
+                logger.error(
+                    "Refresh session %s references missing user %s",
+                    family["id"],
+                    family["user_id"],
+                )
+                raise InvalidTokenError
+            if not user["is_active"]:
+                raise InvalidTokenError
+
             new_refresh_token = build_refresh_token(family_id)
             updated_family = await self._uow.user_sessions.update(
                 family_id, {"token": new_refresh_token}
             )
             if updated_family is None:
-                raise InvalidTokenError
-
-            user = await self._uow.users.get_by_id(updated_family["user_id"])
-            if user is None:
-                # Invariant: session.user_id must exist; data integrity problem if not.
-                logger.error(
-                    "Refresh session %s references missing user %s",
-                    updated_family["id"],
-                    updated_family["user_id"],
-                )
                 raise InvalidTokenError
 
             return Token(
@@ -167,6 +172,6 @@ class AuthService:
     async def get_user_from_token(self, token: str) -> UserRecord:
         email = self._get_email_from_token(token)
         user = await self._uow.users.get_by_email(email)
-        if user is None:
+        if user is None or not user["is_active"]:
             raise InvalidTokenError
         return user

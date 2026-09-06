@@ -3,7 +3,11 @@
 Run with: uv run pytest -q tests/test_auth_refresh.py
 """
 
+from uuid import UUID
+
 from fastapi.testclient import TestClient
+
+from tests.conftest import deactivate_user
 
 PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
@@ -120,3 +124,28 @@ def test_refresh_rejects_malformed_token(client: TestClient) -> None:
     register(client)
     assert_unauthorized(refresh(client, "not-a-valid-refresh-token"))
     assert_unauthorized(refresh(client, "not-a-uuid.still-invalid"))
+
+
+def test_inactive_user_cannot_login_refresh_or_use_access(
+    client: TestClient,
+) -> None:
+    user = register(client)
+    tokens = login_tokens(client)
+
+    deactivate_user(UUID(user["id"]))
+
+    # Login blocked (same message as bad credentials)
+    login_response = client.post(
+        "/auth/login",
+        data={"username": "alice@example.com", "password": PASSWORD},
+    )
+    assert login_response.status_code == 401
+    assert login_response.json()["detail"] == "Incorrect email or password"
+
+    # Refresh blocked
+    assert_unauthorized(refresh(client, tokens["refresh_token"]))
+
+    # Existing access token blocked on protected routes
+    assert_unauthorized(
+        client.get("/auth/me", headers=auth_header(tokens["access_token"]))
+    )
