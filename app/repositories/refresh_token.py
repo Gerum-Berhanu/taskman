@@ -13,7 +13,9 @@ from app.repositories.records import RefreshTokenUpdateData, UserSessionRecord
 
 
 class RefreshTokenRepository(Protocol):
-    async def create(self, *, user_id: UUID, token: str) -> UserSessionRecord: ...
+    async def create(
+        self, *, user_id: UUID, token: str, session_id: UUID
+    ) -> UserSessionRecord: ...
 
     async def get(self, family_id: UUID) -> UserSessionRecord | None: ...
 
@@ -43,9 +45,15 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, *, user_id: UUID, token: str) -> UserSessionRecord:
+    async def create(
+        self, *, user_id: UUID, token: str, session_id: UUID
+    ) -> UserSessionRecord:
         active_token_hash = hash_refresh_token(token)
-        user_session = UserSession(user_id=user_id, active_token_hash=active_token_hash)
+        user_session = UserSession(
+            id=session_id,
+            user_id=user_id,
+            active_token_hash=active_token_hash,
+        )
         self._session.add(user_session)
         await self._session.flush()
         await self._session.refresh(user_session)

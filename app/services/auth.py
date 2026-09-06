@@ -1,13 +1,20 @@
 from datetime import timedelta
 from typing import Any
 import logging
+from uuid import uuid4
 
 import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
-from app.core.security import generate_refresh_token, get_password_hash, verify_password
+from app.core.security import (
+    build_refresh_token,
+    extract_family_id,
+    get_password_hash,
+    hash_refresh_token,
+    verify_password,
+)
 from app.core.timeutils import utcnow
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord
@@ -33,10 +40,12 @@ class AuthService:
 
     async def login(self, email: EmailStr, password: str) -> Token:
         user = await self.authenticate(email, password)
-        refresh_token = generate_refresh_token()
+        session_id = uuid4()
+        refresh_token = build_refresh_token(session_id)
         await self._uow.user_sessions.create(
             user_id=user["id"],
             token=refresh_token,
+            session_id=session_id,
         )
         access_token = self.create_access_token(data={"sub": user["email"]})
         return Token(
@@ -44,34 +53,48 @@ class AuthService:
             refresh_token=refresh_token,
             token_type="bearer",
         )
-    
+
     async def refresh(self, token: str) -> Token:
-        family = await self._uow.user_sessions.get_by_active_token_hash(token)
+        try:
+            family_id = extract_family_id(token)
+        except ValueError:
+            raise InvalidTokenError from None
+
+        family = await self._uow.user_sessions.get(family_id)
         if family is None or family["is_revoked"] or family["expires_at"] <= utcnow():
             raise InvalidTokenError
 
-        new_refresh_token = generate_refresh_token()
-        updated_family = await self._uow.user_sessions.update(family["id"], {"token": new_refresh_token})
-        if updated_family is None:
-            raise InvalidTokenError
+        presented_hash = hash_refresh_token(token)
 
-        user = await self._uow.users.get_by_id(updated_family["user_id"])
-        if user is None:
-            # Invariant: session.user_id must exist; data integrity problem if not.
-            logger.error(
-                "Refresh session %s references missing user %s",
-                updated_family["id"],
-                updated_family["user_id"],
+        if presented_hash == family["active_token_hash"]:
+            new_refresh_token = build_refresh_token(family_id)
+            updated_family = await self._uow.user_sessions.update(
+                family_id, {"token": new_refresh_token}
             )
+            if updated_family is None:
+                raise InvalidTokenError
+
+            user = await self._uow.users.get_by_id(updated_family["user_id"])
+            if user is None:
+                # Invariant: session.user_id must exist; data integrity problem if not.
+                logger.error(
+                    "Refresh session %s references missing user %s",
+                    updated_family["id"],
+                    updated_family["user_id"],
+                )
+                raise InvalidTokenError
+
+            return Token(
+                access_token=self.create_access_token({"sub": user["email"]}),
+                refresh_token=new_refresh_token,
+            )
+
+        if any(entry["hash"] == presented_hash for entry in family["used_token_hashes"]):
+            await self._uow.user_sessions.update(family_id, {"is_revoked": True})
+            logger.warning("Refresh token reuse detected for session %s", family_id)
             raise InvalidTokenError
 
-        new_access_token = self.create_access_token({"sub": user["email"]})
-        
-        return Token(
-            access_token=new_access_token,
-            refresh_token=new_refresh_token,
-        )
-
+        raise InvalidTokenError
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
