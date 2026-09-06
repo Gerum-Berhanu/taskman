@@ -6,7 +6,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
-from app.database.models import Task
+from app.models.task import Task
 from app.repositories.records import TaskRecord
 
 
