@@ -6,10 +6,11 @@ from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
-from app.core.security import get_password_hash, verify_password
+from app.core.security import generate_refresh_token, get_password_hash, verify_password
 from app.core.timeutils import utcnow
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.records import UserRecord
+from app.schemas.auth import Token
 
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
@@ -27,6 +28,20 @@ class AuthService:
         if not verify_password(password, user["hashed_password"]):
             raise InvalidCredentialsError
         return user
+
+    async def login(self, email: EmailStr, password: str) -> Token:
+        user = await self.authenticate(email, password)
+        refresh_token = generate_refresh_token()
+        await self._uow.user_sessions.create(
+            user_id=user["id"],
+            token=refresh_token,
+        )
+        access_token = self.create_access_token(data={"sub": user["email"]})
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        )
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None

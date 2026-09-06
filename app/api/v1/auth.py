@@ -38,9 +38,7 @@ async def login_user(
         raise InvalidCredentialsError from exc
         # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
-    user = await auth_service.authenticate(valid_form.email, valid_form.password)
-    access_token = auth_service.create_access_token(data={"sub": user["email"]})
-    return Token(access_token=access_token, token_type="bearer")
+    return await auth_service.login(valid_form.email, valid_form.password)
 
 
 @router.get("/me", response_model=UserRead)
