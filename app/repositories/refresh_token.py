@@ -111,9 +111,12 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
             old_hash = user_session.active_token_hash
             used = list(user_session.used_token_hashes)
             used.append({"hash": old_hash, "used_at": tu.utcnow().isoformat()})
-            user_session.used_token_hashes = used
+            max_used = settings.refresh_token_used_history_size
+            user_session.used_token_hashes = used[-max_used:]
             user_session.active_token_hash = hash_refresh_token(fields["token"])
-            user_session.expires_at = tu.utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
+            user_session.expires_at = tu.utcnow() + timedelta(
+                minutes=settings.refresh_token_expire_minutes
+            )
 
         if "is_revoked" in fields:
             user_session.is_revoked = fields["is_revoked"]

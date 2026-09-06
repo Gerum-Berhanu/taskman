@@ -7,7 +7,9 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import deactivate_user
+from app.core.config import settings
+from app.core.security import extract_family_id
+from tests.conftest import deactivate_user, used_history_len
 
 PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
@@ -149,3 +151,22 @@ def test_inactive_user_cannot_login_refresh_or_use_access(
     assert_unauthorized(
         client.get("/auth/me", headers=auth_header(tokens["access_token"]))
     )
+
+
+def test_used_refresh_history_is_capped(
+    client: TestClient, monkeypatch
+) -> None:
+    history_size = 3
+    monkeypatch.setattr(settings, "refresh_token_used_history_size", history_size)
+
+    register(client)
+    tokens = login_tokens(client)
+    refresh_token = tokens["refresh_token"]
+    family_id = extract_family_id(refresh_token)
+
+    for _ in range(history_size + 2):
+        response = refresh(client, refresh_token)
+        assert response.status_code == 200, response.text
+        refresh_token = response.json()["refresh_token"]
+
+    assert used_history_len(family_id) == history_size

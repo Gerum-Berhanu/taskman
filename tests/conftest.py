@@ -61,3 +61,16 @@ async def _set_user_active(user_id: UUID, *, is_active: bool) -> None:
 
 def deactivate_user(user_id: UUID) -> None:
     asyncio.run(_set_user_active(user_id, is_active=False))
+
+
+async def _used_history_len(family_id: UUID) -> int:
+    session_factory = app.state.test_session_factory
+    async with session_factory() as session:
+        async with UnitOfWork(session) as uow:
+            family = await uow.user_sessions.get(family_id)
+            assert family is not None
+            return len(family["used_token_hashes"])
+
+
+def used_history_len(family_id: UUID) -> int:
+    return asyncio.run(_used_history_len(family_id))
