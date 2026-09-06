@@ -11,7 +11,7 @@ from app.models.base import BaseTable
 class UserSession(BaseTable, table=True):
     __tablename__: str = "user_sessions"
 
-    user_id: UUID = Field(foreign_key="users.id", index=True)
+    user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     active_token_hash: str = Field(unique=True)
     used_token_hashes: list[dict[str, str]] = Field(
         default_factory=list,
