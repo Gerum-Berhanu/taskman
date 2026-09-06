@@ -7,7 +7,7 @@ from sqlmodel import SQLModel
 from sqlmodel.sql.sqltypes import AutoString
 
 from app.core.config import settings
-import app.database.models
+import app.models
 
 
 # this is the Alembic Config object, which provides

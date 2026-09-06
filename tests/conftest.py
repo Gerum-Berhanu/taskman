@@ -9,7 +9,7 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-import app.database.models  # noqa: F401
+import app.models
 from app.database.unit_of_work import UnitOfWork
 from app.deps import get_uow
 from app.main import app

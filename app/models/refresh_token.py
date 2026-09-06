@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from uuid import UUID
-from sqlmodel import JSON, Column, Field
+from sqlalchemy import JSON
+from sqlmodel import Field
 
 from app.core.config import settings
 from app.core.timeutils import utcnow
@@ -14,10 +15,11 @@ class UserSession(BaseTable, table=True):
     active_token_hash: str = Field(unique=True)
     used_token_hashes: list[dict[str, str]] = Field(
         default_factory=list,
-        sa_column=Column(JSON, nullable=False)
+        sa_type=JSON,
+        nullable=False,
     )
     is_revoked: bool = Field(default=False)
     expires_at: datetime = Field(
-        default_factory=lambda: utcnow() 
+        default_factory=lambda: utcnow()
         + timedelta(minutes=settings.refresh_token_expire_minutes)
     )

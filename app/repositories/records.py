@@ -28,8 +28,22 @@ class UserRecord(TypedDict):
     created_at: datetime
 
 
+class UserSessionRecord(TypedDict):
+    id: UUID
+    user_id: UUID
+    active_token_hash: str  
+    used_token_hashes: list[dict[str, str]]
+    is_revoked: bool
+    expires_at: datetime
+
+
 class TaskUpdateData(TypedDict, total=False):
     title: str
     description: str | None
     status: str
     due_date: datetime | None
+
+
+class RefreshTokenUpdateData(TypedDict, total=False):
+    token: str  
+    is_revoked: bool
