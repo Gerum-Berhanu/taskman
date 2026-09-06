@@ -13,6 +13,8 @@ from app.repositories.records import UserRecord
 class UserRepository(Protocol):
     async def get_by_email(self, email: str) -> UserRecord | None: ...
 
+    async def get_by_id(self, id: UUID) -> UserRecord | None: ...
+
     async def create(self, *, email: str, hashed_password: str) -> UserRecord: ...
 
 
@@ -36,6 +38,12 @@ class InMemoryUserRepository(UserRepository):
                 return user
         return None
 
+    async def get_by_id(self, id: UUID) -> UserRecord | None:
+        for user_id in self._users:
+            if user_id == id:
+                return self._users[user_id]
+        return None
+
     async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user_id = uuid4()
         user: UserRecord = {
@@ -55,6 +63,14 @@ class SqlUserRepository(UserRepository):
 
     async def get_by_email(self, email: str) -> UserRecord | None:
         statement = select(User).where(User.email == email)
+        result = await self._session.exec(statement)
+        user = result.first()
+        if user is None:
+            return None
+        return _to_user_record(user)
+
+    async def get_by_id(self, id: UUID) -> UserRecord | None:
+        statement = select(User).where(User.id == id)
         result = await self._session.exec(statement)
         user = result.first()
         if user is None:

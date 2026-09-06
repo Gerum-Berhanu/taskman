@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
@@ -5,6 +6,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
+from app.core.config import settings
 from app.core.security import hash_refresh_token
 from app.models.refresh_token import UserSession
 from app.repositories.records import RefreshTokenUpdateData, UserSessionRecord
@@ -88,6 +90,7 @@ class SqlRefreshTokenRepository(RefreshTokenRepository):
             used.append({"hash": old_hash, "used_at": tu.utcnow().isoformat()})
             user_session.used_token_hashes = used
             user_session.active_token_hash = hash_refresh_token(fields["token"])
+            user_session.expires_at = tu.utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
 
         if "is_revoked" in fields:
             user_session.is_revoked = fields["is_revoked"]

@@ -10,7 +10,7 @@ from starlette.status import HTTP_201_CREATED
 from app.core.exceptions import InvalidCredentialsError
 from app.repositories.records import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
-from app.schemas.auth import LoginCredentials, Token, UserCreateResponse
+from app.schemas.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
 from app.schemas.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,6 +39,15 @@ async def login_user(
         # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
     return await auth_service.login(valid_form.email, valid_form.password)
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    refresh_payload: RefreshTokenPayload, 
+    auth_service: AuthServiceDep
+) -> Token:
+    token = refresh_payload.refresh_token
+    return await auth_service.refresh(token)
 
 
 @router.get("/me", response_model=UserRead)

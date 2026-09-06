@@ -42,6 +42,31 @@ class AuthService:
             refresh_token=refresh_token,
             token_type="bearer",
         )
+    
+    async def refresh(self, token: str) -> Token:
+        family = await self._uow.user_sessions.get_by_active_token_hash(token)
+        if family is None or family["is_revoked"] or family["expires_at"] <= utcnow():
+            raise InvalidTokenError
+
+        new_refresh_token = generate_refresh_token()
+        updated_family = await self._uow.user_sessions.update(family["id"], {"token": new_refresh_token})
+        if updated_family is None:
+            raise InvalidTokenError
+
+        user = await self._uow.users.get_by_id(updated_family["user_id"])
+        if user is None:
+            # this is something serious to look at because
+            # how can there be a user_id in a login session
+            # which isn't related to any real user?
+            raise InvalidTokenError
+
+        new_access_token = self.create_access_token({"sub": user["email"]})
+        
+        return Token(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
+        )
+
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
