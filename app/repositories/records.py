@@ -26,3 +26,10 @@ class UserRecord(TypedDict):
     hashed_password: str
     is_active: bool
     created_at: datetime
+
+
+class TaskUpdateData(TypedDict, total=False):
+    title: str
+    description: str | None
+    status: str
+    due_date: datetime | None

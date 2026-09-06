@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app.core.exceptions import TaskNotFoundError
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.records import TaskRecord
+from app.repositories.records import TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -11,7 +11,7 @@ class TaskService:
         self._uow = uow
 
     async def create(self, data: TaskCreate) -> TaskRecord:
-        return await self._uow.tasks.create(data.model_dump())
+        return await self._uow.tasks.create(**data.model_dump())
 
     async def get(self, task_id: UUID) -> TaskRecord:
         task = await self._uow.tasks.get(task_id)
@@ -23,7 +23,10 @@ class TaskService:
         return await self._uow.tasks.list_all()
 
     async def update(self, task_id: UUID, data: TaskUpdate) -> TaskRecord:
-        task = await self._uow.tasks.update(task_id, data.model_dump(exclude_unset=True))
+        task = await self._uow.tasks.update(
+            task_id,
+            TaskUpdateData(**data.model_dump(exclude_unset=True))
+        )
         if task is None:
             raise TaskNotFoundError
         return task
