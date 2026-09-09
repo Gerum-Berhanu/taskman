@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database.session import async_session_factory
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.records import UserRecord
+from app.repositories.user import UserRecord
 from app.services.auth import AuthService
 from app.services.task import TaskService
 from app.services.user import UserService

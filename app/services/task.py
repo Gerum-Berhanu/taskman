@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app.core.exceptions import TaskNotFoundError
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.records import TaskRecord, TaskUpdateData
+from app.repositories.task import TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskUpdate
 
 

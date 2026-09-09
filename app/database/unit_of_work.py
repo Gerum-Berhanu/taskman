@@ -2,17 +2,17 @@
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.repositories.refresh_token import SqlRefreshTokenRepository
-from app.repositories.task import SqlTaskRepository
-from app.repositories.user import SqlUserRepository
+from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
+from app.repositories.user_session import UserSessionRepository
 
 
 class UnitOfWork:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.users = SqlUserRepository(session)
-        self.tasks = SqlTaskRepository(session)
-        self.user_sessions = SqlRefreshTokenRepository(session)
+        self.users = UserRepository(session)
+        self.tasks = TaskRepository(session)
+        self.user_sessions = UserSessionRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self

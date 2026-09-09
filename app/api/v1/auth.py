@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.core.exceptions import InvalidCredentialsError
-from app.repositories.records import UserRecord
+from app.repositories.user import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.schemas.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
 from app.schemas.user import UserCreate, UserRead

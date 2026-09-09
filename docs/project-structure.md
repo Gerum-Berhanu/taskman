@@ -31,10 +31,10 @@ task_mng/
 │   │   ├── session.py      # SQLModel engine + create_db_and_tables
 │   │   └── models.py       # ORM table models (User, Task)
 │   │
-│   ├── repositories/       # persistence contracts + implementations
-│   │   ├── records.py      # TypedDict row shapes (TaskRecord, UserRecord)
-│   │   ├── task.py         # TaskRepository protocol + in-memory + SQL
-│   │   └── user.py         # UserRepository protocol + in-memory + SQL
+│   ├── repositories/       # one SQL repository per domain
+│   │   ├── task.py         # TaskRepository + TaskRecord
+│   │   ├── user.py         # UserRepository + UserRecord
+│   │   └── user_session.py # UserSessionRepository + UserSessionRecord
 │   │
 │   ├── schemas/            # Pydantic API contracts (request/response shapes)
 │   │   ├── task.py         # TaskCreate, TaskRead, TaskUpdate, TaskStatus
@@ -51,7 +51,7 @@ task_mng/
 └── docs/                   # handbook
 ```
 
-> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). `app/repositories/records.py` holds **persistence row shapes** (TypedDict). `app/database/models.py` holds **ORM models** (database tables). Check the path.
+> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). Each `repositories/*.py` holds that domain’s **row shape** (`*Record` TypedDict) next to its repository. ORM table models live under `app/models/`. Check the path.
 
 ---
 
@@ -86,7 +86,7 @@ deps.py          ← inject TaskService, UserService, AuthService, current user
 services/*.py    ← business logic (register user, authenticate, CRUD tasks)
   │
   ▼
-repositories/        ← persist/retrieve (SQL repos; memory kept for tests)
+repositories/        ← persist/retrieve via UnitOfWork (SQL repos)
   │
   ▼
 schemas/*.py     ← shape the JSON response (response_model)
@@ -99,8 +99,8 @@ Client
 
 1. `tasks.py` receives JSON → validated as `TaskCreate` (from `schemas/task.py`).
 2. `deps.py` resolves `TaskServiceDep` and ensures `get_current_user` ran (router-level dependency).
-3. `TaskService.create()` calls `TaskRepository.create()` with the task fields.
-4. The in-memory repository assigns `id`, `status`, timestamps and saves a `TaskRecord`.
+3. `TaskService.create()` calls `TaskRepository.create()` through the unit of work.
+4. The SQL repository persists the row and returns a `TaskRecord`.
 5. Route returns the record; FastAPI serializes it as `TaskRead`.
 
 ---
@@ -118,14 +118,11 @@ Client
 
 The **wiring layer**. FastAPI `Depends()` functions live here:
 
-- `get_task_repository` / `get_user_repository` → return singleton in-memory repos.
-- `get_task_service` / `get_user_service` / `get_auth_service` → build services with their dependencies.
+- `get_uow` → one `UnitOfWork` (and DB session) per request.
+- `get_task_service` / `get_user_service` / `get_auth_service` → build services with that UoW.
 - `get_current_user` → decode JWT, load user (used by protected routes).
-- `get_task_or_404` → shared 404 lookup for task routes.
 
 Routes import typed aliases like `TaskServiceDep` instead of constructing services themselves.
-
-When you swap in-memory repos for SQLAlchemy, you change wiring **here** — routes and services stay the same.
 
 ### `api/v1/`
 
@@ -147,26 +144,24 @@ One service class per resource (or cross-cutting concern like auth).
 
 Services raise **domain exceptions** (e.g. `EmailAlreadyRegisteredError`). Routes catch those and pick the HTTP status.
 
-Services are easy to unit-test: pass a fake repository, no HTTP involved.
-
 ### `database/`
 
 | File | Status | Purpose |
 |---|---|---|
 | `session.py` | **Active** | SQLModel engine + `create_db_and_tables()` |
-| `models.py` | **Active** | ORM table classes (`User`, `Task`) |
+| `unit_of_work.py` | **Active** | Per-request transaction; exposes domain repositories |
 
 ### `repositories/`
 
-| File | Status | Purpose |
-|---|---|---|
-| `records.py` | **Active** | `TaskRecord` / `UserRecord` TypedDicts — persistence row shapes |
-| `task.py` | **Active** | `TaskRepository` protocol + `InMemoryTaskRepository` + `SqlTaskRepository` |
-| `user.py` | **Active** | `UserRepository` protocol + `InMemoryUserRepository` + `SqlUserRepository` |
+| File | Purpose |
+|---|---|
+| `task.py` | `TaskRepository` + `TaskRecord` / `TaskUpdateData` |
+| `user.py` | `UserRepository` + `UserRecord` |
+| `user_session.py` | `UserSessionRepository` + `UserSessionRecord` |
 
-Repositories should only **persist and retrieve** — no password hashing (that lives in `UserService`).
+One **SQL** repository class per domain. Row shapes (`*Record`) live in the same file. Repositories **persist and retrieve** — password hashing and JWT stay in services.
 
-Services depend on the **protocol**, not a concrete repo class. `SqlTaskRepository` (and `InMemoryTaskRepository` for tests) implement the same methods; `deps.py` chooses which instance to inject.
+Services talk to repositories through `UnitOfWork`, not by constructing repos themselves.
 
 ### `schemas/` (Pydantic)
 
@@ -195,12 +190,11 @@ Shared infrastructure with no feature-specific knowledge:
 Use this checklist when building a new feature (e.g. workspaces):
 
 1. **`schemas/workspace.py`** — `WorkspaceCreate`, `WorkspaceRead`, …
-2. **`repositories/records.py`** — `WorkspaceRecord` if needed.
-3. **`repositories/workspace_repo.py`** — protocol + SQL (and memory) implementations.
-4. **`services/workspace_service.py`** — business rules.
-5. **`deps.py`** — `get_workspace_service`, `WorkspaceServiceDep`.
-6. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
-7. **`main.py`** — `app.include_router(workspaces.router)` (already registered).
+2. **`repositories/workspace.py`** — `WorkspaceRepository` + `WorkspaceRecord`.
+3. **`services/workspace.py`** — business rules.
+4. Wire the repo on `UnitOfWork`; add `get_workspace_service` in `deps.py`.
+5. **`api/v1/workspaces.py`** — routes; call the service, return schemas.
+6. **`main.py`** — `app.include_router(workspaces.router)` if not already registered.
 
 For a new endpoint on an existing resource, touch `schemas/` → `services/` → `api/v1/` in that order.
 
@@ -216,10 +210,10 @@ Current chain:
 Route
   └─ TaskServiceDep
        └─ get_task_service
-            └─ TaskRepository (SqlTaskRepository via get_task_repository)
+            └─ UnitOfWork.tasks (TaskRepository)
 ```
 
-For tests, override dependencies on the app — e.g. swap `get_task_repository` with a fresh in-memory repo — without changing route code.
+Tests use the same SQL repositories against an isolated SQLite database (override `get_uow` / session wiring in fixtures).
 
 ---
 
@@ -227,11 +221,10 @@ For tests, override dependencies on the app — e.g. swap `get_task_repository` 
 
 | Today | Next slice |
 |---|---|
-| `Sql*Repository` wired in `deps.py` | Alembic migrations; later Postgres |
-| `InMemory*Repository` kept for tests | Override `get_*_repository` in tests |
-| Basic API tests with temporary SQLite | Expand coverage as features are added |
+| SQL repositories via `UnitOfWork` | Alembic migrations; later Postgres |
+| API tests with temporary SQLite | Expand coverage as features are added |
 
-The layer boundaries stay the same; only the persistence implementation swaps out.
+The layer boundaries stay the same; only the database backend swaps out.
 
 ---
 
@@ -239,9 +232,9 @@ The layer boundaries stay the same; only the persistence implementation swaps ou
 
 1. **Routes stay thin** — call a service, return a schema.
 2. **Business logic lives in services** — not in routes or repositories.
-3. **Repos only persist** — no hashing, no JWT, no HTTP.
-4. **Pydantic in `app/schemas/`** — records in `repositories/records.py` — ORM in `database/models.py`.
-5. **Wire in `deps.py`** — routes never import singleton repositories directly.
+3. **Repos only persist** — no JWT, no HTTP; keep crypto at clear boundaries.
+4. **Pydantic in `app/schemas/`** — `*Record` TypedDicts in `repositories/*.py` — ORM in `app/models/`.
+5. **Wire in `deps.py` / `UnitOfWork`** — routes never construct repositories.
 6. **Shared utilities in `core/`** — not scattered across services.
 
 Project title: **Taskman**

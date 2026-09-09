@@ -1,26 +1,24 @@
-"""User repository: protocol, in-memory, and SQL implementations."""
+"""User persistence."""
 
-from typing import Protocol
-from uuid import UUID, uuid4
+from datetime import datetime
+from typing import TypedDict
+from uuid import UUID
+
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core import timeutils as tu
 from app.models.user import User
-from app.repositories.records import UserRecord
 
 
-class UserRepository(Protocol):
-    async def get_by_email(self, email: str) -> UserRecord | None: ...
-
-    async def get_by_id(self, id: UUID) -> UserRecord | None: ...
-
-    async def create(self, *, email: str, hashed_password: str) -> UserRecord: ...
-
-    async def set_is_active(self, user_id: UUID, *, is_active: bool) -> UserRecord | None: ...
+class UserRecord(TypedDict):
+    id: UUID
+    email: str
+    hashed_password: str
+    is_active: bool
+    created_at: datetime
 
 
-def _to_user_record(user: User) -> UserRecord:
+def _to_record(user: User) -> UserRecord:
     return UserRecord(
         id=user.id,
         email=user.email,
@@ -30,43 +28,7 @@ def _to_user_record(user: User) -> UserRecord:
     )
 
 
-class InMemoryUserRepository(UserRepository):
-    def __init__(self) -> None:
-        self._users: dict[UUID, UserRecord] = {}
-
-    async def get_by_email(self, email: str) -> UserRecord | None:
-        for user in self._users.values():
-            if user["email"] == email:
-                return user
-        return None
-
-    async def get_by_id(self, id: UUID) -> UserRecord | None:
-        for user_id in self._users:
-            if user_id == id:
-                return self._users[user_id]
-        return None
-
-    async def create(self, *, email: str, hashed_password: str) -> UserRecord:
-        user_id = uuid4()
-        user: UserRecord = {
-            "id": user_id,
-            "email": email,
-            "hashed_password": hashed_password,
-            "is_active": True,
-            "created_at": tu.utcnow(),
-        }
-        self._users[user_id] = user
-        return user
-
-    async def set_is_active(self, user_id: UUID, is_active: bool) -> UserRecord | None:
-        user = self._users.get(user_id)
-        if user is None:
-            return None
-        user["is_active"] = is_active
-        return user
-
-
-class SqlUserRepository(UserRepository):
+class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -76,24 +38,24 @@ class SqlUserRepository(UserRepository):
         user = result.first()
         if user is None:
             return None
-        return _to_user_record(user)
+        return _to_record(user)
 
-    async def get_by_id(self, id: UUID) -> UserRecord | None:
-        statement = select(User).where(User.id == id)
-        result = await self._session.exec(statement)
-        user = result.first()
+    async def get_by_id(self, user_id: UUID) -> UserRecord | None:
+        user = await self._session.get(User, user_id)
         if user is None:
             return None
-        return _to_user_record(user)
+        return _to_record(user)
 
     async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user = User(email=email, hashed_password=hashed_password)
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)
-        return _to_user_record(user)
+        return _to_record(user)
 
-    async def set_is_active(self, user_id: UUID, is_active: bool) -> UserRecord | None:
+    async def set_is_active(
+        self, user_id: UUID, *, is_active: bool
+    ) -> UserRecord | None:
         user = await self._session.get(User, user_id)
         if user is None:
             return None
@@ -101,4 +63,4 @@ class SqlUserRepository(UserRepository):
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)
-        return _to_user_record(user)
+        return _to_record(user)
