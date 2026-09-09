@@ -1,25 +1,9 @@
-from datetime import datetime, timedelta
-from uuid import UUID
-from sqlalchemy import JSON
-from sqlmodel import Field
+from uuid import UUID, uuid4
+from sqlmodel import Field, SQLModel
 
-from app.core.config import settings
-from app.core.timeutils import utcnow
-from app.models.base import BaseTable
+class RefreshToken(SQLModel, table=True):
+    __tablename__: str = "refresh_tokens"
 
-
-class UserSession(BaseTable, table=True):
-    __tablename__: str = "user_sessions"
-
-    user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
-    active_token_hash: str = Field(unique=True)
-    used_token_hashes: list[dict[str, str]] = Field(
-        default_factory=list,
-        sa_type=JSON,
-        nullable=False,
-    )
-    is_revoked: bool = Field(default=False)
-    expires_at: datetime = Field(
-        default_factory=lambda: utcnow()
-        + timedelta(minutes=settings.refresh_token_expire_minutes)
-    )
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    client_session_id: UUID = Field(foreign_key="client_sessions.id", index=True)
+    token_hash: str = Field(unique=True)
