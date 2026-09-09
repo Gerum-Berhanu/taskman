@@ -1,9 +1,11 @@
-﻿from datetime import datetime
+﻿from datetime import datetime, timedelta
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.config import settings
+from app.core.timeutils import utcnow
 from app.models import ClientSession
 
 
@@ -19,6 +21,10 @@ class ClientSessionRecord(BaseModel):
     expires_at: datetime
 
 
+def _to_record(client_session: ClientSession) -> ClientSessionRecord:
+    return ClientSessionRecord.model_validate(client_session)
+
+
 class ClientSessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -28,15 +34,28 @@ class ClientSessionRepository:
         self._session.add(client_session)
         await self._session.flush()
         await self._session.refresh(client_session)
-        return ClientSessionRecord.model_validate(client_session)
+        return _to_record(client_session)
 
-    async def set_active_token_id(self, *, client_id: UUID,  token_id: UUID) -> ClientSessionRecord | None:
+    async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
+        return _to_record(client_session)
+
+    async def set_active_token_id(self, *, client_id: UUID,  token_id: UUID, is_rotation: bool = False) -> ClientSessionRecord | None:
+        client_session = await self._session.get(ClientSession, client_id)
+        if client_session is None:
+            return None
+
         client_session.active_token_id = token_id
+        if is_rotation:
+            client_session.rotated_at = utcnow()
+            client_session.expires_at = (
+                utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
+            )
+
         self._session.add(client_session)
         await self._session.flush()
         await self._session.refresh(client_session)
-        return ClientSessionRecord.model_validate(client_session)
+        return _to_record(client_session)
     

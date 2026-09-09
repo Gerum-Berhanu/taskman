@@ -1,7 +1,6 @@
 from datetime import timedelta
 from typing import Any
-import logging
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import jwt
 from pydantic import EmailStr
@@ -16,12 +15,11 @@ from app.core.security import (
 )
 from app.core.timeutils import ensure_utc, utcnow
 from app.database.unit_of_work import UnitOfWork
+from app.repositories import ClientSessionRecord
 from app.repositories.user import UserRecord
-from app.repositories.user_session import UserSessionRecord
 from app.schemas.auth import Token
 
 
-logger = logging.getLogger(__name__)
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
@@ -36,7 +34,7 @@ class AuthService:
             raise InvalidCredentialsError
         if not verify_password(password, user.hashed_password):
             raise InvalidCredentialsError
-        # Same error as bad credentials — don't leak that the account is disabled.
+        # Same error as bad credentials - don't leak that the account is disabled.
         if not user.is_active:
             raise InvalidCredentialsError
         return user
@@ -56,93 +54,56 @@ class AuthService:
             token_id=refresh_token.id
         )
 
-        access_token = self.create_access_token(data={"sub": user.email})
+        access_token = self.create_access_token(data={"sub": str(user.id)})
 
         return Token(
             access_token=access_token,
             refresh_token=raw_token,
         )
 
-    async def refresh(self, token: str) -> Token:
-        try:
-            family_id = extract_family_id(token)
-        except ValueError:
-            raise InvalidTokenError from None
-
-        family = await self._uow.user_sessions.get(family_id)
+    async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
+        row = await self._uow.refresh_tokens.get_by_token_hash(hash_refresh_token(token))
+        if row is None:
+            raise InvalidTokenError
+        
+        session = await self._uow.client_sessions.get_by_id(row.client_session_id)
         if (
-            family is None
-            or family["is_revoked"]
-            or ensure_utc(family["expires_at"]) <= utcnow()
+            session is None 
+            or ensure_utc(session.expires_at) <= utcnow() 
+            or session.revoked_at is not None
+            or row.id != session.active_token_id
         ):
             raise InvalidTokenError
 
-        presented_hash = hash_refresh_token(token)
-
-        if presented_hash == family["active_token_hash"]:
-            user = await self._uow.users.get_by_id(family["user_id"])
-            if user is None:
-                # Invariant: session.user_id must exist; data integrity problem if not.
-                logger.error(
-                    "Refresh session %s references missing user %s",
-                    family["id"],
-                    family["user_id"],
-                )
-                raise InvalidTokenError
-            if not user.is_active:
-                raise InvalidTokenError
-
-            new_refresh_token = build_refresh_token(family_id)
-            updated = await self._uow.user_sessions.rotate(
-                family_id, new_token=new_refresh_token
-            )
-            if updated is None:
-                raise InvalidTokenError
-
-            return Token(
-                access_token=self.create_access_token({"sub": user.email}),
-                refresh_token=new_refresh_token,
-            )
-
-        await self._revoke_on_reuse(family, presented_hash)
-        raise InvalidTokenError
-
-    async def logout(self, token: str) -> None:
-        try:
-            family_id = extract_family_id(token)
-        except ValueError:
-            raise InvalidTokenError from None
-
-        family = await self._uow.user_sessions.get(family_id)
-        if family is None:
+        user = await self._uow.users.get_by_id(session.user_id)
+        if user is None or not user.is_active:
             raise InvalidTokenError
 
-        if family["is_revoked"]:
-            return  # idempotent
+        return session
 
-        presented_hash = hash_refresh_token(token)
-        if presented_hash == family["active_token_hash"]:
-            await self._uow.user_sessions.revoke(family_id)
-            return
+    async def refresh(self, token: str) -> Token:
+        client_session = await self._require_active_refresh(token)
+        
+        new_raw_token = generate_refresh_token()
+        new_token_row = await self._uow.refresh_tokens.create(
+            client_session_id=client_session.id,
+            token_hash=hash_refresh_token(new_raw_token),
+        )
 
-        await self._revoke_on_reuse(family, presented_hash)
-        raise InvalidTokenError
-
-    async def logout_all(self, user_id: UUID) -> None:
-        await self._uow.user_sessions.revoke_all_by_user(user_id)
-
-    async def _revoke_on_reuse(
-        self, family: UserSessionRecord, presented_hash: str
-    ) -> None:
-        """If this hash was already rotated away, revoke the family.
-
-        Commits before raising so the revoke survives UnitOfWork rollback on error.
-        """
-        if any(entry["hash"] == presented_hash for entry in family["used_token_hashes"]):
-            await self._uow.user_sessions.revoke(family["id"])
-            await self._uow.session.commit()
-            logger.warning("Refresh token reuse detected for session %s", family["id"])
+        updated_session = await self._uow.client_sessions.set_active_token_id(
+            client_id = client_session.id,
+            token_id = new_token_row.id,
+            is_rotation = True
+        )
+        if updated_session is None:
             raise InvalidTokenError
+
+        new_access_token = self.create_access_token({"sub": str(client_session.user_id)})
+        
+        return Token(
+            access_token=new_access_token,
+            refresh_token=new_raw_token,
+        )
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
@@ -163,21 +124,19 @@ class AuthService:
             algorithm=settings.algorithm,
         )
 
-    def _get_email_from_token(self, token: str) -> str:
+    def _get_id_from_token(self, token: str) -> UUID:
         try:
             payload = jwt.decode(
                 token, settings.secret_key, algorithms=[settings.algorithm]
             )
-            email = payload.get("sub")
-            if not isinstance(email, str):
-                raise InvalidTokenError
-            return email
-        except jwt.InvalidTokenError:
+            user_id = UUID(payload.get("sub"))
+            return user_id
+        except Exception:
             raise InvalidTokenError
 
     async def get_user_from_token(self, token: str) -> UserRecord:
-        email = self._get_email_from_token(token)
-        user = await self._uow.users.get_by_email(email)
+        user_id = self._get_id_from_token(token)
+        user = await self._uow.users.get_by_id(user_id)
         if user is None or not user.is_active:
             raise InvalidTokenError
         return user
