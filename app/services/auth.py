@@ -123,7 +123,20 @@ class AuthService:
         revoked = await self._uow.client_sessions.revoke(client_id=session.id)
         if not revoked:
             raise InvalidTokenError
+            
+    async def logout_all_user_sessions(self, token: str) -> None:
+        token_row, session = await self._get_token_and_session_rows(token)
+        if token_row.id != session.active_token_id:
+            raise InvalidTokenError
+        
+        if ensure_utc(session.expires_at) <= utcnow():
+            await self._uow.client_sessions.revoke(session.id)
+            raise InvalidTokenError
 
+        revoked_all = await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
+        if not revoked_all:
+            raise InvalidTokenError
+        
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:

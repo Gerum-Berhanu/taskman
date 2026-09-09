@@ -2,6 +2,7 @@
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
@@ -68,5 +69,14 @@ class ClientSessionRepository:
         self._session.add(client_session)
         await self._session.flush()
         await self._session.refresh(client_session)
+        return True
+
+    async def revoke_all_user_sessions(self, user_id: UUID) -> bool:
+        statement = select(ClientSession).where(ClientSession.user_id == user_id)
+        result = await self._session.exec(statement)
+        client_sessions = result.all()
+        for session in client_sessions:
+            if not await self.revoke(session.id):
+                return False
         return True
     
