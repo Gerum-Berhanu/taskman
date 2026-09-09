@@ -7,9 +7,7 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from app.core.config import settings
-from app.core.security import extract_family_id
-from tests.conftest import deactivate_user, used_history_len
+from tests.conftest import deactivate_user, expire_session_for_refresh
 
 PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
@@ -45,6 +43,10 @@ def logout(client: TestClient, refresh_token: str):
     return client.post("/auth/logout", json={"refresh_token": refresh_token})
 
 
+def logout_all(client: TestClient, refresh_token: str):
+    return client.post("/auth/logout-all", json={"refresh_token": refresh_token})
+
+
 def auth_header(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
@@ -77,7 +79,10 @@ def test_refresh_rotates_tokens(client: TestClient) -> None:
     assert_unauthorized(refresh(client, old_refresh))
 
 
-def test_refresh_reuse_revokes_family(client: TestClient) -> None:
+def test_refresh_rejects_rotated_token_without_killing_session(
+    client: TestClient,
+) -> None:
+    """Non-active refresh is rejected; reuse detection (session kill) is a later slice."""
     register(client)
     tokens = login_tokens(client)
     old_refresh = tokens["refresh_token"]
@@ -86,11 +91,11 @@ def test_refresh_reuse_revokes_family(client: TestClient) -> None:
     assert rotated.status_code == 200, rotated.text
     new_refresh = rotated.json()["refresh_token"]
 
-    # Presenting the old token after rotation = reuse
     assert_unauthorized(refresh(client, old_refresh))
 
-    # Family is revoked: the previously valid new token also fails
-    assert_unauthorized(refresh(client, new_refresh))
+    # Session still live until reuse detection lands
+    again = refresh(client, new_refresh)
+    assert again.status_code == 200, again.text
 
 
 def test_logout_revokes_session(client: TestClient) -> None:
@@ -111,10 +116,7 @@ def test_logout_all_revokes_every_session(client: TestClient) -> None:
 
     assert session_a["refresh_token"] != session_b["refresh_token"]
 
-    response = client.post(
-        "/auth/logout-all",
-        headers=auth_header(session_a["access_token"]),
-    )
+    response = logout_all(client, session_a["refresh_token"])
     assert response.status_code == 204
     assert response.content == b""
 
@@ -126,6 +128,13 @@ def test_refresh_rejects_malformed_token(client: TestClient) -> None:
     register(client)
     assert_unauthorized(refresh(client, "not-a-valid-refresh-token"))
     assert_unauthorized(refresh(client, "not-a-uuid.still-invalid"))
+
+
+def test_refresh_rejects_expired_session(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+    expire_session_for_refresh(tokens["refresh_token"])
+    assert_unauthorized(refresh(client, tokens["refresh_token"]))
 
 
 def test_inactive_user_cannot_login_refresh_or_use_access(
@@ -151,22 +160,3 @@ def test_inactive_user_cannot_login_refresh_or_use_access(
     assert_unauthorized(
         client.get("/auth/me", headers=auth_header(tokens["access_token"]))
     )
-
-
-def test_used_refresh_history_is_capped(
-    client: TestClient, monkeypatch
-) -> None:
-    history_size = 3
-    monkeypatch.setattr(settings, "refresh_token_used_history_size", history_size)
-
-    register(client)
-    tokens = login_tokens(client)
-    refresh_token = tokens["refresh_token"]
-    family_id = extract_family_id(refresh_token)
-
-    for _ in range(history_size + 2):
-        response = refresh(client, refresh_token)
-        assert response.status_code == 200, response.text
-        refresh_token = response.json()["refresh_token"]
-
-    assert used_history_len(family_id) == history_size

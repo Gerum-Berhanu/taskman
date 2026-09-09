@@ -1,25 +1,37 @@
 import asyncio
 from collections.abc import AsyncGenerator, Generator
+from datetime import timedelta
 from pathlib import Path
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-import app.models  # noqa: F401 — register User, Task, UserSession on metadata
+import app.models  # noqa: F401 — register models on metadata
+from app.core.security import hash_refresh_token
+from app.core.timeutils import utcnow
 from app.database.unit_of_work import UnitOfWork
 from app.deps import get_uow
 from app.main import app
+from app.models import ClientSession
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Generator[TestClient, None, None]:
     database_url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
     test_engine = create_async_engine(database_url, poolclass=NullPool)
+
+    @event.listens_for(test_engine.sync_engine, "connect")
+    def _set_sqlite_fk(dbapi_connection, connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     test_session_factory = async_sessionmaker(
         test_engine,
         class_=AsyncSession,
@@ -63,14 +75,20 @@ def deactivate_user(user_id: UUID) -> None:
     asyncio.run(_set_user_active(user_id, is_active=False))
 
 
-async def _used_history_len(family_id: UUID) -> int:
+async def _expire_session_for_refresh(refresh_token: str) -> None:
     session_factory = app.state.test_session_factory
     async with session_factory() as session:
         async with UnitOfWork(session) as uow:
-            family = await uow.user_sessions.get(family_id)
-            assert family is not None
-            return len(family["used_token_hashes"])
+            row = await uow.refresh_tokens.get_by_token_hash(
+                hash_refresh_token(refresh_token)
+            )
+            assert row is not None
+            client_session = await session.get(ClientSession, row.client_session_id)
+            assert client_session is not None
+            client_session.expires_at = utcnow() - timedelta(seconds=1)
+            session.add(client_session)
+            await session.flush()
 
 
-def used_history_len(family_id: UUID) -> int:
-    return asyncio.run(_used_history_len(family_id))
+def expire_session_for_refresh(refresh_token: str) -> None:
+    asyncio.run(_expire_session_for_refresh(refresh_token))
