@@ -59,3 +59,14 @@ class ClientSessionRepository:
         await self._session.refresh(client_session)
         return _to_record(client_session)
     
+    async def revoke(self, client_id: UUID) -> bool:
+        client_session = await self._session.get(ClientSession, client_id)
+        if not client_session:
+            return False
+        client_session.active_token_id = None
+        client_session.revoked_at = utcnow()
+        self._session.add(client_session)
+        await self._session.flush()
+        await self._session.refresh(client_session)
+        return True
+    

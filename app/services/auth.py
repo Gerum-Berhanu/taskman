@@ -69,10 +69,13 @@ class AuthService:
         session = await self._uow.client_sessions.get_by_id(row.client_session_id)
         if (
             session is None 
-            or ensure_utc(session.expires_at) <= utcnow() 
             or session.revoked_at is not None
             or row.id != session.active_token_id
         ):
+            raise InvalidTokenError
+        
+        if ensure_utc(session.expires_at) <= utcnow():
+            await self._uow.client_sessions.revoke(session.id)
             raise InvalidTokenError
 
         user = await self._uow.users.get_by_id(session.user_id)
@@ -104,6 +107,24 @@ class AuthService:
             access_token=new_access_token,
             refresh_token=new_raw_token,
         )
+
+    async def logout(self, token: str) -> None:
+        token_row = await self._uow.refresh_tokens.get_by_token_hash(hash_refresh_token(token))
+        if not token_row:
+            raise InvalidTokenError
+
+        session = await self._uow.client_sessions.get_by_id(token_row.client_session_id)
+        if not session:
+            raise InvalidTokenError
+        
+        if token_row.id != session.active_token_id:
+            raise InvalidTokenError
+
+        revoked = await self._uow.client_sessions.revoke(client_id=session.id)
+        if not revoked:
+            raise InvalidTokenError
+        
+
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
