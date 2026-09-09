@@ -79,10 +79,7 @@ def test_refresh_rotates_tokens(client: TestClient) -> None:
     assert_unauthorized(refresh(client, old_refresh))
 
 
-def test_refresh_rejects_rotated_token_without_killing_session(
-    client: TestClient,
-) -> None:
-    """Non-active refresh is rejected; reuse detection (session kill) is a later slice."""
+def test_refresh_reuse_revokes_session(client: TestClient) -> None:
     register(client)
     tokens = login_tokens(client)
     old_refresh = tokens["refresh_token"]
@@ -91,11 +88,11 @@ def test_refresh_rejects_rotated_token_without_killing_session(
     assert rotated.status_code == 200, rotated.text
     new_refresh = rotated.json()["refresh_token"]
 
+    # Presenting the old token after rotation = reuse → kill this session
     assert_unauthorized(refresh(client, old_refresh))
 
-    # Session still live until reuse detection lands
-    again = refresh(client, new_refresh)
-    assert again.status_code == 200, again.text
+    # Previously valid successor is dead with the session
+    assert_unauthorized(refresh(client, new_refresh))
 
 
 def test_logout_revokes_session(client: TestClient) -> None:

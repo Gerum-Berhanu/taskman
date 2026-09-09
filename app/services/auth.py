@@ -74,15 +74,24 @@ class AuthService:
 
         return row, session
 
+    async def _revoke_and_reject(self, session_id: UUID) -> None:
+        """Persist revocation, then fail the request (UoW would otherwise roll back)."""
+        await self._uow.client_sessions.revoke(session_id)
+        await self._uow.session.commit()
+        raise InvalidTokenError
+
     async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
         row, session = await self._get_token_and_session_rows(token)
-        
-        if session.revoked_at is not None or row.id != session.active_token_id:
+
+        if session.revoked_at is not None:
             raise InvalidTokenError
-        
+
+        # Presented token belongs to a live session but is not the active one → reuse/theft.
+        if row.id != session.active_token_id:
+            await self._revoke_and_reject(session.id)
+
         if ensure_utc(session.expires_at) <= utcnow():
-            await self._uow.client_sessions.revoke(session.id)
-            raise InvalidTokenError
+            await self._revoke_and_reject(session.id)
 
         user = await self._uow.users.get_by_id(session.user_id)
         if user is None or not user.is_active:
@@ -130,8 +139,7 @@ class AuthService:
             raise InvalidTokenError
         
         if ensure_utc(session.expires_at) <= utcnow():
-            await self._uow.client_sessions.revoke(session.id)
-            raise InvalidTokenError
+            await self._revoke_and_reject(session.id)
 
         revoked_all = await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
         if not revoked_all:
