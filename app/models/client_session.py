@@ -10,9 +10,9 @@ from app.models.base import BaseTable
 class ClientSession(BaseTable, table=True):
     __tablename__: str = "client_sessions"
 
-    user_id: UUID = Field(foreign_key="users.id", index=True)
+    user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     active_token_id: UUID | None = Field(
-        default=None, foreign_key="refresh_tokens.id", unique=True
+        default=None, foreign_key="refresh_tokens.id", ondelete="SET NULL", unique=True
     )
     revoked_at: datetime | None = None
     rotated_at: datetime | None = Field(default=None)
