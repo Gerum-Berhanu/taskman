@@ -1,10 +1,13 @@
-"""Unit of Work: one transaction boundary for all repositories."""
+﻿"""Unit of Work: one transaction boundary for all repositories."""
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.repositories.task import TaskRepository
-from app.repositories.user import UserRepository
-from app.repositories.user_session import UserSessionRepository
+from app.repositories import (
+    TaskRepository, 
+    UserRepository, 
+    RefreshTokenRepository,
+    ClientSessionRepository,
+)
 
 
 class UnitOfWork:
@@ -12,7 +15,8 @@ class UnitOfWork:
         self.session = session
         self.users = UserRepository(session)
         self.tasks = TaskRepository(session)
-        self.user_sessions = UserSessionRepository(session)
+        self.refresh_tokens = RefreshTokenRepository(session)
+        self.client_sessions = ClientSessionRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
