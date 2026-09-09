@@ -15,7 +15,7 @@ from app.core.security import (
 )
 from app.core.timeutils import ensure_utc, utcnow
 from app.database.unit_of_work import UnitOfWork
-from app.repositories import ClientSessionRecord
+from app.repositories import ClientSessionRecord, RefreshTokenRecord
 from app.repositories.user import UserRecord
 from app.schemas.auth import Token
 
@@ -60,18 +60,24 @@ class AuthService:
             access_token=access_token,
             refresh_token=raw_token,
         )
-
-    async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
+    
+    async def _get_token_and_session_rows(
+        self, token: str
+    ) -> tuple[RefreshTokenRecord, ClientSessionRecord]:
         row = await self._uow.refresh_tokens.get_by_token_hash(hash_refresh_token(token))
         if row is None:
             raise InvalidTokenError
         
         session = await self._uow.client_sessions.get_by_id(row.client_session_id)
-        if (
-            session is None 
-            or session.revoked_at is not None
-            or row.id != session.active_token_id
-        ):
+        if session is None:
+            raise InvalidTokenError
+
+        return row, session
+
+    async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
+        row, session = await self._get_token_and_session_rows(token)
+        
+        if session.revoked_at is not None or row.id != session.active_token_id:
             raise InvalidTokenError
         
         if ensure_utc(session.expires_at) <= utcnow():
@@ -109,13 +115,7 @@ class AuthService:
         )
 
     async def logout(self, token: str) -> None:
-        token_row = await self._uow.refresh_tokens.get_by_token_hash(hash_refresh_token(token))
-        if not token_row:
-            raise InvalidTokenError
-
-        session = await self._uow.client_sessions.get_by_id(token_row.client_session_id)
-        if not session:
-            raise InvalidTokenError
+        token_row, session = await self._get_token_and_session_rows(token)
         
         if token_row.id != session.active_token_id:
             raise InvalidTokenError
@@ -123,8 +123,6 @@ class AuthService:
         revoked = await self._uow.client_sessions.revoke(client_id=session.id)
         if not revoked:
             raise InvalidTokenError
-        
-
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
