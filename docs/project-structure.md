@@ -51,7 +51,7 @@ task_mng/
 └── docs/                   # handbook
 ```
 
-> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). Each `repositories/*.py` holds that domain’s **row shape** (`*Record` TypedDict) next to its repository. ORM table models live under `app/models/`. Check the path.
+> **Naming note:** `app/schemas/` holds **Pydantic schemas** (API contract). Each `repositories/*.py` holds that domain’s **row shape** (`*Record` Pydantic models) next to its repository. ORM table models live under `app/models/`. Check the path.
 
 ---
 
@@ -233,7 +233,7 @@ The layer boundaries stay the same; only the database backend swaps out.
 1. **Routes stay thin** — call a service, return a schema.
 2. **Business logic lives in services** — not in routes or repositories.
 3. **Repos only persist** — no JWT, no HTTP; keep crypto at clear boundaries.
-4. **Pydantic in `app/schemas/`** — `*Record` TypedDicts in `repositories/*.py` — ORM in `app/models/`.
+4. **Pydantic in `app/schemas/`** — `*Record` Pydantic models in `repositories/*.py` — ORM in `app/models/`.
 5. **Wire in `deps.py` / `UnitOfWork`** — routes never construct repositories.
 6. **Shared utilities in `core/`** — not scattered across services.
 

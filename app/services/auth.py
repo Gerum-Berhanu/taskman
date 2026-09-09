@@ -35,10 +35,10 @@ class AuthService:
         if not user:
             verify_password(password, _DUMMY_HASH)
             raise InvalidCredentialsError
-        if not verify_password(password, user["hashed_password"]):
+        if not verify_password(password, user.hashed_password):
             raise InvalidCredentialsError
         # Same error as bad credentials — don't leak that the account is disabled.
-        if not user["is_active"]:
+        if not user.is_active:
             raise InvalidCredentialsError
         return user
 
@@ -47,11 +47,11 @@ class AuthService:
         session_id = uuid4()
         refresh_token = build_refresh_token(session_id)
         await self._uow.user_sessions.create(
-            user_id=user["id"],
+            user_id=user.id,
             token=refresh_token,
             session_id=session_id,
         )
-        access_token = self.create_access_token(data={"sub": user["email"]})
+        access_token = self.create_access_token(data={"sub": user.email})
         return Token(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -84,7 +84,7 @@ class AuthService:
                     family["user_id"],
                 )
                 raise InvalidTokenError
-            if not user["is_active"]:
+            if not user.is_active:
                 raise InvalidTokenError
 
             new_refresh_token = build_refresh_token(family_id)
@@ -95,7 +95,7 @@ class AuthService:
                 raise InvalidTokenError
 
             return Token(
-                access_token=self.create_access_token({"sub": user["email"]}),
+                access_token=self.create_access_token({"sub": user.email}),
                 refresh_token=new_refresh_token,
             )
 
@@ -173,6 +173,6 @@ class AuthService:
     async def get_user_from_token(self, token: str) -> UserRecord:
         email = self._get_email_from_token(token)
         user = await self._uow.users.get_by_email(email)
-        if user is None or not user["is_active"]:
+        if user is None or not user.is_active:
             raise InvalidTokenError
         return user

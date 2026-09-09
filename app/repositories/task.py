@@ -1,9 +1,9 @@
 """Task persistence."""
 
 from datetime import datetime
-from typing import TypedDict
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -11,7 +11,9 @@ from app.core import timeutils as tu
 from app.models.task import Task
 
 
-class TaskRecord(TypedDict):
+class TaskRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     title: str
     description: str | None
@@ -21,23 +23,11 @@ class TaskRecord(TypedDict):
     updated_at: datetime | None
 
 
-class TaskUpdateData(TypedDict, total=False):
-    title: str
-    description: str | None
-    status: str
-    due_date: datetime | None
-
-
-def _to_record(task: Task) -> TaskRecord:
-    return TaskRecord(
-        id=task.id,
-        title=task.title,
-        description=task.description,
-        status=task.status,
-        due_date=task.due_date,
-        created_at=task.created_at,
-        updated_at=task.updated_at,
-    )
+class TaskUpdateData(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    due_date: datetime | None = None
 
 
 class TaskRepository:
@@ -55,17 +45,17 @@ class TaskRepository:
         self._session.add(task)
         await self._session.flush()
         await self._session.refresh(task)
-        return _to_record(task)
+        return TaskRecord.model_validate(task)
 
     async def get(self, task_id: UUID) -> TaskRecord | None:
         task = await self._session.get(Task, task_id)
         if task is None:
             return None
-        return _to_record(task)
+        return TaskRecord.model_validate(task)
 
     async def list_all(self) -> list[TaskRecord]:
         result = await self._session.exec(select(Task))
-        return [_to_record(task) for task in result.all()]
+        return [TaskRecord.model_validate(task) for task in result.all()]
 
     async def update(
         self, task_id: UUID, fields: TaskUpdateData
@@ -73,17 +63,19 @@ class TaskRepository:
         task = await self._session.get(Task, task_id)
         if task is None:
             return None
-        if not fields:
-            return _to_record(task)
 
-        for key, value in fields.items():
+        updates = fields.model_dump(exclude_unset=True)
+        if not updates:
+            return TaskRecord.model_validate(task)
+
+        for key, value in updates.items():
             setattr(task, key, value)
         task.updated_at = tu.utcnow()
 
         self._session.add(task)
         await self._session.flush()
         await self._session.refresh(task)
-        return _to_record(task)
+        return TaskRecord.model_validate(task)
 
     async def delete(self, task_id: UUID) -> bool:
         task = await self._session.get(Task, task_id)

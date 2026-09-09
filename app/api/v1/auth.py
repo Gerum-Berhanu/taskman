@@ -21,7 +21,7 @@ async def register_user(
     user_in: UserCreate, user_service: UserServiceDep
 ) -> UserCreateResponse:
     user = await user_service.register(user_in)
-    return UserCreateResponse(id=user["id"], email=user["email"])
+    return UserCreateResponse(id=user.id, email=user.email)
 
 
 @router.post("/login", response_model=Token)
@@ -64,7 +64,7 @@ async def logout_all_sessions(
     user: CurrentUserDep,
     auth_service: AuthServiceDep,
 ) -> None:
-    await auth_service.logout_all(user["id"])
+    await auth_service.logout_all(user.id)
 
 
 @router.get("/me", response_model=UserRead)
