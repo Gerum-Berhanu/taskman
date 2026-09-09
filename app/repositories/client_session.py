@@ -13,7 +13,7 @@ class ClientSessionRecord(BaseModel):
     id: UUID
     user_id: UUID
     active_token_id: UUID | None
-    is_revoked: bool
+    revoked_at: datetime | None
     created_at: datetime
     rotated_at: datetime | None
     expires_at: datetime
@@ -29,3 +29,14 @@ class ClientSessionRepository:
         await self._session.flush()
         await self._session.refresh(client_session)
         return ClientSessionRecord.model_validate(client_session)
+
+    async def set_active_token_id(self, *, client_id: UUID,  token_id: UUID) -> ClientSessionRecord | None:
+        client_session = await self._session.get(ClientSession, client_id)
+        if client_session is None:
+            return None
+        client_session.active_token_id = token_id
+        self._session.add(client_session)
+        await self._session.flush()
+        await self._session.refresh(client_session)
+        return ClientSessionRecord.model_validate(client_session)
+    

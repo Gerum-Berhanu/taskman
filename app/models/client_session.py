@@ -14,7 +14,7 @@ class ClientSession(BaseTable, table=True):
     active_token_id: UUID | None = Field(
         default=None, foreign_key="refresh_tokens.id", unique=True
     )
-    is_revoked: bool = False
+    revoked_at: datetime | None = None
     rotated_at: datetime | None = Field(default=None)
     expires_at: datetime = Field(
         default_factory=lambda: utcnow()

@@ -9,8 +9,7 @@ from pydantic import EmailStr
 from app.core.config import settings
 from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import (
-    build_refresh_token,
-    extract_family_id,
+    generate_refresh_token,
     get_password_hash,
     hash_refresh_token,
     verify_password,
@@ -44,18 +43,24 @@ class AuthService:
 
     async def login(self, email: EmailStr, password: str) -> Token:
         user = await self.authenticate(email, password)
-        session_id = uuid4()
-        refresh_token = build_refresh_token(session_id)
-        await self._uow.user_sessions.create(
-            user_id=user.id,
-            token=refresh_token,
-            session_id=session_id,
+        raw_token = generate_refresh_token()
+        token_hash = hash_refresh_token(raw_token)
+
+        client_session = await self._uow.client_sessions.create(user_id=user.id)
+        refresh_token = await self._uow.refresh_tokens.create(
+            client_session_id=client_session.id, token_hash=token_hash
         )
+
+        await self._uow.client_sessions.set_active_token_id(
+            client_id=client_session.id,
+            token_id=refresh_token.id
+        )
+
         access_token = self.create_access_token(data={"sub": user.email})
+
         return Token(
             access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
+            refresh_token=raw_token,
         )
 
     async def refresh(self, token: str) -> Token:
