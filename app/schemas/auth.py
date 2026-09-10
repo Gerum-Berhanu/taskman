@@ -1,6 +1,6 @@
 from pydantic import UUID4, BaseModel
 
-from app.schemas.base import UserBase
+from app.schemas.user import UserBase
 
 
 class LoginCredentials(UserBase):
