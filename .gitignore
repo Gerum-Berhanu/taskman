@@ -7,4 +7,4 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .vscode/
-docs/journal.md
+.local/
