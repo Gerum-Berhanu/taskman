@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from app.core.exceptions import (
     MembershipAlreadyExistsError,
     UserNotFoundError,
@@ -45,7 +47,10 @@ class WorkspaceService:
             user_id=new_membership.user_id,
             role=new_membership.role.value,
         )
-        return await self._uow.workspaces.create_membership(fields)
+        try:
+            return await self._uow.workspaces.create_membership(fields)
+        except IntegrityError:
+            raise MembershipAlreadyExistsError from None
 
     async def get_workspace(self, workspace_id: UUID) -> WorkspaceRecord:
         space = await self._uow.workspaces.get_workspace(workspace_id)
