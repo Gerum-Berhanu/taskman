@@ -12,6 +12,6 @@ class Task(BaseTable, table=True):
     description: str | None = None
     status: str = Field(default="pending")
     due_date: datetime | None = None
-    workspace_id: UUID = Field(foreign_key="workspaces.id", ondelete="CASCADE")
+    workspace_id: UUID = Field(foreign_key="workspaces.id", ondelete="CASCADE", index=True)
     assigned_user_id: UUID | None = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
     updated_at: datetime | None = None
