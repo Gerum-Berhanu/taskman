@@ -19,8 +19,18 @@ class TaskRecord(BaseModel):
     description: str | None
     status: str
     due_date: datetime | None
+    workspace_id: UUID
+    assigned_user_id: UUID | None
     created_at: datetime
     updated_at: datetime | None
+
+
+class TaskCreateData(BaseModel):
+    title: str
+    description: str | None = None
+    due_date: datetime | None = None
+    workspace_id: UUID
+    assigned_user_id: UUID | None = None
 
 
 class TaskUpdateData(BaseModel):
@@ -30,37 +40,46 @@ class TaskUpdateData(BaseModel):
     due_date: datetime | None = None
 
 
+def _to_record(task: Task) -> TaskRecord:
+    return TaskRecord.model_validate(task)
+
+
 class TaskRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def create(
         self,
-        *,
-        title: str,
-        description: str | None = None,
-        due_date: datetime | None = None,
+        fields: TaskCreateData,
     ) -> TaskRecord:
-        task = Task(title=title, description=description, due_date=due_date)
+        task = Task(**fields.model_dump())
         self._session.add(task)
         await self._session.flush()
         await self._session.refresh(task)
-        return TaskRecord.model_validate(task)
+        return _to_record(task)
 
-    async def get(self, task_id: UUID) -> TaskRecord | None:
-        task = await self._session.get(Task, task_id)
+    async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
+        statement = select(Task).where(
+            Task.id == task_id, Task.workspace_id == workspace_id
+        )
+        result = await self._session.exec(statement)
+        return result.first()
+
+    async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord | None:
+        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
-        return TaskRecord.model_validate(task)
+        return _to_record(task)
 
-    async def list_all(self) -> list[TaskRecord]:
-        result = await self._session.exec(select(Task))
-        return [TaskRecord.model_validate(task) for task in result.all()]
+    async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
+        statement = select(Task).where(Task.workspace_id == workspace_id)
+        result = await self._session.exec(statement)
+        return [_to_record(task) for task in result.all()]
 
     async def update(
-        self, task_id: UUID, fields: TaskUpdateData
+        self, task_id: UUID, workspace_id: UUID, fields: TaskUpdateData
     ) -> TaskRecord | None:
-        task = await self._session.get(Task, task_id)
+        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
 
@@ -77,8 +96,8 @@ class TaskRepository:
         await self._session.refresh(task)
         return TaskRecord.model_validate(task)
 
-    async def delete(self, task_id: UUID) -> bool:
-        task = await self._session.get(Task, task_id)
+    async def delete(self, task_id: UUID, workspace_id: UUID) -> bool:
+        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return False
         await self._session.delete(task)
