@@ -7,6 +7,7 @@ from app.repositories import (
     UserRepository, 
     RefreshTokenRepository,
     ClientSessionRepository,
+    WorkspaceRepository,
 )
 
 
@@ -17,6 +18,7 @@ class UnitOfWork:
         self.tasks = TaskRepository(session)
         self.refresh_tokens = RefreshTokenRepository(session)
         self.client_sessions = ClientSessionRepository(session)
+        self.workspaces = WorkspaceRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
