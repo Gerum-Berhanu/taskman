@@ -36,3 +36,4 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: TaskStatus | None = None
     due_date: datetime | None = None
+    assigned_user_id: UUID4 | None = None

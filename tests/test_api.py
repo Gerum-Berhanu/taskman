@@ -223,3 +223,61 @@ def test_viewer_cannot_create_or_delete_task(client: TestClient) -> None:
         headers=viewer_headers,
     )
     assert delete_as_viewer.status_code == 403
+
+
+def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
+    owner = register(client, email="owner@example.com")
+    owner_headers = login(client, email="owner@example.com")
+    workspace = create_workspace(client, owner_headers)
+    workspace_id = workspace["id"]
+
+    outsider = register(client, email="outsider@example.com")
+    member = register(client, email="member@example.com")
+
+    added = client.post(
+        f"/workspaces/{workspace_id}/members",
+        json={"user_id": member["id"], "role": "editor"},
+        headers=owner_headers,
+    )
+    assert added.status_code == 201, added.text
+
+    missing_user = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Bad user", "assigned_user_id": str(uuid4())},
+        headers=owner_headers,
+    )
+    assert missing_user.status_code == 404
+    assert missing_user.json()["detail"] == "User not found"
+
+    non_member = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Outsider", "assigned_user_id": outsider["id"]},
+        headers=owner_headers,
+    )
+    assert non_member.status_code == 400
+    assert non_member.json()["detail"] == "Assignee is not a member of the workspace"
+
+    created = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Assigned", "assigned_user_id": member["id"]},
+        headers=owner_headers,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["assigned_user_id"] == member["id"]
+    task_id = created.json()["id"]
+
+    reassigned = client.patch(
+        tasks_url(workspace_id, task_id),
+        json={"assigned_user_id": owner["id"]},
+        headers=owner_headers,
+    )
+    assert reassigned.status_code == 200
+    assert reassigned.json()["assigned_user_id"] == owner["id"]
+
+    cleared = client.patch(
+        tasks_url(workspace_id, task_id),
+        json={"assigned_user_id": None},
+        headers=owner_headers,
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["assigned_user_id"] is None

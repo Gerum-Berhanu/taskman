@@ -1,6 +1,7 @@
 """Application-level exceptions (mapped to HTTP in the API layer)."""
 
 from starlette.status import (
+    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
@@ -54,3 +55,8 @@ class WorkspaceForbiddenError(AppError):
 class MembershipAlreadyExistsError(AppError):
     status_code = HTTP_409_CONFLICT
     detail = "Member is already in the workspace"
+
+
+class AssigneeNotInWorkspaceError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Assignee is not a member of the workspace"

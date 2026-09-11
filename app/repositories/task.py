@@ -38,6 +38,7 @@ class TaskUpdateData(BaseModel):
     description: str | None = None
     status: str | None = None
     due_date: datetime | None = None
+    assigned_user_id: UUID | None = None
 
 
 def _to_record(task: Task) -> TaskRecord:
