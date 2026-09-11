@@ -29,3 +29,8 @@ class InvalidTokenError(AppError):
     status_code = HTTP_401_UNAUTHORIZED
     detail = "Could not validate credentials"
     headers = {"WWW-Authenticate": "Bearer"}
+
+
+class MembershipTargetNotFound(AppError):
+    status_code = HTTP_404_NOT_FOUND
+    detail = "Workspace or user not found"

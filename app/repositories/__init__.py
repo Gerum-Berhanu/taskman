@@ -4,6 +4,7 @@ from app.repositories.client_session import ClientSessionRecord, ClientSessionRe
 from app.repositories.refresh_token import RefreshTokenRecord, RefreshTokenRepository
 from app.repositories.task import TaskRecord, TaskRepository, TaskUpdateData
 from app.repositories.user import UserRecord, UserRepository
+from app.repositories.workspace import WorkspaceRecord, WorkspaceRepository
 
 __all__ = [
     "ClientSessionRecord",
@@ -15,4 +16,6 @@ __all__ = [
     "TaskUpdateData",
     "UserRecord",
     "UserRepository",
+    "WorkspaceRecord",
+    "WorkspaceRepository",
 ]
