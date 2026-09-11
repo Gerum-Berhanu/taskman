@@ -1,6 +1,12 @@
 """Application-level exceptions (mapped to HTTP in the API layer)."""
 
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+)
 
 
 class AppError(Exception):
@@ -31,6 +37,21 @@ class InvalidTokenError(AppError):
     headers = {"WWW-Authenticate": "Bearer"}
 
 
-class MembershipTargetNotFound(AppError):
+class WorkspaceNotFoundError(AppError):
     status_code = HTTP_404_NOT_FOUND
-    detail = "Workspace or user not found"
+    detail = "Workspace not found"
+
+
+class UserNotFoundError(AppError):
+    status_code = HTTP_404_NOT_FOUND
+    detail = "User not found"
+
+
+class WorkspaceForbiddenError(AppError):
+    status_code = HTTP_403_FORBIDDEN
+    detail = "Insufficient workspace permissions"
+
+
+class MembershipAlreadyExistsError(AppError):
+    status_code = HTTP_409_CONFLICT
+    detail = "Member is already in the workspace"

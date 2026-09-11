@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED
 
-from app.deps import CurrentUserDep, WorkspaceServiceDep, get_current_user
+from app.deps import (
+    CurrentUserDep, 
+    WorkspaceServiceDep, 
+    get_current_user, 
+    require_workspace_owner
+)
 from app.repositories import WorkspaceRecord
 from app.repositories.workspace import WorkspaceMemberRecord
 from app.schemas.workspace import (
@@ -30,7 +35,12 @@ async def create_workspace(
     return await workspace_service.create_workspace(new_workspace, current_user.id)
 
 
-@router.post("/{workspace_id}/members", response_model=WorkspaceMemberRead, status_code=HTTP_201_CREATED)
+@router.post(
+    "/{workspace_id}/members", 
+    response_model=WorkspaceMemberRead, 
+    status_code=HTTP_201_CREATED,
+    dependencies=[Depends(require_workspace_owner)]
+)
 async def create_membership(
     workspace_id: UUID4, 
     new_membership: WorkspaceMemberCreate,
