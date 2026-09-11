@@ -8,14 +8,15 @@ from app.deps import (
     CurrentUserDep, 
     WorkspaceServiceDep, 
     get_current_user, 
-    require_workspace_owner
 )
+from app.rbac import RequireRole
 from app.repositories import WorkspaceRecord
 from app.repositories.workspace import WorkspaceMemberRecord
 from app.schemas.workspace import (
     WorkspaceCreate, 
     WorkspaceMemberCreate, 
-    WorkspaceMemberRead, 
+    WorkspaceMemberRead,
+    WorkspaceMemberRole, 
     WorkspaceRead
 )
 
@@ -39,7 +40,7 @@ async def create_workspace(
     "/{workspace_id}/members", 
     response_model=WorkspaceMemberRead, 
     status_code=HTTP_201_CREATED,
-    dependencies=[Depends(require_workspace_owner)]
+    dependencies=[Depends(RequireRole(WorkspaceMemberRole.OWNER))]
 )
 async def create_membership(
     workspace_id: UUID4, 

@@ -53,9 +53,9 @@ class WorkspaceService:
             raise WorkspaceNotFoundError
         return space
 
-    async def get_role(self, workspace_id: UUID, user_id: UUID) -> str:
+    async def get_role(self, workspace_id: UUID, user_id: UUID) -> WorkspaceMemberRole:
         await self.get_workspace(workspace_id)
         member = await self._uow.workspaces.get_membership(workspace_id, user_id)
         if member is None:
             raise WorkspaceForbiddenError
-        return member.role
+        return WorkspaceMemberRole(member.role)
