@@ -16,6 +16,7 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     due_date: datetime | None = None
+    assigned_user_id: UUID4 | None = None
 
 
 class TaskRead(BaseModel):
@@ -24,6 +25,8 @@ class TaskRead(BaseModel):
     description: str | None
     status: TaskStatus
     due_date: datetime | None
+    workspace_id: UUID4
+    assigned_user_id: UUID4 | None
     created_at: datetime
     updated_at: datetime | None
 

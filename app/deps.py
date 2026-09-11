@@ -3,9 +3,8 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends, Path
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import UUID4
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database.session import async_session_factory

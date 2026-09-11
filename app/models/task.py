@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 from sqlmodel import Field
 
 from app.models.base import BaseTable
@@ -11,4 +12,6 @@ class Task(BaseTable, table=True):
     description: str | None = None
     status: str = Field(default="pending")
     due_date: datetime | None = None
+    workspace_id: UUID = Field(foreign_key="workspaces.id", ondelete="CASCADE")
+    assigned_user_id: UUID | None = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
     updated_at: datetime | None = None
