@@ -1,9 +1,10 @@
 from datetime import datetime
 from uuid import UUID
+
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models import User, Workspace, WorkspaceMember
+from app.models import Workspace, WorkspaceMember
 
 
 class WorkspaceRecord(BaseModel):
@@ -49,18 +50,23 @@ class WorkspaceRepository:
         await self._session.refresh(workspace)
         return _to_space_record(workspace)
 
-    async def create_membership(self, fields: MemberCreateData) -> WorkspaceMemberRecord | None:
-        workspace = await self._session.get(Workspace, fields.workspace_id)
-        if workspace is None:
-            return None
-
-        user = await self._session.get(User, fields.user_id)
-        if user is None:
-            return None
-
+    async def create_membership(self, fields: MemberCreateData) -> WorkspaceMemberRecord:
         membership = WorkspaceMember(**fields.model_dump())
         self._session.add(membership)
         await self._session.flush()
         await self._session.refresh(membership)
         return _to_member_record(membership)
-        
+
+    async def get_workspace(self, workspace_id: UUID) -> WorkspaceRecord | None:
+        space = await self._session.get(Workspace, workspace_id)
+        if space is None:
+            return None
+        return _to_space_record(space)
+
+    async def get_membership(
+        self, workspace_id: UUID, user_id: UUID
+    ) -> WorkspaceMemberRecord | None:
+        member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
+        if member is None:
+            return None
+        return _to_member_record(member)

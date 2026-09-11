@@ -3,13 +3,16 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Path
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import UUID4
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.exceptions import WorkspaceForbiddenError
 from app.database.session import async_session_factory
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.user import UserRecord
+from app.schemas.workspace import WorkspaceMemberRole
 from app.services.auth import AuthService
 from app.services.task import TaskService
 from app.services.user import UserService
@@ -64,3 +67,13 @@ async def get_current_user(
 
 
 CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]
+
+
+async def require_workspace_owner(
+    workspace_id: Annotated[UUID4, Path()],
+    current_user: CurrentUserDep,
+    workspace_service: WorkspaceServiceDep,
+) -> None:
+    role = await workspace_service.get_role(workspace_id, current_user.id)
+    if role != WorkspaceMemberRole.OWNER.value:
+        raise WorkspaceForbiddenError
