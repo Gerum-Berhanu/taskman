@@ -1,7 +1,6 @@
 """Application-level exceptions (mapped to HTTP in the API layer)."""
 
 from starlette.status import (
-    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
@@ -16,7 +15,7 @@ class AppError(Exception):
 
 
 class EmailAlreadyRegisteredError(AppError):
-    status_code = HTTP_400_BAD_REQUEST
+    status_code = HTTP_409_CONFLICT
     detail = "Account with this email already exists"
 
 
