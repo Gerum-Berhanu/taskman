@@ -14,6 +14,7 @@ from app.services.auth import AuthService
 from app.services.task import TaskService
 from app.services.user import UserService
 from app.services.workspace import WorkspaceService
+from app.services.workspace_member import WorkspaceMemberService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -50,10 +51,17 @@ def get_workspace_service(uow: UowDep) -> WorkspaceService:
     return WorkspaceService(uow)
 
 
+def get_workspace_member_service(uow: UowDep) -> WorkspaceMemberService:
+    return WorkspaceMemberService(uow)
+
+
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
+WorkspaceMemberServiceDep = Annotated[
+    WorkspaceMemberService, Depends(get_workspace_member_service)
+]
 
 
 async def get_current_user(
