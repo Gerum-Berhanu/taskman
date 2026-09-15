@@ -4,7 +4,7 @@ from fastapi import Path
 from pydantic import UUID4
 
 from app.core.exceptions import WorkspaceForbiddenError
-from app.deps import CurrentUserDep, WorkspaceServiceDep
+from app.deps import CurrentUserDep, WorkspaceMemberServiceDep
 from app.schemas.workspace import WorkspaceMemberRole
 
 
@@ -27,8 +27,8 @@ class RequireRole:
         self,
         workspace_id: Annotated[UUID4, Path()],
         current_user: CurrentUserDep,
-        workspace_service: WorkspaceServiceDep,
+        member_service: WorkspaceMemberServiceDep,
     ) -> None:
-        role = await workspace_service.get_role(workspace_id, current_user.id)
+        role = await member_service.get_role(workspace_id, current_user.id)
         if not role_at_least(role, self.minimum):
             raise WorkspaceForbiddenError
