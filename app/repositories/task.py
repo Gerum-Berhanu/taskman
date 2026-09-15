@@ -5,11 +5,11 @@ from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import col, select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
 from app.models.task import Task
 from app.repositories._persistence import add_flush_refresh, to_record
+from app.repositories.base import BaseRepository
 
 
 class TaskRecord(BaseModel):
@@ -42,10 +42,7 @@ class TaskUpdateData(BaseModel):
     assigned_user_id: UUID4 | None = None
 
 
-class TaskRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class TaskRepository(BaseRepository):
     async def create(self, fields: TaskCreateData) -> TaskRecord:
         task = Task(**fields.model_dump())
         await add_flush_refresh(self._session, task)

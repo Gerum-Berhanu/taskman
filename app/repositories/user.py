@@ -5,10 +5,10 @@ from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.user import User
 from app.repositories._persistence import add_flush_refresh, to_record
+from app.repositories.base import BaseRepository
 
 
 class UserRecord(BaseModel):
@@ -26,10 +26,7 @@ class UserCreateData(BaseModel):
     hashed_password: str
 
 
-class UserRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class UserRepository(BaseRepository):
     async def get_by_email(self, email: str) -> UserRecord | None:
         statement = select(User).where(User.email == email)
         result = await self._session.exec(statement)

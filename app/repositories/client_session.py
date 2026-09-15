@@ -5,12 +5,12 @@ from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
 from app.core.timeutils import utcnow
 from app.models import ClientSession
 from app.repositories._persistence import add_flush_refresh, to_record
+from app.repositories.base import BaseRepository
 
 
 class ClientSessionRecord(BaseModel):
@@ -25,10 +25,7 @@ class ClientSessionRecord(BaseModel):
     expires_at: datetime
 
 
-class ClientSessionRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class ClientSessionRepository(BaseRepository):
     async def create(self, user_id: UUID) -> ClientSessionRecord:
         client_session = ClientSession(user_id=user_id)
         await add_flush_refresh(self._session, client_session)
