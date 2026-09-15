@@ -3,10 +3,11 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.repositories import (
-    TaskRepository, 
-    UserRepository, 
-    RefreshTokenRepository,
     ClientSessionRepository,
+    RefreshTokenRepository,
+    TaskRepository,
+    UserRepository,
+    WorkspaceMemberRepository,
     WorkspaceRepository,
 )
 
@@ -19,6 +20,7 @@ class UnitOfWork:
         self.refresh_tokens = RefreshTokenRepository(session)
         self.client_sessions = ClientSessionRepository(session)
         self.workspaces = WorkspaceRepository(session)
+        self.workspace_members = WorkspaceMemberRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self

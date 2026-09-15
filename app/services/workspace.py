@@ -10,7 +10,10 @@ from app.core.exceptions import (
 )
 from app.database.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
-from app.repositories.workspace import WorkspaceMemberCreateData, WorkspaceMemberRecord
+from app.repositories.workspace_member import (
+    WorkspaceMemberCreateData,
+    WorkspaceMemberRecord,
+)
 from app.schemas.workspace import WorkspaceCreate, WorkspaceMemberCreate, WorkspaceMemberRole
 
 
@@ -38,7 +41,7 @@ class WorkspaceService:
         if user is None:
             raise UserNotFoundError
 
-        member = await self._uow.workspaces.get_membership(workspace_id, user.id)
+        member = await self._uow.workspace_members.get(workspace_id, user.id)
         if member is not None:
             raise MembershipAlreadyExistsError
 
@@ -48,7 +51,7 @@ class WorkspaceService:
             role=new_membership.role.value,
         )
         try:
-            return await self._uow.workspaces.create_membership(fields)
+            return await self._uow.workspace_members.create(fields)
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
 
@@ -60,7 +63,7 @@ class WorkspaceService:
 
     async def get_role(self, workspace_id: UUID, user_id: UUID) -> WorkspaceMemberRole:
         await self.get_workspace(workspace_id)
-        member = await self._uow.workspaces.get_membership(workspace_id, user_id)
+        member = await self._uow.workspace_members.get(workspace_id, user_id)
         if member is None:
             raise WorkspaceForbiddenError
         return WorkspaceMemberRole(member.role)

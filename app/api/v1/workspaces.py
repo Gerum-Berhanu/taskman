@@ -11,7 +11,7 @@ from app.deps import (
 )
 from app.rbac import RequireRole
 from app.repositories import WorkspaceRecord
-from app.repositories.workspace import WorkspaceMemberRecord
+from app.repositories.workspace_member import WorkspaceMemberRecord
 from app.schemas.workspace import (
     WorkspaceCreate, 
     WorkspaceMemberCreate, 
