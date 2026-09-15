@@ -21,7 +21,7 @@ class TaskService:
             return
         if await self._uow.users.get_by_id(assigned_user_id) is None:
             raise UserNotFoundError
-        member = await self._uow.workspaces.get_membership(
+        member = await self._uow.workspace_members.get(
             workspace_id, assigned_user_id
         )
         if member is None:

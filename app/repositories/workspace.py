@@ -1,11 +1,11 @@
-"""Workspace and membership persistence."""
+"""Workspace persistence."""
 
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
 
-from app.models import Workspace, WorkspaceMember
+from app.models import Workspace
 from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
@@ -16,22 +16,6 @@ class WorkspaceRecord(BaseModel):
     id: UUID4
     name: str
     created_at: datetime
-
-
-class WorkspaceMemberBase(BaseModel):
-    workspace_id: UUID4
-    user_id: UUID4
-    role: str
-
-
-class WorkspaceMemberRecord(WorkspaceMemberBase):
-    model_config = ConfigDict(from_attributes=True)
-
-    joined_at: datetime
-
-
-class WorkspaceMemberCreateData(WorkspaceMemberBase):
-    pass
 
 
 class WorkspaceRepository(BaseRepository):
@@ -45,19 +29,3 @@ class WorkspaceRepository(BaseRepository):
         if workspace is None:
             return None
         return to_record(WorkspaceRecord, workspace)
-
-    # Prefixed until membership moves to its own repository (slice 9).
-    async def create_membership(
-        self, fields: WorkspaceMemberCreateData
-    ) -> WorkspaceMemberRecord:
-        membership = WorkspaceMember(**fields.model_dump())
-        await add_flush_refresh(self._session, membership)
-        return to_record(WorkspaceMemberRecord, membership)
-
-    async def get_membership(
-        self, workspace_id: UUID, user_id: UUID
-    ) -> WorkspaceMemberRecord | None:
-        member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
-        if member is None:
-            return None
-        return to_record(WorkspaceMemberRecord, member)
