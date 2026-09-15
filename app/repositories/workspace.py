@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import UUID4, BaseModel, ConfigDict
 
 from app.models import Workspace
-from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
 
@@ -21,11 +20,11 @@ class WorkspaceRecord(BaseModel):
 class WorkspaceRepository(BaseRepository):
     async def create(self, name: str) -> WorkspaceRecord:
         workspace = Workspace(name=name)
-        await add_flush_refresh(self._session, workspace)
-        return to_record(WorkspaceRecord, workspace)
+        await self.add_flush_refresh(workspace)
+        return self.to_record(WorkspaceRecord, workspace)
 
     async def get(self, workspace_id: UUID) -> WorkspaceRecord | None:
         workspace = await self._session.get(Workspace, workspace_id)
         if workspace is None:
             return None
-        return to_record(WorkspaceRecord, workspace)
+        return self.to_record(WorkspaceRecord, workspace)

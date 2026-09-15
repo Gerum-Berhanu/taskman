@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import UUID4, BaseModel, ConfigDict
 
 from app.models import WorkspaceMember
-from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
 
@@ -28,8 +27,8 @@ class WorkspaceMemberCreateData(BaseModel):
 class WorkspaceMemberRepository(BaseRepository):
     async def create(self, fields: WorkspaceMemberCreateData) -> WorkspaceMemberRecord:
         membership = WorkspaceMember(**fields.model_dump())
-        await add_flush_refresh(self._session, membership)
-        return to_record(WorkspaceMemberRecord, membership)
+        await self.add_flush_refresh(membership)
+        return self.to_record(WorkspaceMemberRecord, membership)
 
     async def get(
         self, workspace_id: UUID, user_id: UUID
@@ -37,4 +36,4 @@ class WorkspaceMemberRepository(BaseRepository):
         member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
         if member is None:
             return None
-        return to_record(WorkspaceMemberRecord, member)
+        return self.to_record(WorkspaceMemberRecord, member)
