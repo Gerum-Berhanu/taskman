@@ -21,13 +21,13 @@ class WorkspaceService:
     async def create_workspace(
         self, data: WorkspaceCreate, user_id: UUID
     ) -> WorkspaceRecord:
-        space = await self._uow.workspaces.create_workspace(data.name)
+        workspace = await self._uow.workspaces.create(data.name)
         member = WorkspaceMemberCreate(
             user_id=user_id,
             role=WorkspaceMemberRole.OWNER,
         )
-        await self.create_membership(space.id, member)
-        return space
+        await self.create_membership(workspace.id, member)
+        return workspace
 
     async def create_membership(
         self, workspace_id: UUID, new_membership: WorkspaceMemberCreate
@@ -53,10 +53,10 @@ class WorkspaceService:
             raise MembershipAlreadyExistsError from None
 
     async def get_workspace(self, workspace_id: UUID) -> WorkspaceRecord:
-        space = await self._uow.workspaces.get_workspace(workspace_id)
-        if space is None:
+        workspace = await self._uow.workspaces.get(workspace_id)
+        if workspace is None:
             raise WorkspaceNotFoundError
-        return space
+        return workspace
 
     async def get_role(self, workspace_id: UUID, user_id: UUID) -> WorkspaceMemberRole:
         await self.get_workspace(workspace_id)

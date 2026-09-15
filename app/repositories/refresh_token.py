@@ -1,4 +1,4 @@
-﻿from uuid import UUID
+﻿"""Refresh token persistence."""
 
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
@@ -32,8 +32,8 @@ class RefreshTokenRepository:
 
     async def get_by_token_hash(self, token_hash: str) -> RefreshTokenRecord | None:
         statement = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        refresh_token = await self._session.exec(statement)
-        refresh_token = refresh_token.first()
+        result = await self._session.exec(statement)
+        refresh_token = result.first()
         if refresh_token is None:
             return None
         return to_record(RefreshTokenRecord, refresh_token)

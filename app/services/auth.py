@@ -111,9 +111,9 @@ class AuthService:
         ))
 
         updated_session = await self._uow.client_sessions.set_active_token_id(
-            client_id = client_session.id,
-            token_id = new_token_row.id,
-            is_rotation = True
+            client_id=client_session.id,
+            token_id=new_token_row.id,
+            is_rotation=True,
         )
         if updated_session is None:
             raise InvalidTokenError

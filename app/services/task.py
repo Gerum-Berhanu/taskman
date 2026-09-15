@@ -30,7 +30,7 @@ class TaskService:
     async def create(self, data: TaskCreate, workspace_id: UUID) -> TaskRecord:
         await self._validate_assignee(workspace_id, data.assigned_user_id)
         fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
-        return await self._uow.tasks.create(fields=fields)
+        return await self._uow.tasks.create(fields)
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord:
         task = await self._uow.tasks.get(workspace_id, task_id)

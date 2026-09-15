@@ -1,4 +1,6 @@
-﻿from datetime import datetime, timedelta
+﻿"""Client session persistence."""
+
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
@@ -38,7 +40,13 @@ class ClientSessionRepository:
             return None
         return to_record(ClientSessionRecord, client_session)
 
-    async def set_active_token_id(self, *, client_id: UUID,  token_id: UUID, is_rotation: bool = False) -> ClientSessionRecord | None:
+    async def set_active_token_id(
+        self,
+        *,
+        client_id: UUID,
+        token_id: UUID,
+        is_rotation: bool = False,
+    ) -> ClientSessionRecord | None:
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
@@ -46,16 +54,16 @@ class ClientSessionRepository:
         client_session.active_token_id = token_id
         if is_rotation:
             client_session.rotated_at = utcnow()
-            client_session.expires_at = (
-                utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
+            client_session.expires_at = utcnow() + timedelta(
+                minutes=settings.refresh_token_expire_minutes
             )
 
         await add_flush_refresh(self._session, client_session)
         return to_record(ClientSessionRecord, client_session)
-    
+
     async def revoke(self, client_id: UUID) -> bool:
         client_session = await self._session.get(ClientSession, client_id)
-        if not client_session:
+        if client_session is None:
             return False
         client_session.active_token_id = None
         client_session.revoked_at = utcnow()
@@ -70,4 +78,3 @@ class ClientSessionRepository:
             if not await self.revoke(session.id):
                 return False
         return True
-    

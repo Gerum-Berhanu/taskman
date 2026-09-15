@@ -1,3 +1,5 @@
+"""Workspace and membership persistence."""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -36,21 +38,24 @@ class WorkspaceRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create_workspace(self, workspace_name: str) -> WorkspaceRecord:
-        workspace = Workspace(name=workspace_name)
+    async def create(self, name: str) -> WorkspaceRecord:
+        workspace = Workspace(name=name)
         await add_flush_refresh(self._session, workspace)
         return to_record(WorkspaceRecord, workspace)
 
-    async def create_membership(self, fields: WorkspaceMemberCreateData) -> WorkspaceMemberRecord:
+    async def get(self, workspace_id: UUID) -> WorkspaceRecord | None:
+        workspace = await self._session.get(Workspace, workspace_id)
+        if workspace is None:
+            return None
+        return to_record(WorkspaceRecord, workspace)
+
+    # Prefixed until membership moves to its own repository (slice 9).
+    async def create_membership(
+        self, fields: WorkspaceMemberCreateData
+    ) -> WorkspaceMemberRecord:
         membership = WorkspaceMember(**fields.model_dump())
         await add_flush_refresh(self._session, membership)
         return to_record(WorkspaceMemberRecord, membership)
-
-    async def get_workspace(self, workspace_id: UUID) -> WorkspaceRecord | None:
-        space = await self._session.get(Workspace, workspace_id)
-        if space is None:
-            return None
-        return to_record(WorkspaceRecord, space)
 
     async def get_membership(
         self, workspace_id: UUID, user_id: UUID
