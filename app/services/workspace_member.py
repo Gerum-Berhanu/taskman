@@ -13,7 +13,7 @@ from app.repositories.workspace_member import (
     WorkspaceMemberCreateData,
     WorkspaceMemberRecord,
 )
-from app.schemas.workspace import WorkspaceMemberCreate, WorkspaceMemberRole
+from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 
 
 class WorkspaceMemberService:

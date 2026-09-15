@@ -8,7 +8,7 @@ from app.rbac import RequireRole
 from app.repositories.task import TaskRecord
 from app.deps import TaskServiceDep, get_current_user
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
-from app.schemas.workspace import WorkspaceMemberRole
+from app.schemas.workspace_member import WorkspaceMemberRole
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/tasks",
