@@ -67,11 +67,16 @@ class ClientSessionRepository(BaseRepository):
         await add_flush_refresh(self._session, client_session)
         return True
 
-    async def revoke_all_user_sessions(self, user_id: UUID) -> bool:
+    async def revoke_all_user_sessions(self, user_id: UUID) -> int:
         statement = select(ClientSession).where(ClientSession.user_id == user_id)
         result = await self._session.exec(statement)
         client_sessions = result.all()
+
         for session in client_sessions:
-            if not await self.revoke(session.id):
-                return False
-        return True
+            session.active_token_id = None
+            session.revoked_at = utcnow()
+        
+        if client_sessions:
+            await self._session.flush(client_sessions)
+
+        return len(client_sessions)
