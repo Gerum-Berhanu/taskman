@@ -5,7 +5,7 @@ from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models import Workspace, WorkspaceMember
-from app.repositories._persistence import to_record
+from app.repositories._persistence import add_flush_refresh, to_record
 
 
 class WorkspaceRecord(BaseModel):
@@ -38,16 +38,12 @@ class WorkspaceRepository:
 
     async def create_workspace(self, workspace_name: str) -> WorkspaceRecord:
         workspace = Workspace(name=workspace_name)
-        self._session.add(workspace)
-        await self._session.flush()
-        await self._session.refresh(workspace)
+        await add_flush_refresh(self._session, workspace)
         return to_record(WorkspaceRecord, workspace)
 
     async def create_membership(self, fields: MemberCreateData) -> WorkspaceMemberRecord:
         membership = WorkspaceMember(**fields.model_dump())
-        self._session.add(membership)
-        await self._session.flush()
-        await self._session.refresh(membership)
+        await add_flush_refresh(self._session, membership)
         return to_record(WorkspaceMemberRecord, membership)
 
     async def get_workspace(self, workspace_id: UUID) -> WorkspaceRecord | None:

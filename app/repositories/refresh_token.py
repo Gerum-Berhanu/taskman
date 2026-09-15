@@ -5,7 +5,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models import RefreshToken
-from app.repositories._persistence import to_record
+from app.repositories._persistence import add_flush_refresh, to_record
 
 
 class RefreshTokenRecord(BaseModel):
@@ -25,9 +25,7 @@ class RefreshTokenRepository:
             client_session_id=client_session_id,
             token_hash=token_hash
         )
-        self._session.add(refresh_token)
-        await self._session.flush()
-        await self._session.refresh(refresh_token)
+        await add_flush_refresh(self._session, refresh_token)
         return to_record(RefreshTokenRecord, refresh_token)
 
     async def get_by_token_hash(self, token_hash: str) -> RefreshTokenRecord | None:

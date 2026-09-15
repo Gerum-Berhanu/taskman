@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
 from app.models.task import Task
-from app.repositories._persistence import to_record
+from app.repositories._persistence import add_flush_refresh, to_record
 
 
 class TaskRecord(BaseModel):
@@ -48,9 +48,7 @@ class TaskRepository:
 
     async def create(self, fields: TaskCreateData) -> TaskRecord:
         task = Task(**fields.model_dump())
-        self._session.add(task)
-        await self._session.flush()
-        await self._session.refresh(task)
+        await add_flush_refresh(self._session, task)
         return to_record(TaskRecord, task)
 
     async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
@@ -80,16 +78,14 @@ class TaskRepository:
 
         updates = fields.model_dump(exclude_unset=True)
         if not updates:
-            return TaskRecord.model_validate(task)
+            return to_record(TaskRecord, task)
 
         for key, value in updates.items():
             setattr(task, key, value)
         task.updated_at = tu.utcnow()
 
-        self._session.add(task)
-        await self._session.flush()
-        await self._session.refresh(task)
-        return TaskRecord.model_validate(task)
+        await add_flush_refresh(self._session, task)
+        return to_record(TaskRecord, task)
 
     async def delete(self, task_id: UUID, workspace_id: UUID) -> bool:
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
