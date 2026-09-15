@@ -29,7 +29,7 @@ router = APIRouter(
 
 
 @router.post("", response_model=WorkspaceRead, status_code=HTTP_201_CREATED)
-async def create(
+async def create_workspace(
     new_workspace: WorkspaceCreate,
     current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
@@ -43,7 +43,7 @@ async def create(
     status_code=HTTP_201_CREATED,
     dependencies=[Depends(RequireRole(WorkspaceMemberRole.OWNER))],
 )
-async def create_member(
+async def add_workspace_member(
     workspace_id: UUID4,
     new_membership: WorkspaceMemberCreate,
     member_service: WorkspaceMemberServiceDep,
