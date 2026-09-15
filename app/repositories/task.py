@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
@@ -65,7 +65,11 @@ class TaskRepository:
         return to_record(TaskRecord, task)
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
-        statement = select(Task).where(Task.workspace_id == workspace_id)
+        statement = (
+            select(Task)
+            .where(Task.workspace_id == workspace_id)
+            .order_by(col(Task.created_at), col(Task.title), col(Task.id))
+        )
         result = await self._session.exec(statement)
         return [to_record(TaskRecord, task) for task in result.all()]
 
