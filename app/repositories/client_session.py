@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.core.timeutils import utcnow
 from app.models import ClientSession
-from app.repositories._persistence import to_record
+from app.repositories._persistence import add_flush_refresh, to_record
 
 
 class ClientSessionRecord(BaseModel):
@@ -29,9 +29,7 @@ class ClientSessionRepository:
 
     async def create(self, user_id: UUID) -> ClientSessionRecord:
         client_session = ClientSession(user_id=user_id)
-        self._session.add(client_session)
-        await self._session.flush()
-        await self._session.refresh(client_session)
+        await add_flush_refresh(self._session, client_session)
         return to_record(ClientSessionRecord, client_session)
 
     async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
@@ -52,9 +50,7 @@ class ClientSessionRepository:
                 utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
             )
 
-        self._session.add(client_session)
-        await self._session.flush()
-        await self._session.refresh(client_session)
+        await add_flush_refresh(self._session, client_session)
         return to_record(ClientSessionRecord, client_session)
     
     async def revoke(self, client_id: UUID) -> bool:
@@ -63,9 +59,7 @@ class ClientSessionRepository:
             return False
         client_session.active_token_id = None
         client_session.revoked_at = utcnow()
-        self._session.add(client_session)
-        await self._session.flush()
-        await self._session.refresh(client_session)
+        await add_flush_refresh(self._session, client_session)
         return True
 
     async def revoke_all_user_sessions(self, user_id: UUID) -> bool:
