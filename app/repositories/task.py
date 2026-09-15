@@ -70,7 +70,7 @@ class TaskRepository:
         return [to_record(TaskRecord, task) for task in result.all()]
 
     async def update(
-        self, task_id: UUID, workspace_id: UUID, fields: TaskUpdateData
+        self, workspace_id: UUID, task_id: UUID, fields: TaskUpdateData
     ) -> TaskRecord | None:
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
@@ -87,7 +87,7 @@ class TaskRepository:
         await add_flush_refresh(self._session, task)
         return to_record(TaskRecord, task)
 
-    async def delete(self, task_id: UUID, workspace_id: UUID) -> bool:
+    async def delete(self, workspace_id: UUID, task_id: UUID) -> bool:
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return False
