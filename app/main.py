@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-from app.api.v1 import auth, tasks, workspaces
+from app.api.v1 import auth, tasks, workspaces, workspace_members
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
 from app.database.session import engine
@@ -24,6 +24,7 @@ app = FastAPI(
 register_exception_handlers(app)
 app.include_router(auth.router)
 app.include_router(workspaces.router)
+app.include_router(workspace_members.router)
 app.include_router(tasks.router)
 
 
