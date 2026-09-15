@@ -7,7 +7,11 @@ from starlette.status import HTTP_201_CREATED
 from app.deps import WorkspaceMemberServiceDep, get_current_user
 from app.rbac import RequireRole
 from app.repositories import WorkspaceMemberRecord
-from app.schemas.workspace import WorkspaceMemberCreate, WorkspaceMemberRead, WorkspaceMemberRole
+from app.schemas.workspace_member import (
+    WorkspaceMemberCreate,
+    WorkspaceMemberRead,
+    WorkspaceMemberRole,
+)
 
 
 router = APIRouter(

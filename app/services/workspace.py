@@ -3,7 +3,8 @@ from uuid import UUID
 from app.core.exceptions import WorkspaceNotFoundError
 from app.database.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
-from app.schemas.workspace import WorkspaceCreate, WorkspaceMemberCreate, WorkspaceMemberRole
+from app.schemas.workspace import WorkspaceCreate
+from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 from app.services.workspace_member import WorkspaceMemberService
 
 
