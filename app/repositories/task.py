@@ -8,7 +8,6 @@ from sqlmodel import col, select
 
 from app.core import timeutils as tu
 from app.models.task import Task
-from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
 
@@ -45,8 +44,8 @@ class TaskUpdateData(BaseModel):
 class TaskRepository(BaseRepository):
     async def create(self, fields: TaskCreateData) -> TaskRecord:
         task = Task(**fields.model_dump())
-        await add_flush_refresh(self._session, task)
-        return to_record(TaskRecord, task)
+        await self.add_flush_refresh(task)
+        return self.to_record(TaskRecord, task)
 
     async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
         statement = select(Task).where(
@@ -59,7 +58,7 @@ class TaskRepository(BaseRepository):
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
-        return to_record(TaskRecord, task)
+        return self.to_record(TaskRecord, task)
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
         statement = (
@@ -68,7 +67,7 @@ class TaskRepository(BaseRepository):
             .order_by(col(Task.created_at), col(Task.title), col(Task.id))
         )
         result = await self._session.exec(statement)
-        return [to_record(TaskRecord, task) for task in result.all()]
+        return [self.to_record(TaskRecord, task) for task in result.all()]
 
     async def update(
         self, workspace_id: UUID, task_id: UUID, fields: TaskUpdateData
@@ -79,14 +78,14 @@ class TaskRepository(BaseRepository):
 
         updates = fields.model_dump(exclude_unset=True)
         if not updates:
-            return to_record(TaskRecord, task)
+            return self.to_record(TaskRecord, task)
 
         for key, value in updates.items():
             setattr(task, key, value)
         task.updated_at = tu.utcnow()
 
-        await add_flush_refresh(self._session, task)
-        return to_record(TaskRecord, task)
+        await self.flush_refresh(task)
+        return self.to_record(TaskRecord, task)
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> bool:
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)

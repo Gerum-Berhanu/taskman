@@ -2,8 +2,8 @@
 
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
+
 from app.models import RefreshToken
-from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
 
@@ -23,8 +23,8 @@ class RefreshTokenCreateData(BaseModel):
 class RefreshTokenRepository(BaseRepository):
     async def create(self, fields: RefreshTokenCreateData) -> RefreshTokenRecord:
         refresh_token = RefreshToken(**fields.model_dump())
-        await add_flush_refresh(self._session, refresh_token)
-        return to_record(RefreshTokenRecord, refresh_token)
+        await self.add_flush_refresh(refresh_token)
+        return self.to_record(RefreshTokenRecord, refresh_token)
 
     async def get_by_token_hash(self, token_hash: str) -> RefreshTokenRecord | None:
         statement = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
@@ -32,4 +32,4 @@ class RefreshTokenRepository(BaseRepository):
         refresh_token = result.first()
         if refresh_token is None:
             return None
-        return to_record(RefreshTokenRecord, refresh_token)
+        return self.to_record(RefreshTokenRecord, refresh_token)

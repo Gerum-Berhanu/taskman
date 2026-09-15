@@ -7,7 +7,6 @@ from pydantic import UUID4, BaseModel, ConfigDict, EmailStr
 from sqlmodel import select
 
 from app.models.user import User
-from app.repositories._persistence import add_flush_refresh, to_record
 from app.repositories.base import BaseRepository
 
 
@@ -33,18 +32,18 @@ class UserRepository(BaseRepository):
         user = result.first()
         if user is None:
             return None
-        return to_record(UserRecord, user)
+        return self.to_record(UserRecord, user)
 
     async def get_by_id(self, user_id: UUID) -> UserRecord | None:
         user = await self._session.get(User, user_id)
         if user is None:
             return None
-        return to_record(UserRecord, user)
+        return self.to_record(UserRecord, user)
 
     async def create(self, fields: UserCreateData) -> UserRecord:
         user = User(**fields.model_dump())
-        await add_flush_refresh(self._session, user)
-        return to_record(UserRecord, user)
+        await self.add_flush_refresh(user)
+        return self.to_record(UserRecord, user)
 
     async def set_is_active(
         self, user_id: UUID, *, is_active: bool
@@ -53,5 +52,5 @@ class UserRepository(BaseRepository):
         if user is None:
             return None
         user.is_active = is_active
-        await add_flush_refresh(self._session, user)
-        return to_record(UserRecord, user)
+        await self.flush_refresh(user)
+        return self.to_record(UserRecord, user)
