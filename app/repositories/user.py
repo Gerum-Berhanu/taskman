@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -14,8 +14,8 @@ from app.repositories._persistence import to_record
 class UserRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    email: str
+    id: UUID4
+    email: EmailStr
     hashed_password: str
     is_active: bool
     created_at: datetime

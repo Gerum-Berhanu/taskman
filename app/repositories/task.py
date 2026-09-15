@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -15,13 +15,13 @@ from app.repositories._persistence import to_record
 class TaskRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: UUID4
     title: str
     description: str | None
     status: str
     due_date: datetime | None
-    workspace_id: UUID
-    assigned_user_id: UUID | None
+    workspace_id: UUID4
+    assigned_user_id: UUID4 | None
     created_at: datetime
     updated_at: datetime | None
 
@@ -30,8 +30,8 @@ class TaskCreateData(BaseModel):
     title: str
     description: str | None = None
     due_date: datetime | None = None
-    workspace_id: UUID
-    assigned_user_id: UUID | None = None
+    workspace_id: UUID4
+    assigned_user_id: UUID4 | None = None
 
 
 class TaskUpdateData(BaseModel):
@@ -39,7 +39,7 @@ class TaskUpdateData(BaseModel):
     description: str | None = None
     status: str | None = None
     due_date: datetime | None = None
-    assigned_user_id: UUID | None = None
+    assigned_user_id: UUID4 | None = None
 
 
 class TaskRepository:

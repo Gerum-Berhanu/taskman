@@ -1,6 +1,6 @@
 ﻿from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -11,8 +11,8 @@ from app.repositories._persistence import to_record
 class RefreshTokenRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    client_session_id: UUID
+    id: UUID4
+    client_session_id: UUID4
     token_hash: str
 
 
