@@ -46,16 +46,16 @@ async def list_by_workspace(workspace_id: UUID4, service: TaskServiceDep) -> lis
 
 @router.patch("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(EDITOR))])
 async def update_task(
-    task_id: UUID4,
     workspace_id: UUID4,
+    task_id: UUID4,
     task_in: TaskUpdate,
     service: TaskServiceDep,
 ) -> TaskRecord:
-    return await service.update(task_id, workspace_id, task_in)
+    return await service.update(workspace_id, task_id, task_in)
 
 
 @router.delete(
     "/{task_id}", status_code=HTTP_204_NO_CONTENT, dependencies=[Depends(RequireRole(OWNER))]
 )
-async def delete_task(task_id: UUID4, workspace_id: UUID4, service: TaskServiceDep) -> None:
-    await service.delete(task_id, workspace_id)
+async def delete_task(workspace_id: UUID4, task_id: UUID4, service: TaskServiceDep) -> None:
+    await service.delete(workspace_id, task_id)

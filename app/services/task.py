@@ -42,21 +42,21 @@ class TaskService:
         return await self._uow.tasks.list_all(workspace_id)
 
     async def update(
-        self, task_id: UUID, workspace_id: UUID, data: TaskUpdate
+        self, workspace_id: UUID, task_id: UUID, data: TaskUpdate
     ) -> TaskRecord:
         updates = data.model_dump(exclude_unset=True)
         if "assigned_user_id" in updates:
             await self._validate_assignee(workspace_id, updates["assigned_user_id"])
 
         task = await self._uow.tasks.update(
-            task_id,
             workspace_id,
+            task_id,
             TaskUpdateData(**updates),
         )
         if task is None:
             raise TaskNotFoundError
         return task
 
-    async def delete(self, task_id: UUID, workspace_id: UUID) -> None:
-        if not await self._uow.tasks.delete(task_id, workspace_id):
+    async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
+        if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
