@@ -42,7 +42,7 @@ Full target spec (including not-yet-built pieces): [docs/project-requirements.md
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/project-structure.md](docs/project-structure.md) | Folders, layers, where to add code |
 | [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
+| [docs/pr-guide.md](docs/pr-guide.md) | Pull request description guide |
 | [docs/README.md](docs/README.md) | Index of all docs |
