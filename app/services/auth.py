@@ -143,9 +143,7 @@ class AuthService:
         if ensure_utc(session.expires_at) <= utcnow():
             await self._revoke_and_reject(session.id)
 
-        revoked_all = await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
-        if not revoked_all:
-            raise InvalidTokenError
+        await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
         
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
