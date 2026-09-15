@@ -10,7 +10,7 @@ from app.core.exceptions import (
 )
 from app.database.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
-from app.repositories.workspace import MemberCreateData, WorkspaceMemberRecord
+from app.repositories.workspace import WorkspaceMemberCreateData, WorkspaceMemberRecord
 from app.schemas.workspace import WorkspaceCreate, WorkspaceMemberCreate, WorkspaceMemberRole
 
 
@@ -42,7 +42,7 @@ class WorkspaceService:
         if member is not None:
             raise MembershipAlreadyExistsError
 
-        fields = MemberCreateData(
+        fields = WorkspaceMemberCreateData(
             workspace_id=workspace_id,
             user_id=new_membership.user_id,
             role=new_membership.role.value,

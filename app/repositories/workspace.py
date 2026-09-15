@@ -16,19 +16,19 @@ class WorkspaceRecord(BaseModel):
     created_at: datetime
 
 
-class MemberBase(BaseModel):
+class WorkspaceMemberBase(BaseModel):
     workspace_id: UUID4
     user_id: UUID4
     role: str
 
 
-class WorkspaceMemberRecord(MemberBase):
+class WorkspaceMemberRecord(WorkspaceMemberBase):
     model_config = ConfigDict(from_attributes=True)
 
     joined_at: datetime
 
 
-class MemberCreateData(MemberBase):
+class WorkspaceMemberCreateData(WorkspaceMemberBase):
     pass
 
 
@@ -41,7 +41,7 @@ class WorkspaceRepository:
         await add_flush_refresh(self._session, workspace)
         return to_record(WorkspaceRecord, workspace)
 
-    async def create_membership(self, fields: MemberCreateData) -> WorkspaceMemberRecord:
+    async def create_membership(self, fields: WorkspaceMemberCreateData) -> WorkspaceMemberRecord:
         membership = WorkspaceMember(**fields.model_dump())
         await add_flush_refresh(self._session, membership)
         return to_record(WorkspaceMemberRecord, membership)

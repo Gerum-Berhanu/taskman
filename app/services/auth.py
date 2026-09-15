@@ -16,6 +16,7 @@ from app.core.security import (
 from app.core.timeutils import ensure_utc, utcnow
 from app.database.unit_of_work import UnitOfWork
 from app.repositories import ClientSessionRecord, RefreshTokenRecord
+from app.repositories.refresh_token import RefreshTokenCreateData
 from app.repositories.user import UserRecord
 from app.schemas.auth import Token
 
@@ -45,9 +46,10 @@ class AuthService:
         token_hash = hash_refresh_token(raw_token)
 
         client_session = await self._uow.client_sessions.create(user_id=user.id)
-        refresh_token = await self._uow.refresh_tokens.create(
+
+        refresh_token = await self._uow.refresh_tokens.create(RefreshTokenCreateData(
             client_session_id=client_session.id, token_hash=token_hash
-        )
+        ))
 
         await self._uow.client_sessions.set_active_token_id(
             client_id=client_session.id,
@@ -103,10 +105,10 @@ class AuthService:
         client_session = await self._require_active_refresh(token)
         
         new_raw_token = generate_refresh_token()
-        new_token_row = await self._uow.refresh_tokens.create(
+        new_token_row = await self._uow.refresh_tokens.create(RefreshTokenCreateData(
             client_session_id=client_session.id,
             token_hash=hash_refresh_token(new_raw_token),
-        )
+        ))
 
         updated_session = await self._uow.client_sessions.set_active_token_id(
             client_id = client_session.id,
