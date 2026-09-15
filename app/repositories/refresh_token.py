@@ -2,10 +2,9 @@
 
 from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-
 from app.models import RefreshToken
 from app.repositories._persistence import add_flush_refresh, to_record
+from app.repositories.base import BaseRepository
 
 
 class RefreshTokenRecord(BaseModel):
@@ -21,10 +20,7 @@ class RefreshTokenCreateData(BaseModel):
     token_hash: str
 
 
-class RefreshTokenRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class RefreshTokenRepository(BaseRepository):
     async def create(self, fields: RefreshTokenCreateData) -> RefreshTokenRecord:
         refresh_token = RefreshToken(**fields.model_dump())
         await add_flush_refresh(self._session, refresh_token)

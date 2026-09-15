@@ -4,10 +4,10 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models import Workspace, WorkspaceMember
 from app.repositories._persistence import add_flush_refresh, to_record
+from app.repositories.base import BaseRepository
 
 
 class WorkspaceRecord(BaseModel):
@@ -34,10 +34,7 @@ class WorkspaceMemberCreateData(WorkspaceMemberBase):
     pass
 
 
-class WorkspaceRepository:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
+class WorkspaceRepository(BaseRepository):
     async def create(self, name: str) -> WorkspaceRecord:
         workspace = Workspace(name=name)
         await add_flush_refresh(self._session, workspace)
