@@ -1,6 +1,6 @@
 # Taskman
 
-REST API for task management, built with FastAPI. The app uses JWT authentication, a layered architecture (routes → services → repositories), and in-memory persistence for now. PostgreSQL, workspaces, and RBAC are planned — see [project requirements](docs/project-requirements.md).
+REST API for workspace-scoped task management, built with FastAPI. JWT access tokens plus refresh-token sessions, SQLModel persistence (SQLite by default), Alembic migrations, and role-based access on workspaces (`viewer` / `editor` / `owner`).
 
 ## Requirements
 
@@ -11,7 +11,8 @@ REST API for task management, built with FastAPI. The app uses JWT authenticatio
 
 ```bash
 uv sync
-cp .env.example .env   # then set SECRET_KEY (and DATABASE_URL when using a real DB)
+cp .env.example .env   # set SECRET_KEY; DATABASE_URL defaults to local SQLite
+uv run alembic upgrade head
 ```
 
 ## Run
@@ -20,36 +21,28 @@ cp .env.example .env   # then set SECRET_KEY (and DATABASE_URL when using a real
 uv run uvicorn app.main:app --reload
 ```
 
-Or with the FastAPI CLI:
+Or: `uv run fastapi dev`
 
-```bash
-uv run fastapi dev
-```
+- Health: `GET /health`
+- Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-Health check: `GET /health`
+Authorize in `/docs` with a token from `POST /auth/login` (use email as username).
 
-## API docs
+## API (implemented)
 
-Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+| Area | Paths |
+|------|--------|
+| Auth | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/logout-all`; `GET /auth/me` |
+| Workspaces | `POST /workspaces`; `POST /workspaces/{id}/members` (owner) |
+| Tasks | CRUD under `/workspaces/{workspace_id}/tasks` (RBAC: viewer / editor / owner) |
 
-**Implemented today**
-
-| Method | Path | Notes |
-|--------|------|--------|
-| POST | `/auth/register` | Create account |
-| POST | `/auth/login` | OAuth2 password form → JWT |
-| GET | `/auth/me` | Current user (Bearer token) |
-| POST | `/tasks` | Create task (auth required) |
-| GET | `/tasks` | List tasks |
-| GET/PATCH/DELETE | `/tasks/{task_id}` | Read, update, delete |
-
-Authorize in `/docs` with a token from `/auth/login` (use email as username).
+Full target spec (including not-yet-built pieces): [docs/project-requirements.md](docs/project-requirements.md).
 
 ## Documentation
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/project-structure.md](docs/project-structure.md) | Folders, layers, and where to add code |
-| [docs/project-requirements.md](docs/project-requirements.md) | Full capstone spec (target features) |
+| [docs/project-structure.md](docs/project-structure.md) | Folders, layers, where to add code |
+| [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
 | [docs/README.md](docs/README.md) | Index of all docs |
