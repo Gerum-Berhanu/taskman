@@ -16,15 +16,17 @@ class RefreshTokenRecord(BaseModel):
     token_hash: str
 
 
+class RefreshTokenCreateData(BaseModel):
+    client_session_id: UUID4
+    token_hash: str
+
+
 class RefreshTokenRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, *, client_session_id: UUID, token_hash: str) -> RefreshTokenRecord:
-        refresh_token = RefreshToken(
-            client_session_id=client_session_id,
-            token_hash=token_hash
-        )
+    async def create(self, fields: RefreshTokenCreateData) -> RefreshTokenRecord:
+        refresh_token = RefreshToken(**fields.model_dump())
         await add_flush_refresh(self._session, refresh_token)
         return to_record(RefreshTokenRecord, refresh_token)
 

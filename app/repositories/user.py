@@ -21,6 +21,11 @@ class UserRecord(BaseModel):
     created_at: datetime
 
 
+class UserCreateData(BaseModel):
+    email: EmailStr
+    hashed_password: str
+
+
 class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -39,8 +44,8 @@ class UserRepository:
             return None
         return to_record(UserRecord, user)
 
-    async def create(self, *, email: str, hashed_password: str) -> UserRecord:
-        user = User(email=email, hashed_password=hashed_password)
+    async def create(self, fields: UserCreateData) -> UserRecord:
+        user = User(**fields.model_dump())
         await add_flush_refresh(self._session, user)
         return to_record(UserRecord, user)
 

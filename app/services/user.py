@@ -1,7 +1,7 @@
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.user import UserRecord
+from app.repositories.user import UserCreateData, UserRecord
 from app.schemas.user import UserCreate
 
 
@@ -14,4 +14,6 @@ class UserService:
             raise EmailAlreadyRegisteredError
 
         hashed_password = get_password_hash(data.password)
-        return await self._uow.users.create(email=data.email, hashed_password=hashed_password)
+        return await self._uow.users.create(UserCreateData(
+            email=data.email, hashed_password=hashed_password
+        ))
