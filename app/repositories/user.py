@@ -8,6 +8,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.user import User
+from app.repositories._persistence import to_record
 
 
 class UserRecord(BaseModel):
@@ -30,20 +31,20 @@ class UserRepository:
         user = result.first()
         if user is None:
             return None
-        return UserRecord.model_validate(user)
+        return to_record(UserRecord, user)
 
     async def get_by_id(self, user_id: UUID) -> UserRecord | None:
         user = await self._session.get(User, user_id)
         if user is None:
             return None
-        return UserRecord.model_validate(user)
+        return to_record(UserRecord, user)
 
     async def create(self, *, email: str, hashed_password: str) -> UserRecord:
         user = User(email=email, hashed_password=hashed_password)
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)
-        return UserRecord.model_validate(user)
+        return to_record(UserRecord, user)
 
     async def set_is_active(
         self, user_id: UUID, *, is_active: bool
@@ -55,4 +56,4 @@ class UserRepository:
         self._session.add(user)
         await self._session.flush()
         await self._session.refresh(user)
-        return UserRecord.model_validate(user)
+        return to_record(UserRecord, user)

@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core import timeutils as tu
 from app.models.task import Task
+from app.repositories._persistence import to_record
 
 
 class TaskRecord(BaseModel):
@@ -41,23 +42,16 @@ class TaskUpdateData(BaseModel):
     assigned_user_id: UUID | None = None
 
 
-def _to_record(task: Task) -> TaskRecord:
-    return TaskRecord.model_validate(task)
-
-
 class TaskRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(
-        self,
-        fields: TaskCreateData,
-    ) -> TaskRecord:
+    async def create(self, fields: TaskCreateData) -> TaskRecord:
         task = Task(**fields.model_dump())
         self._session.add(task)
         await self._session.flush()
         await self._session.refresh(task)
-        return _to_record(task)
+        return to_record(TaskRecord, task)
 
     async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
         statement = select(Task).where(
@@ -70,12 +64,12 @@ class TaskRepository:
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
-        return _to_record(task)
+        return to_record(TaskRecord, task)
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
         statement = select(Task).where(Task.workspace_id == workspace_id)
         result = await self._session.exec(statement)
-        return [_to_record(task) for task in result.all()]
+        return [to_record(TaskRecord, task) for task in result.all()]
 
     async def update(
         self, task_id: UUID, workspace_id: UUID, fields: TaskUpdateData

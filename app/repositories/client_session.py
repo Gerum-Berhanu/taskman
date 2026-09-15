@@ -8,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.core.timeutils import utcnow
 from app.models import ClientSession
+from app.repositories._persistence import to_record
 
 
 class ClientSessionRecord(BaseModel):
@@ -22,10 +23,6 @@ class ClientSessionRecord(BaseModel):
     expires_at: datetime
 
 
-def _to_record(client_session: ClientSession) -> ClientSessionRecord:
-    return ClientSessionRecord.model_validate(client_session)
-
-
 class ClientSessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -35,13 +32,13 @@ class ClientSessionRepository:
         self._session.add(client_session)
         await self._session.flush()
         await self._session.refresh(client_session)
-        return _to_record(client_session)
+        return to_record(ClientSessionRecord, client_session)
 
     async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
-        return _to_record(client_session)
+        return to_record(ClientSessionRecord, client_session)
 
     async def set_active_token_id(self, *, client_id: UUID,  token_id: UUID, is_rotation: bool = False) -> ClientSessionRecord | None:
         client_session = await self._session.get(ClientSession, client_id)
@@ -58,7 +55,7 @@ class ClientSessionRepository:
         self._session.add(client_session)
         await self._session.flush()
         await self._session.refresh(client_session)
-        return _to_record(client_session)
+        return to_record(ClientSessionRecord, client_session)
     
     async def revoke(self, client_id: UUID) -> bool:
         client_session = await self._session.get(ClientSession, client_id)
