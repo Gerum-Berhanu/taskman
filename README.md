@@ -4,7 +4,7 @@ REST API for task management, built with FastAPI. The app uses JWT authenticatio
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
 
 ## Setup
