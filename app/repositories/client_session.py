@@ -1,7 +1,7 @@
 ﻿from datetime import datetime, timedelta
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -14,9 +14,9 @@ from app.repositories._persistence import to_record
 class ClientSessionRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    user_id: UUID
-    active_token_id: UUID | None
+    id: UUID4
+    user_id: UUID4
+    active_token_id: UUID4 | None
     revoked_at: datetime | None
     created_at: datetime
     rotated_at: datetime | None
