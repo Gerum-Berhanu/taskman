@@ -299,3 +299,39 @@ def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
     )
     assert missing_with_assignee.status_code == 404
     assert missing_with_assignee.json()["detail"] == "Task not found"
+
+
+FORBIDDEN_DETAIL = "Insufficient workspace permissions"
+
+
+def test_workspace_access_errors_do_not_enumerate(client: TestClient) -> None:
+    register(client, email="owner@example.com")
+    owner_headers = login(client, email="owner@example.com")
+    workspace = create_workspace(client, owner_headers)
+    workspace_id = workspace["id"]
+    missing_workspace_id = str(uuid4())
+
+    register(client, email="stranger@example.com")
+    stranger_headers = login(client, email="stranger@example.com")
+
+    stranger_on_real = client.get(tasks_url(workspace_id), headers=stranger_headers)
+    stranger_on_missing = client.get(
+        tasks_url(missing_workspace_id), headers=stranger_headers
+    )
+    owner_on_missing = client.get(
+        tasks_url(missing_workspace_id), headers=owner_headers
+    )
+
+    assert stranger_on_real.status_code == 403
+    assert stranger_on_missing.status_code == 403
+    assert owner_on_missing.status_code == 403
+    assert stranger_on_real.json() == stranger_on_missing.json() == owner_on_missing.json()
+    assert stranger_on_real.json()["detail"] == FORBIDDEN_DETAIL
+
+    # Member + missing task still 404 (not an enumeration of workspaces)
+    missing_task = client.get(
+        tasks_url(workspace_id, str(uuid4())),
+        headers=owner_headers,
+    )
+    assert missing_task.status_code == 404
+    assert missing_task.json()["detail"] == "Task not found"

@@ -6,7 +6,6 @@ from app.core.exceptions import (
     MembershipAlreadyExistsError,
     UserNotFoundError,
     WorkspaceForbiddenError,
-    WorkspaceNotFoundError,
 )
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.workspace_member import (
@@ -25,7 +24,8 @@ class WorkspaceMemberService:
     ) -> WorkspaceMemberRecord:
         workspace = await self._uow.workspaces.get(workspace_id)
         if workspace is None:
-            raise WorkspaceNotFoundError
+            # Same as non-member: do not reveal whether the workspace exists.
+            raise WorkspaceForbiddenError
 
         user = await self._uow.users.get_by_id(new_membership.user_id)
         if user is None:
@@ -53,10 +53,7 @@ class WorkspaceMemberService:
     async def get_role(
         self, workspace_id: UUID, user_id: UUID
     ) -> WorkspaceMemberRole:
-        workspace = await self._uow.workspaces.get(workspace_id)
-        if workspace is None:
-            raise WorkspaceNotFoundError
-
+        # Missing workspace and non-membership must be indistinguishable.
         member = await self._uow.workspace_members.get(workspace_id, user_id)
         if member is None:
             raise WorkspaceForbiddenError

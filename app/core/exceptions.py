@@ -37,11 +37,6 @@ class InvalidTokenError(AppError):
     headers = {"WWW-Authenticate": "Bearer"}
 
 
-class WorkspaceNotFoundError(AppError):
-    status_code = HTTP_404_NOT_FOUND
-    detail = "Workspace not found"
-
-
 class UserNotFoundError(AppError):
     status_code = HTTP_404_NOT_FOUND
     detail = "User not found"

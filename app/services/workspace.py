@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app.core.exceptions import WorkspaceNotFoundError
+from app.core.exceptions import WorkspaceForbiddenError
 from app.database.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
 from app.schemas.workspace import WorkspaceCreate
@@ -27,5 +27,5 @@ class WorkspaceService:
     async def get(self, workspace_id: UUID) -> WorkspaceRecord:
         workspace = await self._uow.workspaces.get(workspace_id)
         if workspace is None:
-            raise WorkspaceNotFoundError
+            raise WorkspaceForbiddenError
         return workspace
