@@ -32,7 +32,7 @@ class TaskRead(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     status: TaskStatus | None = None
     due_date: datetime | None = None

@@ -44,7 +44,7 @@ class TaskUpdateData(BaseModel):
 class TaskRepository(BaseRepository):
     async def create(self, fields: TaskCreateData) -> TaskRecord:
         """Insert a task and return the persisted record."""
-        task = Task(**fields.model_dump())
+        task = Task(**fields.model_dump(), updated_at=tu.utcnow())
         await self.add_flush_refresh(task)
         return self.to_record(TaskRecord, task)
 

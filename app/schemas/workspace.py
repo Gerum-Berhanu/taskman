@@ -4,7 +4,7 @@ from pydantic import UUID4, BaseModel, Field
 
 
 class WorkspaceBase(BaseModel):
-    name: str = Field(max_length=255)
+    name: str = Field(min_length=1, max_length=255)
 
 
 class WorkspaceCreate(WorkspaceBase):

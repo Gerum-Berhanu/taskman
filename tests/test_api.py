@@ -136,6 +136,8 @@ def test_workspace_task_crud(client: TestClient) -> None:
     assert task["title"] == "First task"
     assert task["status"] == "pending"
     assert task["workspace_id"] == workspace_id
+    assert task["updated_at"] is not None
+    assert task["updated_at"].endswith("Z") or task["updated_at"].endswith("+00:00")
 
     fetched = client.get(tasks_url(workspace_id, task_id), headers=headers)
     assert fetched.status_code == 200
@@ -153,6 +155,8 @@ def test_workspace_task_crud(client: TestClient) -> None:
     assert updated.status_code == 200
     assert updated.json()["title"] == "Updated task"
     assert updated.json()["status"] == "completed"
+    assert updated.json()["updated_at"] is not None
+    assert updated.json()["updated_at"] >= task["updated_at"]
 
     deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
     assert deleted.status_code == 204
@@ -340,3 +344,40 @@ def test_workspace_access_errors_do_not_enumerate(client: TestClient) -> None:
     )
     assert missing_task.status_code == 404
     assert missing_task.json()["detail"] == "Task not found"
+
+
+def test_reject_empty_workspace_name_and_task_title(client: TestClient) -> None:
+    register(client)
+    headers = login(client)
+
+    empty_workspace = client.post(
+        "/workspaces",
+        json={"name": ""},
+        headers=headers,
+    )
+    assert empty_workspace.status_code == 422
+
+    workspace = create_workspace(client, headers)
+    workspace_id = workspace["id"]
+
+    empty_create = client.post(
+        tasks_url(workspace_id),
+        json={"title": ""},
+        headers=headers,
+    )
+    assert empty_create.status_code == 422
+
+    created = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Valid"},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    task_id = created.json()["id"]
+
+    empty_update = client.patch(
+        tasks_url(workspace_id, task_id),
+        json={"title": ""},
+        headers=headers,
+    )
+    assert empty_update.status_code == 422
