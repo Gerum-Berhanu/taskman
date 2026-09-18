@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
 from app.database.unit_of_work import UnitOfWork
@@ -14,6 +16,9 @@ class UserService:
             raise EmailAlreadyRegisteredError
 
         hashed_password = get_password_hash(data.password)
-        return await self._uow.users.create(UserCreateData(
-            email=data.email, hashed_password=hashed_password
-        ))
+        try:
+            return await self._uow.users.create(UserCreateData(
+                email=data.email, hashed_password=hashed_password
+            ))
+        except IntegrityError:
+            raise EmailAlreadyRegisteredError from None

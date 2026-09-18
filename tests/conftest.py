@@ -75,6 +75,10 @@ def deactivate_user(user_id: UUID) -> None:
     asyncio.run(_set_user_active(user_id, is_active=False))
 
 
+def activate_user(user_id: UUID) -> None:
+    asyncio.run(_set_user_active(user_id, is_active=True))
+
+
 async def _expire_session_for_refresh(refresh_token: str) -> None:
     session_factory = app.state.test_session_factory
     async with session_factory() as session:

@@ -97,7 +97,7 @@ class AuthService:
 
         user = await self._uow.users.get_by_id(session.user_id)
         if user is None or not user.is_active:
-            raise InvalidTokenError
+            await self._revoke_and_reject(session.id)
 
         return session
 
@@ -127,9 +127,13 @@ class AuthService:
 
     async def logout(self, token: str) -> None:
         token_row, session = await self._get_token_and_session_rows(token)
-        
-        if token_row.id != session.active_token_id:
+
+        if session.revoked_at is not None:
             raise InvalidTokenError
+
+        # Non-active refresh on a live session → same reuse/theft response as refresh.
+        if token_row.id != session.active_token_id:
+            await self._revoke_and_reject(session.id)
 
         revoked = await self._uow.client_sessions.revoke(client_id=session.id)
         if not revoked:
@@ -169,10 +173,16 @@ class AuthService:
             payload = jwt.decode(
                 token, settings.secret_key, algorithms=[settings.algorithm]
             )
-            user_id = UUID(payload.get("sub"))
-            return user_id
-        except Exception:
+        except jwt.PyJWTError:
+            raise InvalidTokenError from None
+
+        sub = payload.get("sub")
+        if not isinstance(sub, str):
             raise InvalidTokenError
+        try:
+            return UUID(sub)
+        except ValueError:
+            raise InvalidTokenError from None
 
     async def get_user_from_token(self, token: str) -> UserRecord:
         user_id = self._get_id_from_token(token)

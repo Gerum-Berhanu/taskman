@@ -5,9 +5,11 @@ Run with: uv run pytest -q tests/test_auth_refresh.py
 
 from uuid import UUID
 
+import jwt
 from fastapi.testclient import TestClient
 
-from tests.conftest import deactivate_user, expire_session_for_refresh
+from app.core.config import settings
+from tests.conftest import activate_user, deactivate_user, expire_session_for_refresh
 
 PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
@@ -106,6 +108,22 @@ def test_logout_revokes_session(client: TestClient) -> None:
     assert_unauthorized(refresh(client, tokens["refresh_token"]))
 
 
+def test_logout_reuse_revokes_session(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+    old_refresh = tokens["refresh_token"]
+
+    rotated = refresh(client, old_refresh)
+    assert rotated.status_code == 200, rotated.text
+    new_refresh = rotated.json()["refresh_token"]
+
+    # Logout with the retired token = reuse → kill this session
+    assert_unauthorized(logout(client, old_refresh))
+
+    # Previously valid successor is dead with the session
+    assert_unauthorized(refresh(client, new_refresh))
+
+
 def test_logout_all_revokes_every_session(client: TestClient) -> None:
     register(client)
     session_a = login_tokens(client)
@@ -156,4 +174,34 @@ def test_inactive_user_cannot_login_refresh_or_use_access(
     # Existing access token blocked on protected routes
     assert_unauthorized(
         client.get("/auth/me", headers=auth_header(tokens["access_token"]))
+    )
+
+
+def test_refresh_inactive_user_revokes_session(client: TestClient) -> None:
+    user = register(client)
+    user_id = UUID(user["id"])
+    tokens = login_tokens(client)
+    refresh_token = tokens["refresh_token"]
+
+    deactivate_user(user_id)
+    assert_unauthorized(refresh(client, refresh_token))
+
+    # Session was revoked: even after reactivation the old refresh stays dead
+    activate_user(user_id)
+    assert_unauthorized(refresh(client, refresh_token))
+
+
+def test_access_rejects_invalid_jwt_sub(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+
+    # Well-formed JWT but non-UUID subject must not crash the dependency
+    bad_access = jwt.encode(
+        {"sub": "not-a-uuid", "exp": 9_999_999_999},
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
+    assert_unauthorized(client.get("/auth/me", headers=auth_header(bad_access)))
+    assert_unauthorized(
+        client.get("/auth/me", headers=auth_header(tokens["access_token"] + "x"))
     )
