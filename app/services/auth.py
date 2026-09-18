@@ -147,11 +147,16 @@ class AuthService:
             raise InvalidTokenError
             
     async def logout_all_user_sessions(self, token: str) -> None:
-        """Revoke every client session for the user owning this refresh token."""
+        """Revoke every client session for the user; reuse revokes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
-        if token_row.id != session.active_token_id:
+
+        if session.revoked_at is not None:
             raise InvalidTokenError
-        
+
+        # Non-active refresh on a live session → same reuse/theft response as refresh/logout.
+        if token_row.id != session.active_token_id:
+            await self._revoke_and_reject(session.id)
+
         if ensure_utc(session.expires_at) <= utcnow():
             await self._revoke_and_reject(session.id)
 

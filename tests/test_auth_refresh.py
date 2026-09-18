@@ -139,6 +139,26 @@ def test_logout_all_revokes_every_session(client: TestClient) -> None:
     assert_unauthorized(refresh(client, session_b["refresh_token"]))
 
 
+def test_logout_all_reuse_revokes_session(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+    old_refresh = tokens["refresh_token"]
+
+    rotated = refresh(client, old_refresh)
+    assert rotated.status_code == 200, rotated.text
+    new_refresh = rotated.json()["refresh_token"]
+
+    other_session = login_tokens(client)
+
+    # Logout-all with the retired token = reuse → kill this session only
+    assert_unauthorized(logout_all(client, old_refresh))
+    assert_unauthorized(refresh(client, new_refresh))
+
+    # Other live sessions are untouched (parity with single-session reuse)
+    still_ok = refresh(client, other_session["refresh_token"])
+    assert still_ok.status_code == 200, still_ok.text
+
+
 def test_refresh_rejects_malformed_token(client: TestClient) -> None:
     register(client)
     assert_unauthorized(refresh(client, "not-a-valid-refresh-token"))
