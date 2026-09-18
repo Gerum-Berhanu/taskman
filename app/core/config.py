@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
     refresh_token_expire_minutes: int = 10_080  # 7 days
-    database_url: str = "sqlite:///./database.db"
+    database_url: str = "sqlite+aiosqlite:///./database.db"
 
     @field_validator("secret_key")
     @classmethod
