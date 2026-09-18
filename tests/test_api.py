@@ -83,6 +83,8 @@ def test_login_and_read_current_user(client: TestClient) -> None:
     assert set(body) == {"id", "email", "is_active", "created_at"}
     assert "hashed_password" not in body
     assert "password" not in body
+    # Timezone-aware UTC (Z or +00:00), not a naive local timestamp
+    assert body["created_at"].endswith("Z") or body["created_at"].endswith("+00:00")
 
 
 def test_login_rejects_invalid_password(client: TestClient) -> None:

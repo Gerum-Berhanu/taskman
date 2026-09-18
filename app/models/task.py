@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
+
 from sqlmodel import Field
 
+from app.core.timeutils import UTCDateTime
 from app.models.base import BaseTable
 
 
@@ -11,7 +13,7 @@ class Task(BaseTable, table=True):
     title: str = Field(max_length=255)
     description: str | None = None
     status: str = Field(default="pending")
-    due_date: datetime | None = None
+    due_date: datetime | None = Field(default=None, sa_type=UTCDateTime)
     workspace_id: UUID = Field(foreign_key="workspaces.id", ondelete="CASCADE", index=True)
     assigned_user_id: UUID | None = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
-    updated_at: datetime | None = None
+    updated_at: datetime | None = Field(default=None, sa_type=UTCDateTime)

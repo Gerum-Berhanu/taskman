@@ -1,10 +1,15 @@
 from datetime import datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlmodel import Field
+
 from app.core.config import settings
-from app.core.timeutils import utcnow
+from app.core.timeutils import UTCDateTime, utcnow
 from app.models.base import BaseTable
+
+
+def _default_session_expiry() -> datetime:
+    return utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
 
 
 class ClientSession(BaseTable, table=True):
@@ -14,9 +19,9 @@ class ClientSession(BaseTable, table=True):
     active_token_id: UUID | None = Field(
         default=None, foreign_key="refresh_tokens.id", ondelete="SET NULL", unique=True
     )
-    revoked_at: datetime | None = None
-    rotated_at: datetime | None = Field(default=None)
+    revoked_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
+    rotated_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
     expires_at: datetime = Field(
-        default_factory=lambda: utcnow()
-            + timedelta(minutes=settings.refresh_token_expire_minutes)
+        default_factory=_default_session_expiry,
+        sa_type=UTCDateTime,
     )
