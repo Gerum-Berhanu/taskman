@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.core.exceptions import InvalidCredentialsError
-from app.repositories.user import UserRecord
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.schemas.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
 from app.schemas.user import UserCreate, UserRead
@@ -69,5 +68,5 @@ async def logout_all_sessions(
 
 
 @router.get("/me", response_model=UserRead)
-async def get_me(user: CurrentUserDep) -> UserRecord:
+async def get_me(user: CurrentUserDep) -> UserRead:
     return user

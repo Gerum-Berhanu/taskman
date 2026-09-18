@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database.session import async_session_factory
 from app.database.unit_of_work import UnitOfWork
-from app.repositories.user import UserRecord
+from app.schemas.user import UserRead
 from app.services.auth import AuthService
 from app.services.task import TaskService
 from app.services.user import UserService
@@ -67,8 +67,8 @@ WorkspaceMemberServiceDep = Annotated[
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep
-) -> UserRecord:
+) -> UserRead:
     return await auth_service.get_user_from_token(token)
 
 
-CurrentUserDep = Annotated[UserRecord, Depends(get_current_user)]
+CurrentUserDep = Annotated[UserRead, Depends(get_current_user)]

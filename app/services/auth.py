@@ -19,6 +19,7 @@ from app.repositories import ClientSessionRecord, RefreshTokenRecord
 from app.repositories.refresh_token import RefreshTokenCreateData
 from app.repositories.user import UserRecord
 from app.schemas.auth import Token
+from app.schemas.user import UserRead
 
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
@@ -184,9 +185,9 @@ class AuthService:
         except ValueError:
             raise InvalidTokenError from None
 
-    async def get_user_from_token(self, token: str) -> UserRecord:
+    async def get_user_from_token(self, token: str) -> UserRead:
         user_id = self._get_id_from_token(token)
         user = await self._uow.users.get_by_id(user_id)
         if user is None or not user.is_active:
             raise InvalidTokenError
-        return user
+        return UserRead.model_validate(user, from_attributes=True)
