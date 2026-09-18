@@ -281,3 +281,21 @@ def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
     )
     assert cleared.status_code == 200
     assert cleared.json()["assigned_user_id"] is None
+
+    # Existing task + non-member assignee → assignee error
+    bad_assignee = client.patch(
+        tasks_url(workspace_id, task_id),
+        json={"assigned_user_id": outsider["id"]},
+        headers=owner_headers,
+    )
+    assert bad_assignee.status_code == 400
+    assert bad_assignee.json()["detail"] == "Assignee is not a member of the workspace"
+
+    # Missing task + non-member assignee → not-found (exist check before assignee)
+    missing_with_assignee = client.patch(
+        tasks_url(workspace_id, str(uuid4())),
+        json={"assigned_user_id": outsider["id"]},
+        headers=owner_headers,
+    )
+    assert missing_with_assignee.status_code == 404
+    assert missing_with_assignee.json()["detail"] == "Task not found"

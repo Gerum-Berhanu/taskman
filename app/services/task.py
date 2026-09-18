@@ -44,6 +44,9 @@ class TaskService:
     async def update(
         self, workspace_id: UUID, task_id: UUID, data: TaskUpdate
     ) -> TaskRecord:
+        if await self._uow.tasks.get(workspace_id, task_id) is None:
+            raise TaskNotFoundError
+
         updates = data.model_dump(exclude_unset=True)
         if "assigned_user_id" in updates:
             await self._validate_assignee(workspace_id, updates["assigned_user_id"])
