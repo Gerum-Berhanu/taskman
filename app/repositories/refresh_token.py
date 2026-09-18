@@ -22,11 +22,13 @@ class RefreshTokenCreateData(BaseModel):
 
 class RefreshTokenRepository(BaseRepository):
     async def create(self, fields: RefreshTokenCreateData) -> RefreshTokenRecord:
+        """Insert a refresh-token hash row for a client session."""
         refresh_token = RefreshToken(**fields.model_dump())
         await self.add_flush_refresh(refresh_token)
         return self.to_record(RefreshTokenRecord, refresh_token)
 
     async def get_by_token_hash(self, token_hash: str) -> RefreshTokenRecord | None:
+        """Look up a refresh token by its stored hash, or None."""
         statement = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
         result = await self._session.exec(statement)
         refresh_token = result.first()

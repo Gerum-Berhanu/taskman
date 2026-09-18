@@ -22,6 +22,7 @@ class WorkspaceMemberService:
     async def create(
         self, workspace_id: UUID, new_membership: WorkspaceMemberCreate
     ) -> WorkspaceMemberRecord:
+        """Add a member; missing workspace looks like forbidden (no enumeration)."""
         workspace = await self._uow.workspaces.get(workspace_id)
         if workspace is None:
             # Same as non-member: do not reveal whether the workspace exists.
@@ -48,11 +49,13 @@ class WorkspaceMemberService:
     async def get(
         self, workspace_id: UUID, user_id: UUID
     ) -> WorkspaceMemberRecord | None:
+        """Return a membership row if present."""
         return await self._uow.workspace_members.get(workspace_id, user_id)
 
     async def get_role(
         self, workspace_id: UUID, user_id: UUID
     ) -> WorkspaceMemberRole:
+        """Return the user's role; missing workspace and non-member are both forbidden."""
         # Missing workspace and non-membership must be indistinguishable.
         member = await self._uow.workspace_members.get(workspace_id, user_id)
         if member is None:

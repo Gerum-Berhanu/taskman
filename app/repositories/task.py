@@ -43,11 +43,13 @@ class TaskUpdateData(BaseModel):
 
 class TaskRepository(BaseRepository):
     async def create(self, fields: TaskCreateData) -> TaskRecord:
+        """Insert a task and return the persisted record."""
         task = Task(**fields.model_dump())
         await self.add_flush_refresh(task)
         return self.to_record(TaskRecord, task)
 
     async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
+        """Load the ORM task scoped to a workspace, or None."""
         statement = select(Task).where(
             Task.id == task_id, Task.workspace_id == workspace_id
         )
@@ -55,12 +57,14 @@ class TaskRepository(BaseRepository):
         return result.first()
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord | None:
+        """Fetch a task by id within a workspace, or None."""
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
         return self.to_record(TaskRecord, task)
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
+        """List tasks in a workspace ordered by created_at, title, id."""
         statement = (
             select(Task)
             .where(Task.workspace_id == workspace_id)
@@ -72,6 +76,7 @@ class TaskRepository(BaseRepository):
     async def update(
         self, workspace_id: UUID, task_id: UUID, fields: TaskUpdateData
     ) -> TaskRecord | None:
+        """Apply partial updates to a workspace-scoped task; None if missing."""
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
@@ -88,6 +93,7 @@ class TaskRepository(BaseRepository):
         return self.to_record(TaskRecord, task)
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> bool:
+        """Delete a workspace-scoped task; False if it did not exist."""
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return False

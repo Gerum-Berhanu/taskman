@@ -14,6 +14,7 @@ class WorkspaceService:
         self._members = WorkspaceMemberService(uow)
 
     async def create(self, data: WorkspaceCreate, user_id: UUID) -> WorkspaceRecord:
+        """Create a workspace and add the creating user as owner."""
         workspace = await self._uow.workspaces.create(data.name)
         await self._members.create(
             workspace.id,
@@ -25,6 +26,7 @@ class WorkspaceService:
         return workspace
 
     async def get(self, workspace_id: UUID) -> WorkspaceRecord:
+        """Return a workspace or raise forbidden (no existence leak)."""
         workspace = await self._uow.workspaces.get(workspace_id)
         if workspace is None:
             raise WorkspaceForbiddenError

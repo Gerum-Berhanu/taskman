@@ -27,6 +27,7 @@ class UserCreateData(BaseModel):
 
 class UserRepository(BaseRepository):
     async def get_by_email(self, email: str) -> UserRecord | None:
+        """Fetch a user by email, or None."""
         statement = select(User).where(User.email == email)
         result = await self._session.exec(statement)
         user = result.first()
@@ -35,12 +36,14 @@ class UserRepository(BaseRepository):
         return self.to_record(UserRecord, user)
 
     async def get_by_id(self, user_id: UUID) -> UserRecord | None:
+        """Fetch a user by id, or None."""
         user = await self._session.get(User, user_id)
         if user is None:
             return None
         return self.to_record(UserRecord, user)
 
     async def create(self, fields: UserCreateData) -> UserRecord:
+        """Insert a new user and return the persisted record."""
         user = User(**fields.model_dump())
         await self.add_flush_refresh(user)
         return self.to_record(UserRecord, user)
@@ -48,6 +51,7 @@ class UserRepository(BaseRepository):
     async def set_is_active(
         self, user_id: UUID, *, is_active: bool
     ) -> UserRecord | None:
+        """Update is_active for a user; return None if missing."""
         user = await self._session.get(User, user_id)
         if user is None:
             return None

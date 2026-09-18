@@ -26,11 +26,13 @@ class ClientSessionRecord(BaseModel):
 
 class ClientSessionRepository(BaseRepository):
     async def create(self, user_id: UUID) -> ClientSessionRecord:
+        """Create a new client session for the user."""
         client_session = ClientSession(user_id=user_id)
         await self.add_flush_refresh(client_session)
         return self.to_record(ClientSessionRecord, client_session)
 
     async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
+        """Fetch a client session by id, or None."""
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
@@ -43,6 +45,7 @@ class ClientSessionRepository(BaseRepository):
         token_id: UUID,
         is_rotation: bool = False,
     ) -> ClientSessionRecord | None:
+        """Point the session at a refresh token; optionally bump rotation/expiry."""
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
@@ -58,6 +61,7 @@ class ClientSessionRepository(BaseRepository):
         return self.to_record(ClientSessionRecord, client_session)
 
     async def revoke(self, client_id: UUID) -> bool:
+        """Revoke one session; False if it did not exist."""
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return False
@@ -67,6 +71,7 @@ class ClientSessionRepository(BaseRepository):
         return True
 
     async def revoke_all_user_sessions(self, user_id: UUID) -> int:
+        """Revoke every session for a user; return how many were updated."""
         statement = select(ClientSession).where(ClientSession.user_id == user_id)
         result = await self._session.exec(statement)
         client_sessions = result.all()

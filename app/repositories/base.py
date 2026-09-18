@@ -23,4 +23,5 @@ class BaseRepository:
     def to_record[T: BaseModel](
         self, record_class: type[T], orm_object: SQLModel
     ) -> T:
+        """Map an ORM instance to a repository record model."""
         return record_class.model_validate(orm_object)

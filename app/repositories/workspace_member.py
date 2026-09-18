@@ -26,6 +26,7 @@ class WorkspaceMemberCreateData(BaseModel):
 
 class WorkspaceMemberRepository(BaseRepository):
     async def create(self, fields: WorkspaceMemberCreateData) -> WorkspaceMemberRecord:
+        """Insert a membership and return the persisted record."""
         membership = WorkspaceMember(**fields.model_dump())
         await self.add_flush_refresh(membership)
         return self.to_record(WorkspaceMemberRecord, membership)
@@ -33,6 +34,7 @@ class WorkspaceMemberRepository(BaseRepository):
     async def get(
         self, workspace_id: UUID, user_id: UUID
     ) -> WorkspaceMemberRecord | None:
+        """Fetch membership by composite key, or None."""
         member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
         if member is None:
             return None

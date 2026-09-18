@@ -17,6 +17,7 @@ class TaskService:
     async def _validate_assignee(
         self, workspace_id: UUID, assigned_user_id: UUID | None
     ) -> None:
+        """Ensure an assignee exists and belongs to the workspace (no-op if None)."""
         if assigned_user_id is None:
             return
         if await self._uow.users.get_by_id(assigned_user_id) is None:
@@ -28,22 +29,26 @@ class TaskService:
             raise AssigneeNotInWorkspaceError
 
     async def create(self, data: TaskCreate, workspace_id: UUID) -> TaskRecord:
+        """Create a task in the workspace after validating the optional assignee."""
         await self._validate_assignee(workspace_id, data.assigned_user_id)
         fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
         return await self._uow.tasks.create(fields)
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord:
+        """Return a task in the workspace or raise not-found."""
         task = await self._uow.tasks.get(workspace_id, task_id)
         if not task:
             raise TaskNotFoundError
         return task
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
+        """List all tasks in the workspace."""
         return await self._uow.tasks.list_all(workspace_id)
 
     async def update(
         self, workspace_id: UUID, task_id: UUID, data: TaskUpdate
     ) -> TaskRecord:
+        """Update a task; exist-check before assignee validation."""
         if await self._uow.tasks.get(workspace_id, task_id) is None:
             raise TaskNotFoundError
 
@@ -61,5 +66,6 @@ class TaskService:
         return task
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
+        """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError

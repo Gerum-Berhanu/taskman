@@ -30,6 +30,7 @@ class AuthService:
         self._uow = uow
 
     async def authenticate(self, email: EmailStr, password: str) -> UserRecord:
+        """Verify email/password and return the user record (with credentials)."""
         user = await self._uow.users.get_by_email(email)
         if not user:
             verify_password(password, _DUMMY_HASH)
@@ -42,6 +43,7 @@ class AuthService:
         return user
 
     async def login(self, email: EmailStr, password: str) -> Token:
+        """Authenticate and issue a new access + refresh token pair."""
         user = await self.authenticate(email, password)
         raw_token = generate_refresh_token()
         token_hash = hash_refresh_token(raw_token)
@@ -67,6 +69,7 @@ class AuthService:
     async def _get_token_and_session_rows(
         self, token: str
     ) -> tuple[RefreshTokenRecord, ClientSessionRecord]:
+        """Resolve a raw refresh token to its token row and client session."""
         row = await self._uow.refresh_tokens.get_by_token_hash(hash_refresh_token(token))
         if row is None:
             raise InvalidTokenError
@@ -84,6 +87,7 @@ class AuthService:
         raise InvalidTokenError
 
     async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
+        """Validate a refresh token; revoke the session on reuse, expiry, or inactive user."""
         row, session = await self._get_token_and_session_rows(token)
 
         if session.revoked_at is not None:
@@ -103,6 +107,7 @@ class AuthService:
         return session
 
     async def refresh(self, token: str) -> Token:
+        """Rotate refresh token and issue a new access token."""
         client_session = await self._require_active_refresh(token)
         
         new_raw_token = generate_refresh_token()
@@ -127,6 +132,7 @@ class AuthService:
         )
 
     async def logout(self, token: str) -> None:
+        """Revoke the client session for this refresh token; reuse revokes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
 
         if session.revoked_at is not None:
@@ -141,6 +147,7 @@ class AuthService:
             raise InvalidTokenError
             
     async def logout_all_user_sessions(self, token: str) -> None:
+        """Revoke every client session for the user owning this refresh token."""
         token_row, session = await self._get_token_and_session_rows(token)
         if token_row.id != session.active_token_id:
             raise InvalidTokenError
@@ -153,6 +160,7 @@ class AuthService:
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:
+        """Encode a JWT access token with the configured expiry."""
         to_encode = data.copy()
 
         expire = utcnow()
@@ -170,6 +178,7 @@ class AuthService:
         )
 
     def _get_id_from_token(self, token: str) -> UUID:
+        """Decode an access token and return the user id from `sub`."""
         try:
             payload = jwt.decode(
                 token, settings.secret_key, algorithms=[settings.algorithm]
@@ -186,6 +195,7 @@ class AuthService:
             raise InvalidTokenError from None
 
     async def get_user_from_token(self, token: str) -> UserRead:
+        """Load the active user for an access token as a credential-free UserRead."""
         user_id = self._get_id_from_token(token)
         user = await self._uow.users.get_by_id(user_id)
         if user is None or not user.is_active:
