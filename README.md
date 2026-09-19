@@ -1,24 +1,61 @@
 # Taskman
 
-REST API for workspace-scoped task management, built with FastAPI. JWT access tokens plus refresh-token sessions, SQLModel persistence (SQLite by default), Alembic migrations, and role-based access on workspaces (`viewer` / `editor` / `owner`).
+REST API for workspace-scoped task management, built with FastAPI. JWT access tokens plus refresh-token sessions, SQLModel persistence (SQLite in development, PostgreSQL in production), Alembic migrations, and role-based access on workspaces (`viewer` / `editor` / `owner`).
 
 ## Requirements
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
+- PostgreSQL 18+ (when using the production profile or a local Postgres DB)
+- Optional: [Just](https://github.com/casey/just) for short cross-platform run commands
 
 ## Setup
 
 ```bash
 uv sync
-cp .env.example .env   # set SECRET_KEY; DATABASE_URL defaults to local SQLite
+cp .env.example .env
+cp .env.development.example .env.development
+# optional Postgres / production overlay:
+# cp .env.production.example .env.production
 uv run alembic upgrade head
 ```
 
+### Environment files
+
+| File | Role |
+|------|------|
+| `.env` | Shared defaults (no secrets) |
+| `.env.development` | Development overlay (default) |
+| `.env.production` | Production overlay |
+
+`config.py` loads `.env`, then `.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile (`development` | `production`) and defaults to `development` when unset.
+
+| Profile | Typical `DATABASE_URL` |
+|---------|-------------------------|
+| `development` | `sqlite+aiosqlite:///./database.db` |
+| `production` | `postgresql+asyncpg://user:pass@host:5432/dbname` |
+
 ## Run
+
+Development (default — `.env` + `.env.development`):
 
 ```bash
 uv run uvicorn app.main:app --reload
+# or: just dev
+```
+
+Production overlay (Postgres must be running; secrets in `.env.production`):
+
+```bash
+just prod
+# equivalent: set TASKMAN_ENV=production in the process, then uv run uvicorn app.main:app
+```
+
+Migrations:
+
+```bash
+just migrate        # development DB
+just migrate-prod   # production DB
 ```
 
 Or: `uv run fastapi dev`
