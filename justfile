@@ -15,14 +15,24 @@ default:
 dev:
     -uv run uvicorn app.main:app --reload
 
+staging $TASKMAN_ENV="staging":
+    -uv run uvicorn app.main:app
+
 prod $TASKMAN_ENV="production":
     -uv run uvicorn app.main:app
 
 migrate:
     uv run alembic upgrade head
 
+migrate-staging $TASKMAN_ENV="staging":
+    uv run alembic upgrade head
+
 migrate-prod $TASKMAN_ENV="production":
     uv run alembic upgrade head
 
+migrate-test $TASKMAN_ENV="test":
+    uv run alembic upgrade head
+
+# Pytest uses its own SQLite DB via conftest (not env/.env.test).
 test:
     uv run pytest -q

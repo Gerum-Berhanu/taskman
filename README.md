@@ -14,7 +14,7 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 ```bash
 uv sync
 cp -r env.example env          # Windows: Copy-Item -Recurse env.example env
-# edit env/.env.development (and env/.env.production if using Postgres)
+# edit env/.env.development (and staging/production overlays as needed)
 uv run alembic upgrade head
 ```
 
@@ -28,14 +28,18 @@ uv run alembic upgrade head
 | File under `env/` | Role |
 |-------------------|------|
 | `.env` | Shared defaults (no secrets) |
-| `.env.development` | Development overlay (default) |
+| `.env.development` | Local development overlay (default) |
+| `.env.staging` | Prod-like staging overlay |
+| `.env.test` | Test-profile overlay (optional; pytest uses `conftest` DB) |
 | `.env.production` | Production overlay |
 
-`config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile (`development` | `production`) and defaults to `development` when unset.
+`config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile and defaults to `development` when unset.
 
 | Profile | Typical `DATABASE_URL` |
 |---------|-------------------------|
 | `development` | `sqlite+aiosqlite:///./database.db` |
+| `staging` | `postgresql+asyncpg://USER:PASSWORD@HOST:PORT/DBNAME` |
+| `test` | `sqlite+aiosqlite:///./test.db` |
 | `production` | `postgresql+asyncpg://USER:PASSWORD@HOST:PORT/DBNAME` |
 
 ## Run
@@ -47,18 +51,21 @@ uv run uvicorn app.main:app --reload
 # or: just dev
 ```
 
-Production overlay (Postgres must be running; secrets in `env/.env.production`):
+Staging / production (Postgres DBs must exist; secrets in the matching overlay):
 
 ```bash
+just staging
 just prod
-# equivalent: set TASKMAN_ENV=production in the process, then uv run uvicorn app.main:app
 ```
 
 Migrations:
 
 ```bash
-just migrate        # development DB
-just migrate-prod   # production DB
+just migrate           # development
+just migrate-staging
+just migrate-prod
+just migrate-test      # optional file-based test DB
+just test              # pytest (isolated DB via conftest)
 ```
 
 Or: `uv run fastapi dev`

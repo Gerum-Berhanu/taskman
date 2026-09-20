@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class AppEnv(StrEnum):
     DEVELOPMENT = "development"
+    STAGING = "staging"
+    TEST = "test"
     PRODUCTION = "production"
 
 
