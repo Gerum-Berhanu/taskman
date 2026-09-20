@@ -6,7 +6,8 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - env/.env
+      - env/.env.development
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////data/database.db
     volumes:

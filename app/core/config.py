@@ -27,10 +27,10 @@ _APP_ENV: AppEnv = _resolve_app_env()
 
 
 class Settings(BaseSettings):
-    """Process env > `.env.{TASKMAN_ENV}` > `.env` > field defaults."""
+    """Process env > `env/.env.{TASKMAN_ENV}` > `env/.env` > field defaults."""
 
     model_config = SettingsConfigDict(
-        env_file=(".env", f".env.{_APP_ENV.value}"),
+        env_file=("env/.env", f"env/.env.{_APP_ENV.value}"),
         extra="ignore",
     )
 

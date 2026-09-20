@@ -13,22 +13,25 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 
 ```bash
 uv sync
-cp .env.example .env
-cp .env.development.example .env.development
-# optional Postgres / production overlay:
-# cp .env.production.example .env.production
+cp -r env.example env          # Windows: Copy-Item -Recurse env.example env
+# edit env/.env.development (and env/.env.production if using Postgres)
 uv run alembic upgrade head
 ```
 
 ### Environment files
 
-| File | Role |
-|------|------|
+| Path | Role | Git? |
+|------|------|------|
+| `env.example/` | Templates (same filenames as runtime) | Yes |
+| `env/` | Real values (copy of templates, then edit) | No (`env/` is gitignored) |
+
+| File under `env/` | Role |
+|-------------------|------|
 | `.env` | Shared defaults (no secrets) |
 | `.env.development` | Development overlay (default) |
 | `.env.production` | Production overlay |
 
-`config.py` loads `.env`, then `.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile (`development` | `production`) and defaults to `development` when unset.
+`config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile (`development` | `production`) and defaults to `development` when unset.
 
 | Profile | Typical `DATABASE_URL` |
 |---------|-------------------------|
@@ -37,14 +40,14 @@ uv run alembic upgrade head
 
 ## Run
 
-Development (default — `.env` + `.env.development`):
+Development (default — `env/.env` + `env/.env.development`):
 
 ```bash
 uv run uvicorn app.main:app --reload
 # or: just dev
 ```
 
-Production overlay (Postgres must be running; secrets in `.env.production`):
+Production overlay (Postgres must be running; secrets in `env/.env.production`):
 
 ```bash
 just prod

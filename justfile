@@ -1,7 +1,7 @@
 # Cross-platform task runner: https://github.com/casey/just
 # Install: winget install Casey.Just  |  brew install just  |  cargo install just
 #
-# Config merge (in app/core/config.py): process env > .env.{TASKMAN_ENV} > .env
+# Config merge (in app/core/config.py): process env > env/.env.{TASKMAN_ENV} > env/.env
 # TASKMAN_ENV selects the profile (default: development).
 #
 # `$NAME=...` on a recipe is Just-native env export (works with any shell).
