@@ -6,6 +6,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
+    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 
@@ -55,3 +56,8 @@ class MembershipAlreadyExistsError(AppError):
 class AssigneeNotInWorkspaceError(AppError):
     status_code = HTTP_400_BAD_REQUEST
     detail = "Assignee is not a member of the workspace"
+
+
+class FailedDatabaseConnection(AppError):
+    status_code = HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Database connection failed"

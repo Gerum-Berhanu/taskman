@@ -2,11 +2,14 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from sqlmodel.sql.expression import select
 
 from app.api.v1 import auth, tasks, workspaces, workspace_members
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
+from app.core.exceptions import FailedDatabaseConnection
 from app.database.session import engine
+from app.deps import SessionDep
 
 
 @asynccontextmanager
@@ -29,5 +32,9 @@ app.include_router(tasks.router)
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+async def health(session: SessionDep) -> dict[str, str]:
+    try:
+        await session.exec(select(1))
+    except Exception:
+        raise FailedDatabaseConnection
     return {"status": "ok"}
