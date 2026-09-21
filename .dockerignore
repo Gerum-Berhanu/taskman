@@ -1,24 +1,46 @@
+# Git and editor files
 .git
 .gitignore
-
-.venv
-venv
-
-__pycache__
-*.py[cod]
-
-env/
-*.db
-
-.pytest_cache
-.mypy_cache
-.ruff_cache
-
+.github
 .vscode
 .idea
 .cursor
-.local
 
-tests
-docs
+# Environment files and secrets
+.env
+.env.*
+env/
+!.env.example
+!env.example/
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Optional: do not ship development-only content
+tests/
+docs/
 README.md
+.local/
