@@ -1,35 +1,77 @@
 services:
   db:
     image: postgres:18.6
-    container_name: taskman-db-c
+
     env_file:
-      - env/.env.psql
+      - ./env/.env.psql
+
     volumes:
       - pgdata:/var/lib/postgresql
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U taskman -d taskman"]
-      interval: 5s # try every 5s
-      timeout: 5s # if one check hangs >5s → treat as fail
-      retries: 10 # need this many "consecutive" failures before status is unhealthy
-      start_period: 10s # first 10s, failures don’t count toward “unhealthy” (boot grace)
-    ports: # access point from outside container
-      - "5432:5432"
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
+
+    # PostgreSQL is intentionally not published to the host.
+    # The API reaches it through the Compose service name: db.
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
   api:
     build: .
+
     image: taskman-api:v1
-    container_name: taskman-api-c
+
     ports:
-      - "8080:8000"
+      # Only this machine.
+      # Change to "8080:8000" only if direct external access is intentional.
+      - "127.0.0.1:8080:8000"
+
     env_file:
-      - env/.env
-      - env/.env.production
+      - ./env/.env
+      - ./env/.env.production
+
     environment:
       TASKMAN_ENV: production
+
     depends_on:
       db:
         condition: service_healthy
+        restart: true # If db restarts, api is restarted too
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
     restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
 
 volumes:
   pgdata:
