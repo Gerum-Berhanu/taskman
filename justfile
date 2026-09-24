@@ -12,6 +12,9 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 default:
     @just --list
 
+test $TASKMAN_ENV="test":
+    -uv run uvicorn app.main:app --port 8765 --reload
+
 dev:
     -uv run uvicorn app.main:app --reload
 
@@ -34,5 +37,5 @@ migrate-test $TASKMAN_ENV="test":
     uv run alembic upgrade head
 
 # Pytest uses its own SQLite DB via conftest (not env/.env.test).
-test:
+pytest:
     uv run pytest -q

@@ -1,20 +1,53 @@
 """Centralized logging setup."""
 
+import json
 import logging
 from pathlib import Path
+import sys
 
 from app.core.config import settings
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _LOG_DIR = _PROJECT_ROOT / "logs"
+_DATEFMT = "%Y-%m-%d %H:%M:%S"
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
+
+
+def _build_formatter() -> logging.Formatter:
+    if settings.log_json:
+        return JsonFormatter(datefmt=_DATEFMT)
+    return logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        datefmt=_DATEFMT,
+    )
 
 
 def setup_logging() -> None:
-    logging.basicConfig(
-        level=settings.log_level,
-        filename=_LOG_DIR / "app.log",
-        filemode="a",
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(settings.log_level)
+
+    formatter = _build_formatter()
+
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(formatter)
+    root.addHandler(console)
+
+    if settings.log_file:
+        _LOG_DIR.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(_LOG_DIR / "app.log", mode="a")
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
