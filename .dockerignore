@@ -38,6 +38,7 @@ dist/
 *.sqlite
 *.sqlite3
 *.log
+logs/
 
 # Optional: do not ship development-only content
 tests/
