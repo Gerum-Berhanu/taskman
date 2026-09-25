@@ -63,3 +63,8 @@ def setup_logging() -> None:
         file_handler.setFormatter(formatter)
         file_handler.addFilter(rid_filter)
         root.addHandler(file_handler)
+
+    # logger.debug() don't spam wheen root is at DEBUG level
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
