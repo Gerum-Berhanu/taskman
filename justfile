@@ -12,17 +12,22 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 default:
     @just --list
 
-test $TASKMAN_ENV="test":
-    -uv run uvicorn app.main:app --port 8765 --reload
+# Clears orphaned reload workers left on the port by a previous dev session.
+[private]
+free-port port="8000":
+    @powershell.exe -NoLogo -ExecutionPolicy Bypass -File scripts/free-port.ps1 -Port {{port}}
 
-dev:
-    -uv run uvicorn app.main:app --reload
+dev: free-port
+    -uv run fastapi dev
 
 staging $TASKMAN_ENV="staging":
-    -uv run uvicorn app.main:app
+    -uv run fastapi run
 
 prod $TASKMAN_ENV="production":
-    -uv run uvicorn app.main:app
+    -uv run fastapi run
+
+test $TASKMAN_ENV="test": (free-port "8765")
+    -uv run fastapi dev --port 8765
 
 migrate:
     uv run alembic upgrade head

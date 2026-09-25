@@ -44,11 +44,13 @@ uv run alembic upgrade head
 
 ## Run
 
+Preferred entrypoints use [Just](https://github.com/casey/just) (`just --list` for all recipes).
+
 Development (default — `env/.env` + `env/.env.development`):
 
 ```bash
-uv run uvicorn app.main:app --reload
-# or: just dev
+just dev
+# equivalent without Just: uv run fastapi dev
 ```
 
 Staging / production (Postgres DBs must exist; secrets in the matching overlay):
@@ -58,22 +60,39 @@ just staging
 just prod
 ```
 
-Migrations:
+Migrations and tests:
 
 ```bash
 just migrate           # development
 just migrate-staging
 just migrate-prod
 just migrate-test      # optional file-based test DB
-just test              # pytest (isolated DB via conftest)
+just pytest            # pytest (isolated DB via conftest)
+just test              # fastapi dev on :8765 (TASKMAN_ENV=test)
 ```
-
-Or: `uv run fastapi dev`
 
 - Health: `GET /health`
 - Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 Authorize in `/docs` with a token from `POST /auth/login` (use email as username).
+
+### Dev server and port cleanup (Windows)
+
+`fastapi dev` / uvicorn `--reload` runs a **parent watcher** plus a **child worker** that holds the listen socket. On Windows, a non-clean stop (closing the terminal, overlapping `just dev` sessions, forced kill) can leave the **worker orphaned**: the port still looks taken, but requests hang or fail.
+
+`just dev` (and `just test` on `:8765`) therefore run a private `free-port` step first (`scripts/free-port.ps1`). It stops whoever is listening on that port **and** any child processes of that listener, then starts the app. You normally just run `just dev` — no extra flags.
+
+`just staging` / `just prod` use `fastapi run` (no reload) and do **not** free the port automatically.
+
+If the port is still stuck, inspect and kill manually in PowerShell:
+
+```powershell
+netstat -ano | findstr ":8000"
+# note the LISTENING PID in the last column, then:
+taskkill /PID <pid> /T /F
+```
+
+`/T` kills the process tree (reloader parent and worker). Confirm with `netstat -ano | findstr ":8000"` again — no `LISTENING` line means the port is free. Use `:8765` (or another port) the same way when needed.
 
 ## API (implemented)
 
