@@ -7,6 +7,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from app.core.request_context import request_id_ctx
 
 
+_SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +52,11 @@ class LogMiddleware(AppMiddleware):
             "status_code": response.status_code,
             "process_time": round(process_time, 5),
         }
-        logger.info(log_dict)
+
+        if request.url.path in _SKIP_OR_DEBUG:
+            logger.debug(log_dict)
+        else:
+            logger.info(log_dict)
+            
         return response
         
