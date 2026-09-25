@@ -1,9 +1,8 @@
 import logging
 import time
-from typing import Any
 from uuid import UUID, uuid4
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.core.request_context import request_id_ctx
 
@@ -17,7 +16,7 @@ class AppMiddleware(BaseHTTPMiddleware):
 
 
 class RequestIdMiddleware(AppMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Save a request id either from X-Request-ID header or newly generated"""
         presented_id = request.headers.get("X-Request-ID")
         if not presented_id:
@@ -28,17 +27,19 @@ class RequestIdMiddleware(AppMiddleware):
             except ValueError:
                 request_id = uuid4()
 
-        token = request_id_ctx.set(str(request_id))
+        rid = str(request_id)
+        request.state.request_id = rid
+        token = request_id_ctx.set(rid)
         try:
             response = await call_next(request)
-            response.headers["X-Request-ID"] = str(request_id)
+            response.headers["X-Request-ID"] = rid
             return response
         finally:
             request_id_ctx.reset(token)
 
 
 class LogMiddleware(AppMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.perf_counter()
         response = await call_next(request)
         process_time = time.perf_counter() - start_time
