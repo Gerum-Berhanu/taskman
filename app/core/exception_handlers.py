@@ -16,7 +16,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         log_fn(
             "app_error status=%s detail=%s path=%s",
             exc.status_code,
-            exc.detail,
+            repr(exc.detail),
             request.url.path,
         )
         return JSONResponse(
@@ -38,7 +38,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             )
         finally:
             request_id_ctx.reset(token)
-            
+
         return JSONResponse(
             status_code=500,
             content={"detail": "Internal server error"},

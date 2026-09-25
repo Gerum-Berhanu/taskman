@@ -46,17 +46,20 @@ class LogMiddleware(AppMiddleware):
         response = await call_next(request)
         process_time = time.perf_counter() - start_time
 
-        log_dict = {
-            "url": request.url.path,
-            "method": request.method,
-            "status_code": response.status_code,
-            "process_time": round(process_time, 5),
-        }
+        log_message = (
+            "http_access method=%s path=%s status=%s duration_ms=%.1f"
+            % (
+                request.method,
+                request.url.path,
+                response.status_code,
+                process_time * 1000,
+            )
+        )
 
         if request.url.path in _SKIP_OR_DEBUG:
-            logger.debug(log_dict)
+            logger.debug(log_message)
         else:
-            logger.info(log_dict)
-            
+            logger.info(log_message)
+
         return response
         
