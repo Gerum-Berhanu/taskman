@@ -29,5 +29,10 @@ class UserService:
         except IntegrityError:
             raise EmailAlreadyRegisteredError from None
 
-        logger.info("user_registered user_id=%s email=%s", user.id, user.email)
+        user_id, email = user.id, user.email
+        self._uow.after_commit(
+            lambda: logger.info(
+                "user_registered user_id=%s email=%s", user_id, email
+            )
+        )
         return user

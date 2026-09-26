@@ -38,12 +38,15 @@ class TaskService:
         await self._validate_assignee(workspace_id, data.assigned_user_id)
         fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
         task = await self._uow.tasks.create(fields)
-        actor_ctx = current_user_id_ctx.get()
-        logger.info(
-            "task_created workspace_id=%s task_id=%s actor_id=%s",
-            workspace_id,
-            task.id,
-            actor_ctx,
+        task_id = task.id
+        actor_id = current_user_id_ctx.get()
+        self._uow.after_commit(
+            lambda: logger.info(
+                "task_created workspace_id=%s task_id=%s actor_id=%s",
+                workspace_id,
+                task_id,
+                actor_id,
+            )
         )
         return task
 
@@ -76,13 +79,15 @@ class TaskService:
         )
         if task is None:
             raise TaskNotFoundError
-            
-        actor_ctx = current_user_id_ctx.get()
-        logger.info(
-            "task_updated workspace_id=%s task_id=%s actor_id=%s",
-            workspace_id,
-            task_id,
-            actor_ctx,
+
+        actor_id = current_user_id_ctx.get()
+        self._uow.after_commit(
+            lambda: logger.info(
+                "task_updated workspace_id=%s task_id=%s actor_id=%s",
+                workspace_id,
+                task_id,
+                actor_id,
+            )
         )
         return task
 
@@ -90,10 +95,12 @@ class TaskService:
         """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
-        actor_ctx = current_user_id_ctx.get()
-        logger.info(
-            "task_deleted workspace_id=%s task_id=%s actor_id=%s",
-            workspace_id,
-            task_id,
-            actor_ctx,
+        actor_id = current_user_id_ctx.get()
+        self._uow.after_commit(
+            lambda: logger.info(
+                "task_deleted workspace_id=%s task_id=%s actor_id=%s",
+                workspace_id,
+                task_id,
+                actor_id,
+            )
         )

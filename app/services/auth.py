@@ -64,7 +64,10 @@ class AuthService:
 
         access_token = self.create_access_token(data={"sub": str(user.id)})
 
-        logger.info("user_login_succeeded user_id=%s", user.id)
+        user_id = user.id
+        self._uow.after_commit(
+            lambda: logger.info("user_login_succeeded user_id=%s", user_id)
+        )
         return Token(
             access_token=access_token,
             refresh_token=raw_token,
@@ -150,10 +153,11 @@ class AuthService:
         if not revoked:
             raise InvalidTokenError
 
-        logger.info(
-            "user_logout user_id=%s session_id=%s",
-            session.user_id,
-            session.id,
+        user_id, session_id = session.user_id, session.id
+        self._uow.after_commit(
+            lambda: logger.info(
+                "user_logout user_id=%s session_id=%s", user_id, session_id
+            )
         )
 
     async def logout_all_user_sessions(self, token: str) -> None:
@@ -171,7 +175,12 @@ class AuthService:
             await self._revoke_and_reject(session.id)
 
         await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
-        logger.info("user_logout_all user_id=%s session_id=%s", session.user_id, session.id)
+        user_id, session_id = session.user_id, session.id
+        self._uow.after_commit(
+            lambda: logger.info(
+                "user_logout_all user_id=%s session_id=%s", user_id, session_id
+            )
+        )
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None

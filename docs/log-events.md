@@ -6,6 +6,8 @@ Envelope fields (`timestamp`, `level`, `logger`, `request_id`) come from the log
 **Convention:** `snake_case_tag key=%s key=%s …`  
 **Ids:** UUIDs as strings. Use `actor_id=-` when no authenticated user is on the request.
 
+**Timing:** domain events are scheduled with `UnitOfWork.after_commit` and only emit after a successful commit (not on rollback).
+
 Put new high-value events in **services** (after a successful write). Keep tags stable so log search stays reliable.
 
 ---
