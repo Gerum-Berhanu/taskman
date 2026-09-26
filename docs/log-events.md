@@ -31,6 +31,14 @@ Login/refresh failures show up as `app_error`, not separate service tags.
 
 ---
 
+## Unit of work
+
+| Tag | Level | When | Fields |
+|-----|-------|------|--------|
+| `after_commit_failed` | `ERROR` (+ traceback) | An `after_commit` callback raised after a successful DB commit (request still succeeds) | — |
+
+---
+
 ## Auth / user (services)
 
 | Tag | Level | When | Fields |
