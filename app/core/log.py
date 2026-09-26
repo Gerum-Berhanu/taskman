@@ -2,8 +2,10 @@
 
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 import sys
+import time
 
 from app.core.config import settings
 from app.core.request_context import request_id_ctx
@@ -11,7 +13,7 @@ from app.core.request_context import request_id_ctx
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _LOG_DIR = _PROJECT_ROOT / "logs"
-_DATEFMT = "%Y-%m-%d %H:%M:%S"
+_DATEFMT = "%Y-%m-%d %H:%M:%SZ"
 
 
 class RequestIdFilter(logging.Filter):
@@ -37,11 +39,14 @@ class JsonFormatter(logging.Formatter):
 
 def _build_formatter() -> logging.Formatter:
     if settings.log_json:
-        return JsonFormatter(datefmt=_DATEFMT)
-    return logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(request_id)s | %(message)s",
-        datefmt=_DATEFMT,
-    )
+        formatter: logging.Formatter = JsonFormatter(datefmt=_DATEFMT)
+    else:
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(request_id)s | %(message)s",
+            datefmt=_DATEFMT,
+        )
+    formatter.converter = time.gmtime
+    return formatter
 
 
 def setup_logging() -> None:
@@ -59,12 +64,18 @@ def setup_logging() -> None:
 
     if settings.log_file:
         _LOG_DIR.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(_LOG_DIR / "app.log", mode="a")
+        file_handler = TimedRotatingFileHandler(
+            _LOG_DIR / "app.log",
+            when="midnight",
+            backupCount=7,
+            encoding="utf-8",
+            utc=True,
+        )
         file_handler.setFormatter(formatter)
         file_handler.addFilter(rid_filter)
         root.addHandler(file_handler)
 
-    # logger.debug() don't spam wheen root is at DEBUG level
+    # logger.debug() don't spam when root is at DEBUG level
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
