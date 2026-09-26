@@ -76,24 +76,20 @@ just test              # fastapi dev on :8765 (TASKMAN_ENV=test)
 
 Authorize in `/docs` with a token from `POST /auth/login` (use email as username).
 
-### Dev server and port cleanup
+### Port already in use
 
 `fastapi dev` / uvicorn `--reload` runs a **parent watcher** plus a **child worker** that holds the listen socket. A non-clean stop can leave the worker orphaned so the port stays taken.
 
-`just dev` (and `just test` on `:8765`) run a private `free-port` step first:
-- **Windows:** `scripts/free-port.ps1` (listener + child processes)
-- **Unix:** `lsof` + `kill` on the LISTEN pid(s)
+Free it manually:
 
-`just staging` / `just prod` use `fastapi run` (no reload) and do **not** free the port automatically.
-
-If the port is still stuck on Windows:
+**Windows:**
 
 ```powershell
 netstat -ano | findstr ":8000"
 taskkill /PID <pid> /T /F
 ```
 
-On Unix:
+**Unix:**
 
 ```bash
 lsof -iTCP:8000 -sTCP:LISTEN
