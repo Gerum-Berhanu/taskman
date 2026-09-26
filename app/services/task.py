@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from app.core.exceptions import (
@@ -8,6 +9,9 @@ from app.core.exceptions import (
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskUpdate
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskService:
@@ -32,7 +36,13 @@ class TaskService:
         """Create a task in the workspace after validating the optional assignee."""
         await self._validate_assignee(workspace_id, data.assigned_user_id)
         fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
-        return await self._uow.tasks.create(fields)
+        task = await self._uow.tasks.create(fields)
+        logger.info(
+            "task_created workspace_id=%s task_id=%s",
+            workspace_id,
+            task.id,
+        )
+        return task
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord:
         """Return a task in the workspace or raise not-found."""
@@ -63,9 +73,19 @@ class TaskService:
         )
         if task is None:
             raise TaskNotFoundError
+        logger.info(
+            "task_updated workspace_id=%s task_id=%s",
+            workspace_id,
+            task_id,
+        )
         return task
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
         """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
+        logger.info(
+            "task_deleted workspace_id=%s task_id=%s",
+            workspace_id,
+            task_id,
+        )

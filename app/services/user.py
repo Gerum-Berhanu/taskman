@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import EmailAlreadyRegisteredError
@@ -5,6 +7,9 @@ from app.core.security import get_password_hash
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.user import UserCreateData, UserRecord
 from app.schemas.user import UserCreate
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -18,8 +23,11 @@ class UserService:
 
         hashed_password = get_password_hash(data.password)
         try:
-            return await self._uow.users.create(UserCreateData(
+            user = await self._uow.users.create(UserCreateData(
                 email=data.email, hashed_password=hashed_password
             ))
         except IntegrityError:
             raise EmailAlreadyRegisteredError from None
+
+        logger.info("user_registered user_id=%s email=%s", user.id, user.email)
+        return user
