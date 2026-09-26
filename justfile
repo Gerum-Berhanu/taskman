@@ -3,19 +3,22 @@
 #
 # Config merge (in app/core/config.py): process env > env/.env.{TASKMAN_ENV} > env/.env
 # TASKMAN_ENV selects the profile (default: development).
-#
-# `$NAME=...` on a recipe is Just-native env export (works with any shell).
-# `set windows-shell` is required because Just still defaults to Unix `sh`.
+# `$NAME=...` on a recipe is Just-native env export (any shell).
+# `windows-shell` applies on Windows only (Just defaults to `sh` there otherwise).
 
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 default:
     @just --list
 
-# Clears orphaned reload workers left on the port by a previous dev session.
-[private]
+# Clear listeners on the port (orphaned uvicorn --reload workers).
+[windows]
 free-port port="8000":
     @powershell.exe -NoLogo -ExecutionPolicy Bypass -File scripts/free-port.ps1 -Port {{port}}
+
+[unix]
+free-port port="8000":
+    -@sh -c 'pids=$(lsof -t -iTCP:{{port}} -sTCP:LISTEN 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true'
 
 dev: free-port
     -uv run fastapi dev

@@ -76,23 +76,30 @@ just test              # fastapi dev on :8765 (TASKMAN_ENV=test)
 
 Authorize in `/docs` with a token from `POST /auth/login` (use email as username).
 
-### Dev server and port cleanup (Windows)
+### Dev server and port cleanup
 
-`fastapi dev` / uvicorn `--reload` runs a **parent watcher** plus a **child worker** that holds the listen socket. On Windows, a non-clean stop (closing the terminal, overlapping `just dev` sessions, forced kill) can leave the **worker orphaned**: the port still looks taken, but requests hang or fail.
+`fastapi dev` / uvicorn `--reload` runs a **parent watcher** plus a **child worker** that holds the listen socket. A non-clean stop can leave the worker orphaned so the port stays taken.
 
-`just dev` (and `just test` on `:8765`) therefore run a private `free-port` step first (`scripts/free-port.ps1`). It stops whoever is listening on that port **and** any child processes of that listener, then starts the app. You normally just run `just dev` — no extra flags.
+`just dev` (and `just test` on `:8765`) run a private `free-port` step first:
+- **Windows:** `scripts/free-port.ps1` (listener + child processes)
+- **Unix:** `lsof` + `kill` on the LISTEN pid(s)
 
 `just staging` / `just prod` use `fastapi run` (no reload) and do **not** free the port automatically.
 
-If the port is still stuck, inspect and kill manually in PowerShell:
+If the port is still stuck on Windows:
 
 ```powershell
 netstat -ano | findstr ":8000"
-# note the LISTENING PID in the last column, then:
 taskkill /PID <pid> /T /F
 ```
 
-`/T` kills the process tree (reloader parent and worker). Confirm with `netstat -ano | findstr ":8000"` again — no `LISTENING` line means the port is free. Use `:8765` (or another port) the same way when needed.
+On Unix:
+
+```bash
+lsof -iTCP:8000 -sTCP:LISTEN
+kill -9 <pid>
+```
+
 
 ## API (implemented)
 
