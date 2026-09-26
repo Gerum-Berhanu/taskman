@@ -1,4 +1,5 @@
 from datetime import timedelta
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +22,8 @@ from app.repositories.user import UserRecord
 from app.schemas.auth import Token
 from app.schemas.user import UserRead
 
+
+logger = logging.getLogger(__name__)
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
@@ -61,6 +64,7 @@ class AuthService:
 
         access_token = self.create_access_token(data={"sub": str(user.id)})
 
+        logger.info("user_login_succeeded user_id=%s", user.id)
         return Token(
             access_token=access_token,
             refresh_token=raw_token,
@@ -145,7 +149,13 @@ class AuthService:
         revoked = await self._uow.client_sessions.revoke(client_id=session.id)
         if not revoked:
             raise InvalidTokenError
-            
+
+        logger.info(
+            "user_logout user_id=%s session_id=%s",
+            session.user_id,
+            session.id,
+        )
+
     async def logout_all_user_sessions(self, token: str) -> None:
         """Revoke every client session for the user; reuse revokes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
@@ -161,7 +171,8 @@ class AuthService:
             await self._revoke_and_reject(session.id)
 
         await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
-        
+        logger.info("user_logout_all user_id=%s", session.user_id)
+
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:

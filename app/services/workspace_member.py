@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +14,9 @@ from app.repositories.workspace_member import (
     WorkspaceMemberRecord,
 )
 from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceMemberService:
@@ -42,9 +46,17 @@ class WorkspaceMemberService:
             role=new_membership.role.value,
         )
         try:
-            return await self._uow.workspace_members.create(fields)
+            created = await self._uow.workspace_members.create(fields)
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
+
+        logger.info(
+            "workspace_member_added workspace_id=%s member_id=%s role=%s",
+            workspace_id,
+            created.user_id,
+            created.role,
+        )
+        return created
 
     async def get(
         self, workspace_id: UUID, user_id: UUID

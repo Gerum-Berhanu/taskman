@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from app.core.exceptions import WorkspaceForbiddenError
@@ -6,6 +7,9 @@ from app.repositories import WorkspaceRecord
 from app.schemas.workspace import WorkspaceCreate
 from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 from app.services.workspace_member import WorkspaceMemberService
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceService:
@@ -22,6 +26,11 @@ class WorkspaceService:
                 user_id=user_id,
                 role=WorkspaceMemberRole.OWNER,
             ),
+        )
+        logger.info(
+            "workspace_created workspace_id=%s owner_id=%s",
+            workspace.id,
+            user_id,
         )
         return workspace
 
