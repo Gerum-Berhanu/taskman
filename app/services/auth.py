@@ -90,7 +90,7 @@ class AuthService:
     async def _revoke_and_reject(self, session_id: UUID) -> None:
         """Persist revocation, then fail the request (UoW would otherwise roll back)."""
         await self._uow.client_sessions.revoke(session_id)
-        await self._uow.session.commit()
+        await self._uow.commit()
         raise InvalidTokenError
 
     async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
