@@ -27,10 +27,13 @@ class WorkspaceService:
                 role=WorkspaceMemberRole.OWNER,
             ),
         )
-        logger.info(
-            "workspace_created workspace_id=%s owner_id=%s",
-            workspace.id,
-            user_id,
+        workspace_id = workspace.id
+        self._uow.after_commit(
+            lambda: logger.info(
+                "workspace_created workspace_id=%s owner_id=%s",
+                workspace_id,
+                user_id,
+            )
         )
         return workspace
 

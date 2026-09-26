@@ -51,13 +51,16 @@ class WorkspaceMemberService:
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
 
-        actor_ctx = current_user_id_ctx.get()
-        logger.info(
-            "workspace_member_added workspace_id=%s member_id=%s role=%s actor_id=%s",
-            workspace_id,
-            created.user_id,
-            created.role,
-            actor_ctx,
+        member_id, role = created.user_id, created.role
+        actor_id = current_user_id_ctx.get()
+        self._uow.after_commit(
+            lambda: logger.info(
+                "workspace_member_added workspace_id=%s member_id=%s role=%s actor_id=%s",
+                workspace_id,
+                member_id,
+                role,
+                actor_id,
+            )
         )
         return created
 
