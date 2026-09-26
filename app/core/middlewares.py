@@ -17,17 +17,23 @@ class AppMiddleware(BaseHTTPMiddleware):
     pass
 
 
+def _resolve_request_id(presented_id: str | None) -> UUID:
+    """Keep client X-Request-ID only if it is a UUID v4; otherwise generate one."""
+    if not presented_id:
+        return uuid4()
+    try:
+        parsed = UUID(presented_id)
+    except ValueError:
+        return uuid4()
+    if parsed.version != 4:
+        return uuid4()
+    return parsed
+
+
 class RequestIdMiddleware(AppMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Save a request id either from X-Request-ID header or newly generated"""
-        presented_id = request.headers.get("X-Request-ID")
-        if not presented_id:
-            request_id = uuid4()
-        else:
-            try:
-                request_id = UUID(presented_id, version=4)
-            except ValueError:
-                request_id = uuid4()
+        request_id = _resolve_request_id(request.headers.get("X-Request-ID"))
 
         rid = str(request_id)
         request.state.request_id = rid
