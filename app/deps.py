@@ -3,7 +3,7 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -66,11 +66,14 @@ WorkspaceMemberServiceDep = Annotated[
 
 
 async def get_current_user(
+    request: Request,
     token: Annotated[str, Depends(oauth2_scheme)],
     auth_service: AuthServiceDep
 ) -> AsyncGenerator[UserRead, None]:
     user = await auth_service.get_user_from_token(token)
-    actor_ctx = current_user_id_ctx.set(str(user.id))
+    actor_id = str(user.id)
+    request.state.actor_id = actor_id
+    actor_ctx = current_user_id_ctx.set(actor_id)
     try:
         yield user
     finally:
