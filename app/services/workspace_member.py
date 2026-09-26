@@ -8,6 +8,7 @@ from app.core.exceptions import (
     UserNotFoundError,
     WorkspaceForbiddenError,
 )
+from app.core.request_context import current_user_id_ctx
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.workspace_member import (
     WorkspaceMemberCreateData,
@@ -50,11 +51,13 @@ class WorkspaceMemberService:
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
 
+        actor_ctx = current_user_id_ctx.get()
         logger.info(
-            "workspace_member_added workspace_id=%s member_id=%s role=%s",
+            "workspace_member_added workspace_id=%s member_id=%s role=%s actor_id=%s",
             workspace_id,
             created.user_id,
             created.role,
+            actor_ctx,
         )
         return created
 

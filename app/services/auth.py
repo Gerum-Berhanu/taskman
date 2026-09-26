@@ -171,7 +171,7 @@ class AuthService:
             await self._revoke_and_reject(session.id)
 
         await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
-        logger.info("user_logout_all user_id=%s", session.user_id)
+        logger.info("user_logout_all user_id=%s session_id=%s", session.user_id, session.id)
 
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None

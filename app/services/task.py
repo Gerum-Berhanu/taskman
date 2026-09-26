@@ -6,6 +6,7 @@ from app.core.exceptions import (
     TaskNotFoundError,
     UserNotFoundError,
 )
+from app.core.request_context import current_user_id_ctx
 from app.database.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskUpdate
@@ -37,10 +38,12 @@ class TaskService:
         await self._validate_assignee(workspace_id, data.assigned_user_id)
         fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
         task = await self._uow.tasks.create(fields)
+        actor_ctx = current_user_id_ctx.get()
         logger.info(
-            "task_created workspace_id=%s task_id=%s",
+            "task_created workspace_id=%s task_id=%s actor_id=%s",
             workspace_id,
             task.id,
+            actor_ctx,
         )
         return task
 
@@ -73,10 +76,13 @@ class TaskService:
         )
         if task is None:
             raise TaskNotFoundError
+            
+        actor_ctx = current_user_id_ctx.get()
         logger.info(
-            "task_updated workspace_id=%s task_id=%s",
+            "task_updated workspace_id=%s task_id=%s actor_id=%s",
             workspace_id,
             task_id,
+            actor_ctx,
         )
         return task
 
@@ -84,8 +90,10 @@ class TaskService:
         """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
+        actor_ctx = current_user_id_ctx.get()
         logger.info(
-            "task_deleted workspace_id=%s task_id=%s",
+            "task_deleted workspace_id=%s task_id=%s actor_id=%s",
             workspace_id,
             task_id,
+            actor_ctx,
         )
