@@ -1,3 +1,5 @@
+# Taskman development commands
+
 # Cross-platform task runner: https://github.com/casey/just
 # Install: winget install Casey.Just  |  brew install just  |  cargo install just
 #
@@ -10,18 +12,13 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 default:
     @just --list
+    
+dev port="8000":
+    -uv run fastapi dev --port {{port}}
 
-# Clear listeners on the port (orphaned uvicorn --reload workers).
-[windows]
-free-port port="8000":
-    @powershell.exe -NoLogo -ExecutionPolicy Bypass -File scripts/free-port.ps1 -Port {{port}}
-
-[unix]
-free-port port="8000":
-    -@sh -c 'pids=$(lsof -t -iTCP:{{port}} -sTCP:LISTEN 2>/dev/null); [ -n "$pids" ] && kill -9 $pids || true'
-
-dev: free-port
-    -uv run fastapi dev
+# Run dev environment without automatic reload.
+run port="8000":
+    -uv run fastapi run --port {{port}}
 
 staging $TASKMAN_ENV="staging":
     -uv run fastapi run
@@ -29,8 +26,8 @@ staging $TASKMAN_ENV="staging":
 prod $TASKMAN_ENV="production":
     -uv run fastapi run
 
-test $TASKMAN_ENV="test": (free-port "8765")
-    -uv run fastapi dev --port 8765
+test port="8765" $TASKMAN_ENV="test":
+    -uv run fastapi dev --port {{port}}
 
 migrate:
     uv run alembic upgrade head
@@ -44,6 +41,5 @@ migrate-prod $TASKMAN_ENV="production":
 migrate-test $TASKMAN_ENV="test":
     uv run alembic upgrade head
 
-# Pytest uses its own SQLite DB via conftest (not env/.env.test).
 pytest:
     uv run pytest -q
