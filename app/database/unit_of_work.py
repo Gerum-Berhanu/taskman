@@ -26,17 +26,24 @@ class UnitOfWork:
         self._after_commit: list[Callable[[], None]] = []
 
     def after_commit(self, callback: Callable[[], None]) -> None:
-        """Run callback after a successful commit (skipped on rollback)."""
+        """Queue callback to run after a successful commit (skipped on rollback)."""
         self._after_commit.append(callback)
+
+    async def commit(self) -> None:
+        await self.session.commit()
+        for callback in self._after_commit:
+            callback()
+        self._after_commit.clear()
+
+    async def rollback(self) -> None:
+        await self.session.rollback()
+        self._after_commit.clear()
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         if exc_type is None:
-            await self.session.commit()
-            for callback in self._after_commit:
-                callback()
+            await self.commit()
         else:
-            await self.session.rollback()
-        self._after_commit.clear()
+            await self.rollback()
