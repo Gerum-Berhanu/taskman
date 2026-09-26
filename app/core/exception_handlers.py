@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import AppError
-from app.core.request_context import request_id_ctx
+from app.core.request_context import current_user_id_ctx, request_id_ctx
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
         rid = getattr(request.state, "request_id", "-")
         # put it back so the filter works for this log line
-        token = request_id_ctx.set(rid)
+        rid_ctx = request_id_ctx.set(rid)
         try:
             logger.error(
                 "unhandled_error path=%s",
@@ -37,7 +37,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 exc_info=True,
             )
         finally:
-            request_id_ctx.reset(token)
+            request_id_ctx.reset(rid_ctx)
 
         return JSONResponse(
             status_code=500,

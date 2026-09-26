@@ -31,13 +31,13 @@ class RequestIdMiddleware(AppMiddleware):
 
         rid = str(request_id)
         request.state.request_id = rid
-        token = request_id_ctx.set(rid)
+        rid_ctx = request_id_ctx.set(rid)
         try:
             response = await call_next(request)
             response.headers["X-Request-ID"] = rid
             return response
         finally:
-            request_id_ctx.reset(token)
+            request_id_ctx.reset(rid_ctx)
 
 
 class LogMiddleware(AppMiddleware):
