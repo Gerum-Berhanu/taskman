@@ -2,8 +2,13 @@ import logging
 import time
 from uuid import UUID, uuid4
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 
+from app.core.config import settings
+from app.core.rate_limit import hit_fixed_window
+from app.core.redis import redis_client
 from app.core.request_context import request_id_ctx
 
 
@@ -28,6 +33,31 @@ def _resolve_request_id(presented_id: str | None) -> UUID:
     if parsed.version != 4:
         return uuid4()
     return parsed
+
+
+class RateLimitMiddleware(AppMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if (
+            not settings.rate_limit_enabled
+            or request.url.path in _SKIP_OR_DEBUG
+        ):
+            return await call_next(request)
+
+        ip = request.client.host if request.client else "unknown"
+        result = await hit_fixed_window(
+            redis_client.get_redis(),
+            policy="default",
+            identity=ip,
+            limit=settings.rate_limit_requests,
+            window_seconds=settings.rate_limit_window_seconds,
+        )
+
+        if not result.allowed:
+            return JSONResponse(
+                {"detail": "Rate limit exceeded"}, 
+                status_code=HTTP_429_TOO_MANY_REQUESTS
+            )
+        return await call_next(request)
 
 
 class RequestIdMiddleware(AppMiddleware):

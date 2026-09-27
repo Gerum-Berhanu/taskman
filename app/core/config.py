@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
     log_file: bool = True
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 5
+    rate_limit_window_seconds: int = 10
 
     @field_validator("secret_key")
     @classmethod
