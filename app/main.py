@@ -11,6 +11,7 @@ from app.core.exception_handlers import register_exception_handlers
 from app.core.exceptions import FailedDatabaseConnection
 from app.core.log import setup_logging
 from app.core.middleware_registrar import register_middlewares
+from app.core.redis import redis_client
 from app.database.session import engine
 from app.deps import SessionDep
 
@@ -22,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await redis_client.init_redis()
     yield
+    await redis_client.close_redis()
     await engine.dispose()
 
 

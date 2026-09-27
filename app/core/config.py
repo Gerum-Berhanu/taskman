@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 5
     refresh_token_expire_minutes: int = 10_080  # 7 days
     database_url: str = "sqlite+aiosqlite:///./database.db"
+    redis_url: str = "redis://127.0.0.1:6379/0"
     log_level: str = "INFO"
     log_json: bool = False
     log_file: bool = True
