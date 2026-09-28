@@ -1,3 +1,5 @@
+name: taskman
+
 services:
   db:
     image: postgres:18.6
@@ -6,7 +8,7 @@ services:
       - ./env/env.compose/.env.staging
 
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pg_data:/var/lib/postgresql
 
     healthcheck:
       test:
@@ -27,6 +29,27 @@ services:
           cpus: "1.0"
           memory: 1G
 
+  redis:
+    image: redis:8.6
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
   api:
     build: .
 
@@ -34,7 +57,6 @@ services:
 
     ports:
       # Only this machine.
-      # Change to "8080:8000" only if direct external access is intentional.
       - "127.0.0.1:8080:8000"
 
     env_file:
@@ -43,11 +65,18 @@ services:
 
     environment:
       TASKMAN_ENV: staging
+      # Overrides localhost from env/.env.staging for the Compose network.
+      # POSTGRES_* / REDIS_* come from --env-file (see `just compose-staging`).
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
 
     depends_on:
       db:
         condition: service_healthy
-        restart: true # If db restarts, api is restarted too
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
 
     healthcheck:
       test:
@@ -71,4 +100,5 @@ services:
           memory: 1G
 
 volumes:
-  pgdata:
+  pg_data:
+  redis_data:
