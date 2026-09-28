@@ -41,5 +41,5 @@ migrate-prod $TASKMAN_ENV="production":
 migrate-test $TASKMAN_ENV="test":
     uv run alembic upgrade head
 
-pytest:
+pytest $TASKMAN_ENV="test":
     uv run pytest -q
