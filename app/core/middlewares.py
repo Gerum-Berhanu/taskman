@@ -67,8 +67,14 @@ class RateLimitMiddleware(AppMiddleware):
         )
 
         if not result.allowed:
+            logger.warning(
+                "rate_limit_exceeded policy=%s client=%s path=%s",
+                policy,
+                ip,
+                request.url.path,
+            )
             return JSONResponse(
-                {"detail": "Rate limit exceeded"}, 
+                {"detail": "Rate limit exceeded"},
                 status_code=HTTP_429_TOO_MANY_REQUESTS,
                 headers={"Retry-After": str(window_seconds)},
             )

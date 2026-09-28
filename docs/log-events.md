@@ -17,6 +17,7 @@ Put new high-value events in **services** (after a successful write). Keep tags 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
 | `http_access` | `INFO` (or `DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
+| `rate_limit_exceeded` | `WARNING` | Request blocked by Redis rate limiter (429) | `policy`, `client`, `path` |
 
 ---
 
