@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.status import HTTP_429_TOO_MANY_REQUESTS
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_429_TOO_MANY_REQUESTS
 
 from app.core.config import settings
 from app.core.rate_limit import hit_sliding_window
@@ -50,7 +50,13 @@ class RateLimitMiddleware(AppMiddleware):
         ):
             return await call_next(request)
 
-        ip = request.client.host if request.client else "unknown"
+        if not request.client:
+            return JSONResponse(
+                {"detail": "Unknown client address"},
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+
+        ip = request.client.host
         policy, limit, window_seconds = _select_policy(request)
         
         result = await hit_sliding_window(
