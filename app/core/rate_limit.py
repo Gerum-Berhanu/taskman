@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from uuid import uuid4
 
-from redis.asyncio import Redis
+from app.core.redis import redis_client
+from app.core.timeutils import utcnow
 
 
 @dataclass(frozen=True)
@@ -10,8 +12,8 @@ class RateLimitResult:
     limit: int
 
 
-async def hit_fixed_window(
-    redis: Redis, *, policy: str, identity: str, limit: int, window_seconds: int
+async def hit_sliding_window(
+    policy: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
     """
     redis: Redis client
@@ -23,8 +25,19 @@ async def hit_fixed_window(
     key: Custom construct to uniquely identify a client's rate status
     """
     key = f"rl:{policy}:{identity}"
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, window_seconds)
-    return RateLimitResult(allowed=count <= limit, count=count, limit=limit)
+    now_ms = int(utcnow().timestamp() * 1000)
+    window_ms = window_seconds * 1000
+    member = f"{now_ms}:{uuid4()}"
+
+    script = redis_client.sliding_window_script
+    allowed_flag, count = await script(
+        keys=[key],
+        args=[now_ms, window_ms, limit, member],
+    )
+    
+    return RateLimitResult(
+        allowed=bool(int(allowed_flag)),
+        count=int(count),
+        limit=limit,
+    )
     

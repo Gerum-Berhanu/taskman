@@ -7,8 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 
 from app.core.config import settings
-from app.core.rate_limit import hit_fixed_window
-from app.core.redis import redis_client
+from app.core.rate_limit import hit_sliding_window
 from app.core.request_context import request_id_ctx
 
 
@@ -44,8 +43,7 @@ class RateLimitMiddleware(AppMiddleware):
             return await call_next(request)
 
         ip = request.client.host if request.client else "unknown"
-        result = await hit_fixed_window(
-            redis_client.get_redis(),
+        result = await hit_sliding_window(
             policy="default",
             identity=ip,
             limit=settings.rate_limit_requests,
