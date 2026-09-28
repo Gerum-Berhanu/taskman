@@ -15,9 +15,6 @@ RUN groupadd --system --gid 10001 appuser \
         --home-dir /home/appuser \
         appuser
 
-# Switch to the non-root user
-USER 10001:10001
-
 # Copy dependency metadata first so Docker can cache dependency installation.
 COPY pyproject.toml uv.lock ./
 
@@ -26,10 +23,14 @@ COPY pyproject.toml uv.lock ./
 # --no-install-project is intentional because this repository runs directly
 # from source and does not currently define a separate build backend/package
 # configuration for installing the application itself.
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 # Copy application files and assign ownership to the non-root user.
 COPY --chown=10001:10001 . .
+
+# Only now switch to the non-root user
+USER 10001:10001
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
