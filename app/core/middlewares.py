@@ -12,6 +12,7 @@ from app.core.request_context import request_id_ctx
 
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
+_AUTH_PATH_PREFIX = "/auth"
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,13 @@ def _resolve_request_id(presented_id: str | None) -> UUID:
     return parsed
 
 
+def _select_policy(request: Request) -> tuple[str, int, int]:
+    """Returns (policy, limit, window_seconds)"""
+    if request.method == "POST" and request.url.path.startswith(_AUTH_PATH_PREFIX):
+        return ("auth", settings.rate_limit_auth_requests, settings.rate_limit_auth_window_seconds)
+    return ("default", settings.rate_limit_requests, settings.rate_limit_window_seconds)
+
+
 class RateLimitMiddleware(AppMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if (
@@ -43,17 +51,20 @@ class RateLimitMiddleware(AppMiddleware):
             return await call_next(request)
 
         ip = request.client.host if request.client else "unknown"
+        policy, limit, window_seconds = _select_policy(request)
+        
         result = await hit_sliding_window(
-            policy="default",
+            policy=policy,
             identity=ip,
-            limit=settings.rate_limit_requests,
-            window_seconds=settings.rate_limit_window_seconds,
+            limit=limit,
+            window_seconds=window_seconds,
         )
 
         if not result.allowed:
             return JSONResponse(
                 {"detail": "Rate limit exceeded"}, 
-                status_code=HTTP_429_TOO_MANY_REQUESTS
+                status_code=HTTP_429_TOO_MANY_REQUESTS,
+                headers={"Retry-After": str(window_seconds)},
             )
         return await call_next(request)
 
