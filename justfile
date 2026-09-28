@@ -46,14 +46,14 @@ pytest $TASKMAN_ENV="test":
 
 # Staging stack (Compose). --env-file supplies POSTGRES_* / REDIS_* for URL interpolation.
 compose-staging:
-    docker compose --env-file env/env.compose/.env.staging up -d --build
+    docker compose --env-file env/env-compose/.env.staging up -d --build
 
 # Production stack = staging base + compose.prod.yaml overrides.
 compose-prod:
-    docker compose --env-file env/env.compose/.env.production -f compose.yaml -f compose.prod.yaml up -d --build
+    docker compose --env-file env/env-compose/.env.production -f compose.yaml -f compose.prod.yaml up -d --build
 
 compose-staging-down:
-    docker compose --env-file env/env.compose/.env.staging down
+    docker compose --env-file env/env-compose/.env.staging down
 
 compose-prod-down:
-    docker compose --env-file env/env.compose/.env.production -f compose.yaml -f compose.prod.yaml down
+    docker compose --env-file env/env-compose/.env.production -f compose.yaml -f compose.prod.yaml down

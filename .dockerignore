@@ -7,11 +7,7 @@
 .cursor
 
 # Environment files and secrets
-.env
-.env.*
 env/
-!.env.example
-!env.example/
 
 # Python environments and caches
 .venv/

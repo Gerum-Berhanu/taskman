@@ -14,7 +14,7 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 
 ```bash
 uv sync
-cp -r env.example env          # Windows: Copy-Item -Recurse env.example env
+cp -r env-example env          # Windows: Copy-Item -Recurse env-example env
 # edit env/.env.development, REDIS_URL, DATABASE_URL, SECRET_KEY, etc.
 # start a local Redis that matches REDIS_URL (see below)
 uv run alembic upgrade head
@@ -24,7 +24,7 @@ uv run alembic upgrade head
 
 | Path | Role | Git? |
 |------|------|------|
-| `env.example/` | Templates (same layout as runtime) | Yes |
+| `env-example/` | Templates (same layout as runtime) | Yes |
 | `env/` | Real values (copy of templates, then edit) | No (`env/` is gitignored) |
 
 | File under `env/` | Role |
@@ -34,12 +34,12 @@ uv run alembic upgrade head
 | `.env.staging` | Staging overlay (host runs + Compose base) |
 | `.env.test` | Test overlay (`just pytest` / `just test`) |
 | `.env.production` | Production overlay |
-| `env.compose/.env.staging` | Compose-only Postgres/Redis vars for staging |
-| `env.compose/.env.production` | Compose-only Postgres/Redis vars for production |
+| `env-compose/.env.staging` | Compose-only Postgres/Redis vars for staging |
+| `env-compose/.env.production` | Compose-only Postgres/Redis vars for production |
 
 `config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile and defaults to `development` when unset.
 
-Compose stacks also pass `--env-file env/env.compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` can be interpolated into `DATABASE_URL` / `REDIS_URL` for the API container (host overlays keep `localhost` for Windows Postgres/Redis).
+Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` can be interpolated into `DATABASE_URL` / `REDIS_URL` for the API container (host overlays keep `localhost` for Windows Postgres/Redis).
 
 | Profile | Typical local `DATABASE_URL` | Typical local `REDIS_URL` |
 |---------|------------------------------|---------------------------|

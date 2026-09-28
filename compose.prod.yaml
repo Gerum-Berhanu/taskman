@@ -3,7 +3,7 @@
 services:
   db:
     env_file:
-      - ./env/env.compose/.env.production
+      - ./env/env-compose/.env.production
 
     volumes: !override
       - pg_data_prod:/var/lib/postgresql

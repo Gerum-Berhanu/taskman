@@ -4,7 +4,7 @@ The root README should answer:
 
 1. What Taskman is (one short paragraph)
 2. Requirements (Python / uv / Postgres / Redis / optional Just & Docker)
-3. Setup (`uv sync`, copy `env.example` → `env`, start Redis, migrate)
+3. Setup (`uv sync`, copy `env-example` → `env`, start Redis, migrate)
 4. How to run on the host (`just dev` / profile recipes) and via Compose
 5. How to run commands in containers (`docker compose exec` / `docker exec`)
 6. Where to try it (`/docs`)
