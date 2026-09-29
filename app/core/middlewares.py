@@ -59,12 +59,21 @@ class RateLimitMiddleware(AppMiddleware):
         ip = request.client.host
         policy, limit, window_seconds = _select_policy(request)
         
-        result = await hit_sliding_window(
-            policy=policy,
-            identity=ip,
-            limit=limit,
-            window_seconds=window_seconds,
-        )
+        try:
+            result = await hit_sliding_window(
+                policy=policy,
+                identity=ip,
+                limit=limit,
+                window_seconds=window_seconds,
+            )
+        except Exception: # broad Exception for now; later narrow to Redis/timeouts
+            logger.exception(
+                "rate_limit_backend_error policy=%s client=%s path=%s",
+                policy,
+                ip,
+                request.url.path,
+            )
+            return await call_next(request) # fail-open
 
         if not result.allowed:
             logger.warning(

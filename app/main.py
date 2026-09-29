@@ -23,9 +23,13 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await redis_client.init_redis()
+    try:
+        await redis_client.init_redis()
+    except Exception:
+        logger.exception("redis_unavailable_at_startup")
+        # log and continue with redis uninitialized (fail-open)
     yield
-    await redis_client.close_redis()
+    await redis_client.close_redis() # already no-ops if _client is None
     await engine.dispose()
 
 

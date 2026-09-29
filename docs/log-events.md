@@ -18,6 +18,15 @@ Put new high-value events in **services** (after a successful write). Keep tags 
 |-----|-------|------|--------|
 | `http_access` | `INFO` (or `DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
 | `rate_limit_exceeded` | `WARNING` | Request blocked by Redis rate limiter (429) | `policy`, `client`, `path` |
+| `rate_limit_backend_error` | `ERROR` (+ traceback) | Rate-limit backend failed; request allowed (fail-open) | `policy`, `client`, `path` |
+
+---
+
+## Infrastructure
+
+| Tag | Level | When | Fields |
+|-----|-------|------|--------|
+| `redis_unavailable_at_startup` | `ERROR` (+ traceback) | Redis init/ping failed during lifespan; app continues without Redis | — |
 
 ---
 

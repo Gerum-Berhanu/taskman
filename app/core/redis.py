@@ -8,8 +8,14 @@ class RedisClient:
         self._client: Redis | None = None # redis client
 
     async def init_redis(self) -> Redis:
-        self._client = Redis.from_url(settings.redis_url, decode_responses=True)
-        await self._client.ping()
+        client = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            await client.ping()
+        except Exception:
+            await client.aclose()
+            self._client = None
+            raise
+        self._client = client
         self._sliding_window = self._client.register_script(SLIDING_WINDOW)
         return self._client
 

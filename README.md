@@ -20,7 +20,7 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL 18+ (local profiles and Compose)
-- Redis 7+ / 8.x (rate limiting; app pings Redis on startup)
+- Redis 7+ / 8.x (rate limiting; preferred at startup, fail-open if unavailable)
 - Optional: [Just](https://github.com/casey/just), [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ## Setup
@@ -63,7 +63,7 @@ Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` 
 
 ## Redis before local API runs
 
-The app **connects to Redis during lifespan**. For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches that profile's `REDIS_URL` first (Docker example):
+The app **tries to connect to Redis during lifespan**. If that fails, the API still starts and rate limiting fails open (see [docs/rate-limiting.md](docs/rate-limiting.md)). For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches that profile's `REDIS_URL` first so limits actually apply (Docker example):
 
 ```powershell
 docker start redis_development   # or: docker run -d --name redis_development -p 6379:6379 redis:8.6
