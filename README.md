@@ -2,6 +2,19 @@
 
 REST API for workspace-scoped task management, built with FastAPI. JWT access tokens plus refresh-token sessions, SQLModel persistence, Alembic migrations, Redis-backed rate limiting, and role-based access on workspaces (`viewer` / `editor` / `owner`).
 
+## Contents
+
+- [Requirements](#requirements)
+- [Setup](#setup)
+  - [Environment files](#environment-files)
+- [Redis before local API runs](#redis-before-local-api-runs)
+- [Run (host)](#run-host)
+  - [Port already in use](#port-already-in-use)
+- [Run (Docker Compose)](#run-docker-compose)
+  - [Commands inside containers](#commands-inside-containers)
+- [API (implemented)](#api-implemented)
+- [Documentation](#documentation)
+
 ## Requirements
 
 - Python 3.12+
@@ -50,13 +63,13 @@ Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` 
 
 ## Redis before local API runs
 
-The app **connects to Redis during lifespan**. For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches that profile’s `REDIS_URL` first (Docker example):
+The app **connects to Redis during lifespan**. For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches that profile's `REDIS_URL` first (Docker example):
 
 ```powershell
 docker start redis_development   # or: docker run -d --name redis_development -p 6379:6379 redis:8.6
 ```
 
-Use a separate container/port per environment if you isolate Redis that way. Compose staging/prod start their own `redis` service — no manual container needed for those stacks.
+Use a separate container/port per environment if you isolate Redis that way. Compose staging/prod start their own `redis` service; no manual container needed for those stacks.
 
 ## Run (host)
 
@@ -142,10 +155,6 @@ docker exec <container_name_or_id> <command> <args>
 
 `exec` uses the **already-running** container environment (`DATABASE_URL`, `REDIS_URL`, etc.). You do not need `--env-file` on `exec` for that; `--env-file` matters for `up`/`build` interpolation in this project.
 
-## Rate limiting
-
-Redis sliding-window limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays). Auth `POST` routes use a tighter policy. Blocked requests return **429** with `Retry-After` and log `rate_limit_exceeded`. Pytest keeps limiting off globally; dedicated tests in `tests/test_rate_limit.py` turn it on via monkeypatch.
-
 ## API (implemented)
 
 | Area | Paths |
@@ -161,6 +170,7 @@ Full target spec (including not-yet-built pieces): [docs/project-requirements.md
 | Doc | Purpose |
 |-----|---------|
 | [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
+| [docs/rate-limiting.md](docs/rate-limiting.md) | Redis rate limiting |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
 | [docs/pr-guide.md](docs/pr-guide.md) | Pull request description guide |
 | [docs/log-events.md](docs/log-events.md) | Stable log event tags |
