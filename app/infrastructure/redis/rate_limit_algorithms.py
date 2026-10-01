@@ -16,7 +16,7 @@ class RateLimitResult:
     limit: int
 
 
-async def hit_sliding_window(
+async def hit_sliding_window_log(
     policy: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
     """Record a hit and return whether the identity is still under the limit.

@@ -9,7 +9,7 @@ Redis sliding-window limits apply when `RATE_LIMIT_ENABLED=true` (default in non
 | `app/http/middleware/rate_limit.py` | HTTP policy selection and 429 / fail-open responses |
 | `app/infrastructure/redis/rate_limit_algorithms.py` | Sliding-window hit helper |
 | `app/infrastructure/redis/client.py` | Redis client + registered Lua script |
-| `app/infrastructure/redis/scripts/sliding_window_rate_limit.lua` | Atomic window logic |
+| `app/infrastructure/redis/scripts/sliding_window_log.lua` | Atomic window logic |
 
 ## Fail-open on backend errors
 

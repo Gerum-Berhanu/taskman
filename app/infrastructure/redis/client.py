@@ -3,7 +3,7 @@
 from redis.asyncio import Redis
 
 from app.core.config import settings
-from app.infrastructure.redis.lua import SLIDING_WINDOW
+from app.infrastructure.redis.lua import SLIDING_WINDOW_LOG
 
 
 class RedisClient:
@@ -22,7 +22,7 @@ class RedisClient:
             self._client = None
             raise
         self._client = client
-        self._sliding_window = self._client.register_script(SLIDING_WINDOW)
+        self._sliding_window = self._client.register_script(SLIDING_WINDOW_LOG)
         return self._client
 
     async def close_redis(self) -> None:
