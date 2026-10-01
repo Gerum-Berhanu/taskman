@@ -3,6 +3,7 @@
 from app.repositories.client_session import ClientSessionRecord, ClientSessionRepository
 from app.repositories.refresh_token import RefreshTokenRecord, RefreshTokenRepository
 from app.repositories.task import TaskRecord, TaskRepository, TaskUpdateData
+from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.user import UserRecord, UserRepository
 from app.repositories.workspace import WorkspaceRecord, WorkspaceRepository
 from app.repositories.workspace_member import (
@@ -19,6 +20,7 @@ __all__ = [
     "TaskRecord",
     "TaskRepository",
     "TaskUpdateData",
+    "UnitOfWork",
     "UserRecord",
     "UserRepository",
     "WorkspaceMemberCreateData",

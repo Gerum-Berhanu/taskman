@@ -15,7 +15,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import app.models  # noqa: F401 — register models on metadata
 from app.core.security import hash_refresh_token
 from app.core.timeutils import utcnow
-from app.database.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork
 from app.deps import get_uow
 from app.main import app
 from app.models import ClientSession

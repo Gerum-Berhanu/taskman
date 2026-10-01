@@ -1240,7 +1240,7 @@ wheels = [
 ]
 
 [[package]]
-name = "task-mng"
+name = "taskman"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

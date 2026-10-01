@@ -7,13 +7,13 @@ from sqlmodel.sql.expression import select
 
 from app.api.v1 import auth, tasks, workspaces, workspace_members
 from app.core.config import settings
-from app.core.exception_handlers import register_exception_handlers
 from app.core.exceptions import FailedDatabaseConnection
-from app.core.log import setup_logging
-from app.core.middleware_registrar import register_middlewares
-from app.core.redis import redis_client
-from app.database.session import engine
 from app.deps import SessionDep
+from app.http.exception_handlers import register_exception_handlers
+from app.http.middleware.registry import register_middlewares
+from app.infrastructure.database.session import engine
+from app.infrastructure.redis.client import redis_client
+from app.observability.logging_setup import setup_logging
 
 
 setup_logging()

@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
-from app.database.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.user import UserCreateData, UserRecord
 from app.schemas.user import UserCreate
 

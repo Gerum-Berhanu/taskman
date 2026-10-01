@@ -1,11 +1,12 @@
 from redis.asyncio import Redis
+
 from app.core.config import settings
-from app.core.lua_scripts import SLIDING_WINDOW
+from app.infrastructure.redis.lua import SLIDING_WINDOW
 
 
 class RedisClient:
     def __init__(self):
-        self._client: Redis | None = None # redis client
+        self._client: Redis | None = None  # redis client
 
     async def init_redis(self) -> Redis:
         client = Redis.from_url(settings.redis_url, decode_responses=True)
@@ -37,4 +38,3 @@ class RedisClient:
 
 
 redis_client = RedisClient()
-        

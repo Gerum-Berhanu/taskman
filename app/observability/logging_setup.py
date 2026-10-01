@@ -19,7 +19,7 @@ _DATEFMT = "%Y-%m-%d %H:%M:%SZ"
 class RequestIdFilter(logging.Filter):
     # filters run before formatters
     def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = request_id_ctx.get() # get request_id associated with the current task
+        record.request_id = request_id_ctx.get()  # get request_id associated with the current task
         return True
 
 

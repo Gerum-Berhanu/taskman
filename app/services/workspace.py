@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 
 from app.core.exceptions import WorkspaceForbiddenError
-from app.database.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
 from app.schemas.workspace import WorkspaceCreate
 from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole

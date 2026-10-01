@@ -1,18 +1,20 @@
 # Log event tags
 
 Stable **message prefixes** (event tags) used in application logs.  
-Envelope fields (`timestamp`, `level`, `logger`, `request_id`) come from the logging setup — not listed here.
+Envelope fields (`timestamp`, `level`, `logger`, `request_id`) come from `app/observability/logging_setup.py` — not listed here.
 
 **Convention:** `snake_case_tag key=%s key=%s …`  
 **Ids:** UUIDs as strings. Use `actor_id=-` when no authenticated user is on the request.
 
-**Timing:** domain events are scheduled with `UnitOfWork.after_commit` and only emit after a successful commit (not on rollback).
+**Timing:** domain events are scheduled with `UnitOfWork.after_commit` (`app/repositories/unit_of_work.py`) and only emit after a successful commit (not on rollback).
 
 Put new high-value events in **services** (after a successful write). Keep tags stable so log search stays reliable.
 
 ---
 
 ## HTTP / middleware
+
+Handlers and middleware live under `app/http/` (`exception_handlers.py`, `middleware/`).
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|

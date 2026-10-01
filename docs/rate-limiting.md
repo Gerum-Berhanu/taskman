@@ -2,6 +2,15 @@
 
 Redis sliding-window limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays). Auth `POST` routes use a tighter policy. Blocked requests return **429** with `Retry-After` and log `rate_limit_exceeded`.
 
+## Layout
+
+| Path | Role |
+|------|------|
+| `app/http/middleware/rate_limit.py` | HTTP policy selection and 429 / fail-open responses |
+| `app/infrastructure/redis/rate_limit_algorithms.py` | Sliding-window hit helper |
+| `app/infrastructure/redis/client.py` | Redis client + registered Lua script |
+| `app/infrastructure/redis/scripts/sliding_window_rate_limit.lua` | Atomic window logic |
+
 ## Fail-open on backend errors
 
 Rate limiting is **not** on the critical path for API availability:

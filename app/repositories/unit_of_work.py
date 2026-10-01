@@ -1,18 +1,16 @@
-﻿"""Unit of Work: one transaction boundary for all repositories."""
+"""Unit of Work: one transaction boundary for all repositories."""
 
 import logging
 from collections.abc import Callable
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.repositories import (
-    ClientSessionRepository,
-    RefreshTokenRepository,
-    TaskRepository,
-    UserRepository,
-    WorkspaceMemberRepository,
-    WorkspaceRepository,
-)
+from app.repositories.client_session import ClientSessionRepository
+from app.repositories.refresh_token import RefreshTokenRepository
+from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
+from app.repositories.workspace import WorkspaceRepository
+from app.repositories.workspace_member import WorkspaceMemberRepository
 
 
 logger = logging.getLogger(__name__)

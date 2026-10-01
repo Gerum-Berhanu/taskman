@@ -7,7 +7,7 @@ from app.core.exceptions import (
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
-from app.database.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskUpdate
 

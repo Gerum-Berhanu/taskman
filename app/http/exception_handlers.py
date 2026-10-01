@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import AppError
-from app.core.request_context import current_user_id_ctx, request_id_ctx
+from app.core.request_context import request_id_ctx
 
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         actor_id = getattr(request.state, "actor_id", "-")
-        
+
         log_fn = logger.warning if exc.status_code < 500 else logger.error
         log_fn(
             "app_error status=%s detail=%s path=%s actor_id=%s",
@@ -50,4 +50,3 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=500,
             content={"detail": "Internal server error"},
         )
-        

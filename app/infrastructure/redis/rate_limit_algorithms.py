@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from uuid import uuid4
 
-from app.core.redis import redis_client
 from app.core.timeutils import utcnow
+from app.infrastructure.redis.client import redis_client
 
 
 @dataclass(frozen=True)
@@ -16,7 +16,6 @@ async def hit_sliding_window(
     policy: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
     """
-    redis: Redis client
     policy: Rule set to apply ("default" vs "auth")
     identity: Client IP
     limit: Allowed number of requests
@@ -34,10 +33,9 @@ async def hit_sliding_window(
         keys=[key],
         args=[now_ms, window_ms, limit, member],
     )
-    
+
     return RateLimitResult(
         allowed=bool(int(allowed_flag)),
         count=int(count),
         limit=limit,
     )
-    

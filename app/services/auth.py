@@ -15,7 +15,7 @@ from app.core.security import (
     verify_password,
 )
 from app.core.timeutils import ensure_utc, utcnow
-from app.database.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork
 from app.repositories import ClientSessionRecord, RefreshTokenRecord
 from app.repositories.refresh_token import RefreshTokenCreateData
 from app.repositories.user import UserRecord
