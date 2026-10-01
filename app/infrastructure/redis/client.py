@@ -1,16 +1,20 @@
 """Async Redis client wrapper used for rate limiting."""
 
+from typing import get_args
+
 from redis.asyncio import Redis
 from redis.commands.core import AsyncScript
 
 from app.core.config import settings
+from app.infrastructure.redis.lua import LUA_SCRIPTS, LuaScriptName
 
 
 class RedisClient:
     """Process-wide Redis connection and registered Lua scripts."""
 
-    def __init__(self):
-        self._client: Redis | None = None  # redis client
+    def __init__(self) -> None:
+        self._client: Redis | None = None
+        self.scripts: dict[LuaScriptName, AsyncScript] = {}
 
     async def init_redis(self, redis_url: str = settings.redis_url) -> Redis:
         """Connect, ping, and register Lua scripts; raise if Redis is unreachable."""
@@ -22,6 +26,7 @@ class RedisClient:
             self._client = None
             raise
         self._client = client
+        self._register_scripts(LUA_SCRIPTS)
         return self._client
 
     async def close_redis(self) -> None:
@@ -29,18 +34,21 @@ class RedisClient:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
-            
+        self.scripts = {}
+
     @property
-    def get_redis(self) -> Redis:
+    def get_redis_client(self) -> Redis:
         """Return the live client or raise if not initialized."""
         if self._client is None:
             raise RuntimeError("Redis is not initialized")
         return self._client
 
-    def register_script(self, script_text: str) -> AsyncScript:
-        client = self.get_redis
-        self._script = client.register_script(script_text)
-        return self._script
+    def _register_scripts(self, lua_scripts: dict[LuaScriptName, str]) -> None:
+        client = self.get_redis_client
+        self.scripts = {
+            name: client.register_script(lua_scripts[name])
+            for name in get_args(LuaScriptName)
+        }
 
 
 redis_client = RedisClient()

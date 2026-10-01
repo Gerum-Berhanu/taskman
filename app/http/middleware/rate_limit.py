@@ -8,7 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_429_TOO_MANY_REQUESTS
 
 from app.core.config import settings
-from app.infrastructure.redis.rate_limit_algorithms import hit_sliding_window_log
+from app.infrastructure.redis.rate_limit_algorithms import hit_sliding_window_counter
 
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
@@ -44,7 +44,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         policy, limit, window_seconds = _select_policy(request)
 
         try:
-            result = await hit_sliding_window_log(
+            result = await hit_sliding_window_counter(
                 policy=policy,
                 identity=ip,
                 limit=limit,

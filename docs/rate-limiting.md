@@ -1,15 +1,19 @@
 # Rate limiting
 
-Redis sliding-window limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays). Auth `POST` routes use a tighter policy. Blocked requests return **429** with `Retry-After` and log `rate_limit_exceeded`.
+Redis **sliding-window counter** limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays). Auth `POST` routes use a tighter policy. Blocked requests return **429** with `Retry-After` and log `rate_limit_exceeded`.
+
+Redis keys look like `rl_sliding_window_counter:{policy}:{identity}` (e.g. `…:default:testclient`).
 
 ## Layout
 
 | Path | Role |
 |------|------|
 | `app/http/middleware/rate_limit.py` | HTTP policy selection and 429 / fail-open responses |
-| `app/infrastructure/redis/rate_limit_algorithms.py` | Sliding-window hit helper |
-| `app/infrastructure/redis/client.py` | Redis client + registered Lua script |
-| `app/infrastructure/redis/scripts/sliding_window_log.lua` | Atomic window logic |
+| `app/infrastructure/redis/rate_limit_algorithms.py` | Hit helpers (`hit_sliding_window_counter` is what middleware uses) |
+| `app/infrastructure/redis/client.py` | Redis client + registered Lua scripts |
+| `app/infrastructure/redis/lua.py` | Declared script names and packaged source loading |
+| `app/infrastructure/redis/scripts/sliding_window_counter.lua` | Active approximate counter (fixed cycles + weighted previous bucket) |
+| `app/infrastructure/redis/scripts/sliding_window_log.lua` | Alternate exact log/ZSET algorithm (kept for comparison; not used by middleware) |
 
 ## Fail-open on backend errors
 

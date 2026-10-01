@@ -12,7 +12,11 @@ from app.core.config import settings
 def _flush_testclient_rate_keys() -> None:
     client = Redis.from_url(settings.redis_url, decode_responses=True)
     try:
-        client.delete("rl:default:testclient", "rl:auth:testclient")
+        # Keys match rate_limit_algorithms._hit: rl_{script_name}:{policy}:{identity}
+        client.delete(
+            "rl_sliding_window_counter:default:testclient",
+            "rl_sliding_window_counter:auth:testclient",
+        )
     finally:
         client.close()
 
