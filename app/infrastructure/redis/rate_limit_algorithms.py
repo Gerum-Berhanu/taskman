@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.core.timeutils import utcnow
 from app.infrastructure.redis.client import redis_client
+from app.infrastructure.redis.lua import SLIDING_WINDOW_LOG
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ async def hit_sliding_window_log(
     window_ms = window_seconds * 1000
     member = f"{now_ms}:{uuid4()}"
 
-    script = redis_client.sliding_window_script
+    script = redis_client.register_script(SLIDING_WINDOW_LOG)
     allowed_flag, count = await script(
         keys=[key],
         args=[now_ms, window_ms, limit, member],
