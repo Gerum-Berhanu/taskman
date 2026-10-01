@@ -1,20 +1,15 @@
 """HTTP middleware that enforces Redis-backed rate limits."""
 
-import logging
-
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_429_TOO_MANY_REQUESTS
 
 from app.core.config import settings
 from app.core.rate_limit_policies import select_middleware_fallback_policy
-from app.infrastructure.redis.rate_limit_algorithms import hit_sliding_window_counter
+from app.http.rate_limit import evaluate_rate_limit, get_explicit_route_policy_name
 
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
-
-logger = logging.getLogger(__name__)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -27,41 +22,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        if not request.client:
-            return JSONResponse(
-                {"detail": "Unknown client address"},
-                status_code=HTTP_400_BAD_REQUEST,
-            )
+        explicit_route_policy = get_explicit_route_policy_name(request)
+        if explicit_route_policy is not None:
+            return await call_next(request)
 
-        ip = request.client.host
         policy = select_middleware_fallback_policy(request.method, request.url.path)
-
-        try:
-            result = await hit_sliding_window_counter(
-                policy=policy.name,
-                identity=ip,
-                limit=policy.limit,
-                window_seconds=policy.window_seconds,
-            )
-        except Exception:  # broad Exception for now; later narrow to Redis/timeouts
-            logger.exception(
-                "rate_limit_backend_error policy=%s client=%s path=%s",
-                policy.name,
-                ip,
-                request.url.path,
-            )
-            return await call_next(request)  # fail-open
-
-        if not result.allowed:
-            logger.warning(
-                "rate_limit_exceeded policy=%s client=%s path=%s",
-                policy.name,
-                ip,
-                request.url.path,
-            )
+        violation = await evaluate_rate_limit(request, policy)
+        if violation is not None:
             return JSONResponse(
-                {"detail": "Rate limit exceeded"},
-                status_code=HTTP_429_TOO_MANY_REQUESTS,
-                headers={"Retry-After": str(policy.window_seconds)},
+                {"detail": violation.detail},
+                status_code=violation.status_code,
+                headers=violation.headers,
             )
         return await call_next(request)
