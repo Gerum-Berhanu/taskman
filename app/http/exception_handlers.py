@@ -1,3 +1,5 @@
+"""Map application and unexpected errors to JSON HTTP responses."""
+
 import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -10,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    """Attach AppError and catch-all Exception handlers to the FastAPI app."""
+
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         actor_id = getattr(request.state, "actor_id", "-")

@@ -17,6 +17,8 @@ _DATEFMT = "%Y-%m-%d %H:%M:%SZ"
 
 
 class RequestIdFilter(logging.Filter):
+    """Attach the current request id onto each log record."""
+
     # filters run before formatters
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = request_id_ctx.get()  # get request_id associated with the current task
@@ -24,6 +26,8 @@ class RequestIdFilter(logging.Filter):
 
 
 class JsonFormatter(logging.Formatter):
+    """Format log records as single-line JSON objects."""
+
     def format(self, record: logging.LogRecord) -> str:
         payload = {
             "timestamp": self.formatTime(record, self.datefmt),
@@ -38,6 +42,7 @@ class JsonFormatter(logging.Formatter):
 
 
 def _build_formatter() -> logging.Formatter:
+    """Build the text or JSON formatter based on settings."""
     if settings.log_json:
         formatter: logging.Formatter = JsonFormatter(datefmt=_DATEFMT)
     else:
@@ -50,6 +55,7 @@ def _build_formatter() -> logging.Formatter:
 
 
 def setup_logging() -> None:
+    """Configure root handlers, formatters, and noisy third-party log levels."""
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(settings.log_level)

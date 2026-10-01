@@ -1,3 +1,5 @@
+"""User registration application services."""
+
 import logging
 
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class UserService:
+    """Register new users."""
+
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 

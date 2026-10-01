@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class UnitOfWork:
+    """One DB transaction with repository accessors and after-commit hooks."""
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.users = UserRepository(session)
@@ -32,6 +34,7 @@ class UnitOfWork:
         self._after_commit.append(callback)
 
     async def commit(self) -> None:
+        """Commit the session, then run queued after-commit callbacks."""
         try:
             await self.session.commit()
         except Exception:
@@ -53,6 +56,7 @@ class UnitOfWork:
                 logger.exception("after_commit_failed")
 
     async def rollback(self) -> None:
+        """Roll back the session and discard pending after-commit callbacks."""
         try:
             await self.session.rollback()
         finally:

@@ -11,6 +11,8 @@ from starlette.status import (
 
 
 class AppError(Exception):
+    """Base domain error carrying HTTP status, detail, and optional headers."""
+
     status_code: int = 500
     detail: str = "Internal server error"
     headers: dict[str, str] | None = None

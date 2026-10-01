@@ -1,3 +1,5 @@
+"""Workspace application services."""
+
 import logging
 from uuid import UUID
 
@@ -13,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class WorkspaceService:
+    """Create and fetch workspaces."""
+
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
         self._members = WorkspaceMemberService(uow)

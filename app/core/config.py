@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppEnv(StrEnum):
+    """Deployed application environment names."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     TEST = "test"
@@ -15,6 +17,7 @@ class AppEnv(StrEnum):
 
 
 def _resolve_app_env() -> AppEnv:
+    """Resolve TASKMAN_ENV into an AppEnv, defaulting to development."""
     raw = os.getenv("TASKMAN_ENV", AppEnv.DEVELOPMENT.value)
     try:
         return AppEnv(raw)

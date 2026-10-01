@@ -1,3 +1,5 @@
+"""HTTP middleware that emits structured access logs per request."""
+
 import logging
 import time
 
@@ -11,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class LogMiddleware(BaseHTTPMiddleware):
+    """Log method, path, status, and duration after each response."""
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.perf_counter()
         response = await call_next(request)

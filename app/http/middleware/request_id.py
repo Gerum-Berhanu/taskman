@@ -1,3 +1,5 @@
+"""HTTP middleware that binds a UUID request id onto each request."""
+
 from uuid import UUID, uuid4
 
 from fastapi import Request, Response
@@ -20,8 +22,10 @@ def _resolve_request_id(presented_id: str | None) -> UUID:
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
+    """Propagate a request id via context, request.state, and response header."""
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Save a request id either from X-Request-ID header or newly generated"""
+        """Save a request id either from X-Request-ID header or newly generated."""
         request_id = _resolve_request_id(request.headers.get("X-Request-ID"))
 
         rid = str(request_id)

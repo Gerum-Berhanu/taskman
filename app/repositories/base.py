@@ -1,9 +1,13 @@
+"""Shared repository helpers for flush/refresh and ORM-to-record mapping."""
+
 from pydantic import BaseModel
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
 class BaseRepository:
+    """Thin base holding the session and common persistence helpers."""
+
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 

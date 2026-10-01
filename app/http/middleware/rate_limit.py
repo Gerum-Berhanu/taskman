@@ -1,3 +1,5 @@
+"""HTTP middleware that enforces Redis-backed rate limits."""
+
 import logging
 
 from fastapi import Request, Response
@@ -16,13 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 def _select_policy(request: Request) -> tuple[str, int, int]:
-    """Returns (policy, limit, window_seconds)"""
+    """Pick (policy, limit, window_seconds) for this request."""
     if request.method == "POST" and request.url.path.startswith(_AUTH_PATH_PREFIX):
         return ("auth", settings.rate_limit_auth_requests, settings.rate_limit_auth_window_seconds)
     return ("default", settings.rate_limit_requests, settings.rate_limit_window_seconds)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Reject over-limit clients with 429; fail open if Redis errors."""
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if (
             not settings.rate_limit_enabled

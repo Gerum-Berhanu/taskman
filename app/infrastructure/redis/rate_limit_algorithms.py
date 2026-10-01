@@ -1,3 +1,5 @@
+"""Redis sliding-window rate-limit algorithm helpers."""
+
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -7,6 +9,8 @@ from app.infrastructure.redis.client import redis_client
 
 @dataclass(frozen=True)
 class RateLimitResult:
+    """Outcome of one sliding-window rate-limit check."""
+
     allowed: bool
     count: int
     limit: int
@@ -15,7 +19,8 @@ class RateLimitResult:
 async def hit_sliding_window(
     policy: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
-    """
+    """Record a hit and return whether the identity is still under the limit.
+
     policy: Rule set to apply ("default" vs "auth")
     identity: Client IP
     limit: Allowed number of requests

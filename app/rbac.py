@@ -1,3 +1,5 @@
+"""Workspace RBAC helpers and FastAPI dependency for minimum role checks."""
+
 from typing import Annotated
 
 from fastapi import Path
@@ -16,10 +18,13 @@ _ROLE_RANK: dict[WorkspaceMemberRole, int] = {
 
 
 def role_at_least(actual: WorkspaceMemberRole, required: WorkspaceMemberRole) -> bool:
+    """Return True if actual role meets or exceeds the required rank."""
     return _ROLE_RANK[actual] >= _ROLE_RANK[required]
 
 
 class RequireRole:
+    """Dependency that rejects callers below a minimum workspace role."""
+
     def __init__(self, minimum: WorkspaceMemberRole) -> None:
         self.minimum = minimum
 

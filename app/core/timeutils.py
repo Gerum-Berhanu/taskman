@@ -1,3 +1,5 @@
+"""UTC datetime helpers and a SQLAlchemy UTC column type."""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime

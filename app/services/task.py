@@ -1,3 +1,5 @@
+"""Workspace-scoped task application services."""
+
 import logging
 from uuid import UUID
 
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class TaskService:
+    """Create, read, update, and delete tasks within a workspace."""
+
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 

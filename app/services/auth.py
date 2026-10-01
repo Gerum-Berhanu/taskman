@@ -1,3 +1,5 @@
+"""Authentication, token issuance, and session lifecycle."""
+
 from datetime import timedelta
 import logging
 from typing import Any
@@ -29,6 +31,8 @@ _DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
 class AuthService:
+    """Login, refresh, logout, and access-token validation."""
+
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
