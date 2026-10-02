@@ -78,7 +78,6 @@ def get_explicit_route_policy_name(request: Request) -> str | None:
             policy_name = getattr(dependency.call, "__rate_limit_policy_name__", None)
             if policy_name is not None:
                 return policy_name
-        return None
     return None
 
 

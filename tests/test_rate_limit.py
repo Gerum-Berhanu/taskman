@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from redis import Redis
+from starlette.requests import Request
 
 import app.core.rate_limit_policies as rate_limit_policies
 from app.core.config import settings
@@ -15,6 +17,8 @@ from app.core.rate_limit_policies import (
     TASK_WRITES_POLICY,
     RateLimitPolicy,
 )
+from app.http.dependencies.rate_limit import rate_limit
+from app.http.rate_limit import get_explicit_route_policy_name
 
 
 def _flush_testclient_rate_keys() -> None:
@@ -263,3 +267,34 @@ def test_fail_open_when_rate_limit_backend_errors(
         headers=headers,
     )
     assert route_policy_response.status_code == 200
+
+
+def test_explicit_policy_found_when_earlier_full_match_has_none() -> None:
+    """Param routes can FULL-match before a more specific route with a policy."""
+    app = FastAPI()
+
+    @app.get("/items/{item_id}")
+    async def by_id(item_id: str) -> dict[str, str]:
+        return {"item_id": item_id}
+
+    @app.get("/items/special", dependencies=[rate_limit(AUTH_POLICY)])
+    async def special() -> dict[str, bool]:
+        return {"special": True}
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/items/special",
+        "raw_path": b"/items/special",
+        "query_string": b"",
+        "headers": [],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+        "app": app,
+    }
+    request = Request(scope)
+
+    assert get_explicit_route_policy_name(request) == AUTH_POLICY
