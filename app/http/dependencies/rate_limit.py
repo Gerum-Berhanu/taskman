@@ -1,6 +1,7 @@
 """Reusable named rate-limit dependency for route and router policies."""
 
 from fastapi import Depends, HTTPException, Request
+from fastapi.params import Depends as DependsMarker
 
 from app.core.config import settings
 from app.core.rate_limit_policies import get_rate_limit_policy
@@ -28,6 +29,6 @@ class RateLimit:
         )
 
 
-def rate_limit(policy_name: str) -> Depends:
+def rate_limit(policy_name: str) -> DependsMarker:
     """Build a dependency marker for a named policy."""
     return Depends(RateLimit(policy_name))
