@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
@@ -17,9 +17,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserCreateResponse, status_code=HTTP_201_CREATED)
 async def register_user(
-    user_in: UserCreate, user_service: UserServiceDep
+    user_in: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
 ) -> UserCreateResponse:
-    user = await user_service.register(user_in)
+    user = await user_service.register(user_in, bg_tasks)
     return UserCreateResponse(id=user.id, email=user.email)
 
 
