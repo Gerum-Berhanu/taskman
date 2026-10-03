@@ -2,14 +2,16 @@
 
 Use short Conventional Commits:
 
-- `feat:` new user-facing capability
+- `feat:` new **user-facing** capability (API/behavior clients can use)
 - `fix:` bug fix
 - `refactor:` improve structure or clarity without changing behavior
 - `style:` rename or cosmetic consistency only — no behavior or structure change
 - `docs:` documentation only
 - `test:` tests only
 - `chore:` tooling, scaffold, deps
-- `wip:` incomplete work not ready to merge (feature branches only)
+- `wip:` branch-only progress — green building blocks **or** unfinished work; not merge material as-is
+
+**`feat:` vs `wip:`:** `feat` only when the capability ships (e.g. endpoint works). Schema/repo/helpers with no public behavior yet → `wip` on the feature branch; squash or rewrite into a real `feat` / `docs` / `test` before `main`.
 
 **`style:` vs `refactor:`:** use `style:` for renames and surface consistency (e.g. handler names matching a domain prefix). Use `refactor:` when you move code, split modules, change layering, or reshape APIs internally — even if behavior stays the same.
 
@@ -21,8 +23,6 @@ Examples:
 - `refactor: move task routes into APIRouter and DRY 404 handling`
 - `style: rename workspace create handler to create_workspace`
 - `docs: explain how to run the API`
-- `wip: add ClientSession and RefreshToken models`
+- `wip: add task status aggregate and summary schema`
 
 Prefer one focused change per commit.
-
-Use `wip:` on feature branches when you land new pieces that are not fully integrated or green yet. Before merging to `main`, prefer coherent `feat:` / `refactor:` / `style:` / etc. commits (squash or rewrite `wip:` commits as needed).
