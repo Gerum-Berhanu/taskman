@@ -11,7 +11,7 @@ from app.core.exceptions import (
 from app.core.request_context import current_user_id_ctx
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
-from app.schemas.task import TaskCreate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskSummaryRead, TaskUpdate
 
 
 logger = logging.getLogger(__name__)
@@ -108,3 +108,12 @@ class TaskService:
                 actor_id,
             )
         )
+
+    async def summary(self, workspace_id: UUID) -> dict[str, UUID | int]:
+        status_count = await self._uow.tasks.count_by_status(workspace_id)
+        summary = {
+            "workspace_id": workspace_id,
+            "total": sum(status_count.values()),
+            **status_count,
+        }
+        return summary

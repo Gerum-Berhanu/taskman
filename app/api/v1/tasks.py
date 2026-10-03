@@ -7,7 +7,7 @@ from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from app.rbac import RequireRole
 from app.repositories.task import TaskRecord
 from app.deps import TaskServiceDep, get_current_user
-from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.schemas.workspace_member import WorkspaceMemberRole
 
 router = APIRouter(
@@ -32,6 +32,13 @@ async def create_task(
     new_task: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
 ) -> TaskRecord:
     return await task_service.create(new_task, workspace_id)
+
+
+@router.get(
+    "/summary", response_model=TaskSummaryRead, dependencies=[Depends(RequireRole(VIEWER))]
+)
+async def get_summary(workspace_id: UUID4, service: TaskServiceDep) -> dict[str, UUID4 | int]:
+    return await service.summary(workspace_id)
 
 
 @router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])

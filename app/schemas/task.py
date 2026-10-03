@@ -37,3 +37,11 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     due_date: datetime | None = None
     assigned_user_id: UUID4 | None = None
+
+
+class TaskSummaryRead(BaseModel):
+    workspace_id: UUID4
+    total: int
+    pending: int
+    in_progress: int
+    completed: int

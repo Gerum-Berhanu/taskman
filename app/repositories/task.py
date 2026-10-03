@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
-from sqlmodel import col, select
+from sqlmodel import col, func, select
 
 from app.core import timeutils as tu
 from app.models.task import Task
@@ -100,3 +100,16 @@ class TaskRepository(BaseRepository):
         await self._session.delete(task)
         await self._session.flush()
         return True
+
+    async def count_by_status(self, workspace_id: UUID) -> dict[str, int]:
+        statement = (
+            select(Task.status, func.count())
+            .where(Task.workspace_id == workspace_id)
+            .group_by(col(Task.status))
+        )
+        result = await self._session.exec(statement)
+        counts = {status: 0 for status in ("pending", "in_progress", "completed")}
+        for status, n in result.all():
+            if status in counts:
+                counts[status] = int(n)
+        return counts
