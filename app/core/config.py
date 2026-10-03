@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     rate_limit_auth_window_seconds: int = 60
     rate_limit_requests: int = 100
     rate_limit_window_seconds: int = 60
+    email_enabled: bool = False
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = ""
 
     @field_validator("secret_key")
     @classmethod
