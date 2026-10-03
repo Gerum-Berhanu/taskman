@@ -2,6 +2,7 @@
 
 | File | Purpose |
 |------|---------|
+| [caching.md](caching.md) | Task summary Redis cache (TTL, keys, fail-open, invalidation) |
 | [commit-messages.md](commit-messages.md) | How we write git commits |
 | [email.md](email.md) | Welcome email via SMTP (after_commit + BackgroundTasks) |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
@@ -19,6 +20,6 @@
 | `app/http/` | Exception handlers and middleware |
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | SMTP mailer + email templates |
-| `app/infrastructure/redis/` | Redis client, rate-limit algorithms, Lua scripts |
+| `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |
 | `app/repositories/` | Persistence repos + `UnitOfWork` |
 | `app/services/`, `app/api/`, `app/models/`, `app/schemas/` | Domain services, routes, models, schemas |

@@ -1,4 +1,4 @@
-"""Async Redis client wrapper used for rate limiting."""
+"""Async Redis client wrapper (rate limiting, task-summary cache, …)."""
 
 from typing import get_args
 

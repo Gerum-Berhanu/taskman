@@ -29,6 +29,7 @@ Handlers and middleware live under `app/http/` (`exception_handlers.py`, `middle
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
 | `redis_unavailable_at_startup` | `ERROR` (+ traceback) | Redis init/ping failed during lifespan; app continues without Redis | — |
+| `cache_backend_error` | `ERROR` (+ traceback) | Task-summary Redis get/set/delete failed; request continued (fail-open) | `op`, `key` (and `workspace_id` on delete) |
 
 ---
 
@@ -86,5 +87,5 @@ Login/refresh failures show up as `app_error`, not separate service tags.
 ## Not logged as domain events
 
 - Successful token refresh  
-- `GET` list/detail reads  
+- `GET` list/detail reads (including summary cache hit/miss)  
 - Failed login / invalid refresh (covered by `app_error`)
