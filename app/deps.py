@@ -26,7 +26,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
 
 
 async def get_uow(session: SessionDep) -> AsyncGenerator[UnitOfWork, None]:
@@ -35,7 +35,7 @@ async def get_uow(session: SessionDep) -> AsyncGenerator[UnitOfWork, None]:
         yield uow
 
 
-UowDep = Annotated[UnitOfWork, Depends(get_uow)]
+UowDep = Annotated[UnitOfWork, Depends(get_uow, scope="function")]
 
 
 def get_task_service(uow: UowDep) -> TaskService:
