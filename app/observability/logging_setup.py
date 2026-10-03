@@ -81,8 +81,10 @@ def setup_logging() -> None:
         file_handler.addFilter(rid_filter)
         root.addHandler(file_handler)
 
-    # logger.debug() don't spam when root is at DEBUG level
+    # logger.debug() external packages won't spam when root is at DEBUG level
+    # because they do logger.debug() but their logger's level only logs out above WARNING
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("redis.asyncio.connection").setLevel(logging.WARNING)
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
