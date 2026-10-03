@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     email_from: str = ""
+    task_summary_cache_ttl_seconds: int = 300 # 5 minutes
 
     @field_validator("secret_key")
     @classmethod

@@ -9,6 +9,7 @@ from app.core.exceptions import (
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
+from app.infrastructure.redis.cache import get_json, set_json, task_summary_key
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskSummaryRead, TaskUpdate
@@ -110,10 +111,29 @@ class TaskService:
         )
 
     async def summary(self, workspace_id: UUID) -> dict[str, UUID | int]:
+        key = task_summary_key(workspace_id)
+
+        try:
+            cached = await get_json(key)
+            if cached is not None:
+                # cached workspace_id is a str; response_model coerces to UUID4
+                return cached
+        except Exception:
+            logger.exception("cache_backend_error op=get key=%s", key)
+
         status_count = await self._uow.tasks.count_by_status(workspace_id)
         summary = {
             "workspace_id": workspace_id,
             "total": sum(status_count.values()),
             **status_count,
         }
+
+        try:
+            await set_json(
+                key,
+                {**summary, "workspace_id": str(workspace_id)},
+            )
+        except Exception:
+            logger.exception("cache_backend_error op=set key=%s", key)
+
         return summary
