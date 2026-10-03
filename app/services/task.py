@@ -3,13 +3,15 @@
 import logging
 from uuid import UUID
 
+from pydantic import UUID4
+
 from app.core.exceptions import (
     AssigneeNotInWorkspaceError,
     TaskNotFoundError,
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
-from app.infrastructure.redis.cache import get_json, set_json, task_summary_key
+from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task_summary_key
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
 from app.schemas.task import TaskCreate, TaskSummaryRead, TaskUpdate
@@ -25,7 +27,7 @@ class TaskService:
         self._uow = uow
 
     async def _validate_assignee(
-        self, workspace_id: UUID, assigned_user_id: UUID | None
+        self, workspace_id: UUID, assigned_user_id: UUID4 | None
     ) -> None:
         """Ensure an assignee exists and belongs to the workspace (no-op if None)."""
         if assigned_user_id is None:
@@ -53,6 +55,7 @@ class TaskService:
                 actor_id,
             )
         )
+        await self._invalidate_summary(workspace_id)
         return task
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord:
@@ -94,6 +97,7 @@ class TaskService:
                 actor_id,
             )
         )
+        await self._invalidate_summary(workspace_id)
         return task
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
@@ -109,6 +113,7 @@ class TaskService:
                 actor_id,
             )
         )
+        await self._invalidate_summary(workspace_id)
 
     async def summary(self, workspace_id: UUID) -> dict[str, UUID | int]:
         key = task_summary_key(workspace_id)
@@ -137,3 +142,15 @@ class TaskService:
             logger.exception("cache_backend_error op=set key=%s", key)
 
         return summary
+
+    async def _invalidate_summary(self, workspace_id: UUID) -> None:
+        """Early invalidate is fine (worst case: extra DB read if commit fails)."""
+        key = task_summary_key(workspace_id)
+        try:
+            await delete_keys(key)
+        except Exception:
+            logger.exception(
+                "cache_backend_error op=delete key=%s workspace_id=%s",
+                key,
+                workspace_id,
+            )
