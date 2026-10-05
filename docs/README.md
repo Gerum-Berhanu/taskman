@@ -4,7 +4,7 @@
 |------|---------|
 | [caching.md](caching.md) | Task summary Redis cache (TTL, keys, fail-open, invalidation) |
 | [commit-messages.md](commit-messages.md) | How we write git commits |
-| [email.md](email.md) | Welcome email via SMTP (after_commit + BackgroundTasks) |
+| [email.md](email.md) | SMTP + Jinja HTML (welcome email, task CSV export) |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
 | [log-events.md](log-events.md) | Log event tags (`http_access`, `rate_limit_exceeded`, domain events, …) |
 | [project-requirements.md](project-requirements.md) | Capstone project spec (target system) |

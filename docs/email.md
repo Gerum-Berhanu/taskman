@@ -16,6 +16,30 @@ After a successful `POST /auth/register` commit, Taskman sends a welcome email i
 
 `send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on SMTP success/failure it logs `email_sent` / `email_send_failed` and never raises (registration stays 201).
 
+## Task export email
+
+A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/export`. The API responds immediately with **202 Accepted** and **no response body**. Heavy work runs afterward in a FastAPI `BackgroundTasks` job.
+
+### Flow
+
+1. `TaskService.export` schedules `run_tasks_export` on `BackgroundTasks` with the requester’s email and `actor_id` from request context.
+2. The HTTP response is sent (202) before the background job runs.
+3. `run_tasks_export` opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so SMTP stays off the event loop.
+4. On success the worker logs `task_export_sent`. Any load/CSV/worker failure logs `task_export_failed` with traceback; the client already got 202 (fail-soft).
+
+Unlike registration, export does not use `after_commit` — the request path does not persist export state.
+
+### Message shape
+
+| Item | Value |
+|------|--------|
+| Subject | `Taskman export [{workspace_id}]` |
+| Body | HTML from `tasks_export.html` (extends `base.html`) |
+| Attachment | `tasks-{workspace_id}.csv` (`text/csv`) |
+| CSV columns | `id`, `title`, `description`, `status`, `due_date`, `assigned_user_id`, `created_at`, `updated_at` (ISO datetimes, empty cells for nulls) |
+
+Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_skipped`) is unchanged and lives in `send_mail`.
+
 ## Layout
 
 | Path | Role |
@@ -25,7 +49,11 @@ After a successful `POST /auth/register` commit, Taskman sends a welcome email i
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
 | `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
+| `app/infrastructure/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
+| `app/infrastructure/export/task_export.py` | Background worker (`run_tasks_export`) |
 | `app/services/user.py` | `after_commit` + background welcome send |
+| `app/services/task.py` | Schedules export background job |
+| `app/api/v1/tasks.py` | `POST …/tasks/export` → 202 |
 
 ## Env
 

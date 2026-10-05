@@ -82,6 +82,8 @@ Login/refresh failures show up as `app_error`, not separate service tags.
 | `task_created` | `INFO` | Task created | `workspace_id`, `task_id`, `actor_id` |
 | `task_updated` | `INFO` | Task updated | `workspace_id`, `task_id`, `actor_id` |
 | `task_deleted` | `INFO` | Task deleted | `workspace_id`, `task_id`, `actor_id` |
+| `task_export_sent` | `INFO` | Export worker finished (CSV built + mailer invoked) | `workspace_id`, `email`, `actor_id`, `subject` |
+| `task_export_failed` | `ERROR` (+ traceback) | Export worker failed after the client received 202 | `workspace_id`, `email`, `actor_id` |
 
 ---
 
