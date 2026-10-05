@@ -1,12 +1,12 @@
 """Tasks HTTP endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import UUID4
-from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from app.rbac import RequireRole
 from app.repositories.task import TaskRecord
-from app.deps import TaskServiceDep, get_current_user
+from app.deps import CurrentUserDep, TaskServiceDep, get_current_user
 from app.schemas.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.schemas.workspace_member import WorkspaceMemberRole
 
@@ -39,6 +39,24 @@ async def create_task(
 )
 async def get_summary(workspace_id: UUID4, service: TaskServiceDep) -> dict[str, UUID4 | int]:
     return await service.summary(workspace_id)
+
+
+@router.get(
+    "/export", 
+    status_code=HTTP_202_ACCEPTED, 
+    dependencies=[Depends(RequireRole(VIEWER))]
+)
+async def export_tasks(
+    workspace_id: UUID4, 
+    service: TaskServiceDep,
+    current_user: CurrentUserDep,
+    bg_tasks: BackgroundTasks,
+) -> None:
+    await service.export(
+        workspace_id,
+        to_email=current_user.email,
+        bg_tasks=bg_tasks,
+    )
 
 
 @router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])

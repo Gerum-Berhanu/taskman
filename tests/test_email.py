@@ -22,7 +22,7 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
     smtp_cm.__exit__.return_value = None
 
     with patch("app.infrastructure.email.smtp.smtplib.SMTP", return_value=smtp_cm) as smtp_cls:
-        send_mail(to="to@example.com", subject="Hello", body="Body text")
+        send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
     smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=30)
     smtp_instance.starttls.assert_called_once_with()
@@ -32,14 +32,15 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
     assert sent_msg["Subject"] == "Hello"
     assert sent_msg["From"] == "from@example.com"
     assert sent_msg["To"] == "to@example.com"
-    assert sent_msg.get_content().strip() == "Body text"
+    assert sent_msg.get_content_type() == "text/html"
+    assert "<p>Body text</p>" in sent_msg.get_content()
 
 
 def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", False)
 
     with patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls:
-        send_mail(to="to@example.com", subject="Hello", body="Body text")
+        send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
     smtp_cls.assert_not_called()
 
@@ -56,7 +57,7 @@ def test_send_mail_swallows_smtp_errors(monkeypatch: pytest.MonkeyPatch) -> None
         "app.infrastructure.email.smtp.smtplib.SMTP",
         side_effect=OSError("SMTP down"),
     ):
-        send_mail(to="to@example.com", subject="Hello", body="Body text")
+        send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
 
 def test_send_welcome_email_loads_template_and_returns_subject(
@@ -64,10 +65,10 @@ def test_send_welcome_email_loads_template_and_returns_subject(
 ) -> None:
     captured: dict[str, str] = {}
 
-    def _fake_send_mail(*, to: str, subject: str, body: str) -> None:
+    def _fake_send_mail(*, to: str, subject: str, html: str) -> None:
         captured["to"] = to
         captured["subject"] = subject
-        captured["body"] = body
+        captured["html"] = html
 
     monkeypatch.setattr("app.infrastructure.email.smtp.send_mail", _fake_send_mail)
 
@@ -76,8 +77,9 @@ def test_send_welcome_email_loads_template_and_returns_subject(
     assert subject == "Welcome to Taskman"
     assert captured["to"] == "new@example.com"
     assert captured["subject"] == "Welcome to Taskman"
-    assert "We are happy to welcome you to Taskman!" in captured["body"]
-    assert "Your account is ready." in captured["body"]
+    assert "We are happy to welcome you to Taskman!" in captured["html"]
+    assert "Your account is ready." in captured["html"]
+    assert "<style>" in captured["html"]
 
 
 def test_register_schedules_welcome_email(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

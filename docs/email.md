@@ -1,8 +1,12 @@
-# Welcome email (SMTP)
+# Email (SMTP + Jinja HTML)
 
-After a successful `POST /auth/register` commit, Taskman sends a plain-text welcome email in a FastAPI `BackgroundTasks` job.
+Taskman sends HTML emails over SMTP. Bodies are Jinja2 templates under `app/infrastructure/email/templates/`, with shared layout and CSS in `base.html`.
 
-## Flow
+## Welcome email
+
+After a successful `POST /auth/register` commit, Taskman sends a welcome email in a FastAPI `BackgroundTasks` job.
+
+### Flow
 
 1. `UserService.register` creates the user and queues work with `UnitOfWork.after_commit`.
 2. One callback logs `user_registered`.
@@ -17,8 +21,10 @@ After a successful `POST /auth/register` commit, Taskman sends a plain-text welc
 | Path | Role |
 |------|------|
 | `app/core/config.py` | `EMAIL_*` / `SMTP_*` settings |
-| `app/infrastructure/email/smtp.py` | Sync `smtplib` send helpers (`email_enabled` + transport logs) |
-| `app/infrastructure/email/templates/welcome.txt` | Welcome body copy |
+| `app/infrastructure/email/smtp.py` | Sync `smtplib` send helpers + Jinja render (`email_enabled` + transport logs) |
+| `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
+| `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
+| `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
 | `app/services/user.py` | `after_commit` + background welcome send |
 
 ## Env

@@ -3,6 +3,7 @@
 import logging
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from pydantic import UUID4
 
 from app.core.exceptions import (
@@ -11,6 +12,7 @@ from app.core.exceptions import (
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
+from app.infrastructure.export.task_export import run_tasks_export
 from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task_summary_key
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
@@ -154,3 +156,18 @@ class TaskService:
                 key,
                 workspace_id,
             )
+
+    async def export(
+        self,
+        workspace_id: UUID,
+        *,
+        to_email: str,
+        bg_tasks: BackgroundTasks,
+    ) -> None:
+        actor_id = current_user_id_ctx.get()
+        bg_tasks.add_task(
+            run_tasks_export,
+            workspace_id=workspace_id,
+            to_email=to_email,
+            actor_id=actor_id,
+        )

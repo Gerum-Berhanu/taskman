@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Taskman export{% endblock %}
+{% block content %}
+  <h1>Your export is ready</h1>
+  <p class="lede">Your workspace task export is attached as a CSV file.</p>
+  <p>Open the attachment to review titles, statuses, due dates, and assignees for this workspace.</p>
+  <div class="meta">
+    Workspace · <strong>{{ workspace_id }}</strong>
+  </div>
+{% endblock %}
