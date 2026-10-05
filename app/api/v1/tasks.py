@@ -1,6 +1,6 @@
 """Tasks HTTP endpoints."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
@@ -41,22 +41,24 @@ async def get_summary(workspace_id: UUID4, service: TaskServiceDep) -> dict[str,
     return await service.summary(workspace_id)
 
 
-@router.get(
-    "/export", 
-    status_code=HTTP_202_ACCEPTED, 
-    dependencies=[Depends(RequireRole(VIEWER))]
+@router.post(
+    "/export",
+    status_code=HTTP_202_ACCEPTED,
+    response_class=Response,
+    dependencies=[Depends(RequireRole(VIEWER))],
 )
 async def export_tasks(
-    workspace_id: UUID4, 
+    workspace_id: UUID4,
     service: TaskServiceDep,
     current_user: CurrentUserDep,
     bg_tasks: BackgroundTasks,
-) -> None:
+) -> Response:
     await service.export(
         workspace_id,
         to_email=current_user.email,
         bg_tasks=bg_tasks,
     )
+    return Response(status_code=HTTP_202_ACCEPTED)
 
 
 @router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])
