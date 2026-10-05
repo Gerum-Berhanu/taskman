@@ -43,14 +43,6 @@ class UserService:
         )
 
         self._uow.after_commit(
-            lambda: bg_tasks.add_task(self._bg_welcome_email, email)
+            lambda: bg_tasks.add_task(send_welcome_email, email)
         )
         return user
-
-    def _bg_welcome_email(self, email: str):
-        try:
-            subject = send_welcome_email(email)
-        except Exception:
-            logger.exception("email_send_failed email=%s", email)
-            return
-        logger.info("email_sent email=%s subject=%s", email, repr(subject))

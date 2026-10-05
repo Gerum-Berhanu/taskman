@@ -60,8 +60,9 @@ Login/refresh failures show up as `app_error`, not separate service tags.
 | `user_login_succeeded` | `INFO` | Login issued tokens | `user_id` |
 | `user_logout` | `INFO` | One session revoked | `user_id`, `session_id` |
 | `user_logout_all` | `INFO` | All user sessions revoked | `user_id`, `session_id` |
-| `email_sent` | `INFO` | Welcome email accepted by SMTP (after commit, background task) | `email`, `subject` |
-| `email_send_failed` | `ERROR` (+ traceback) | Welcome email send raised after commit (registration still succeeded) | `email` |
+| `email_sent` | `INFO` | SMTP accepted the message (`send_mail`) | `email`, `subject` |
+| `email_send_failed` | `ERROR` (+ traceback) | SMTP send raised; caller path still succeeds | `email`, `subject` |
+| `email_skipped` | `INFO` | `EMAIL_ENABLED=false`; no SMTP attempt | `email`, `reason`, `subject` |
 
 ---
 

@@ -1,7 +1,5 @@
 """Welcome-email mailer and register hook tests (no real SMTP)."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +9,7 @@ from app.infrastructure.email.smtp import send_mail, send_welcome_email
 
 
 def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
@@ -34,6 +33,30 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
     assert sent_msg["From"] == "from@example.com"
     assert sent_msg["To"] == "to@example.com"
     assert sent_msg.get_content().strip() == "Body text"
+
+
+def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", False)
+
+    with patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls:
+        send_mail(to="to@example.com", subject="Hello", body="Body text")
+
+    smtp_cls.assert_not_called()
+
+
+def test_send_mail_swallows_smtp_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_password", "secret")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_from", "from@example.com")
+
+    with patch(
+        "app.infrastructure.email.smtp.smtplib.SMTP",
+        side_effect=OSError("SMTP down"),
+    ):
+        send_mail(to="to@example.com", subject="Hello", body="Body text")
 
 
 def test_send_welcome_email_loads_template_and_returns_subject(
@@ -75,18 +98,24 @@ def test_register_schedules_welcome_email(client: TestClient, monkeypatch: pytes
     assert calls == ["welcome@example.com"]
 
 
-def test_register_succeeds_when_welcome_email_fails(
+def test_register_succeeds_when_smtp_fails(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def _raise_send_welcome(to: str) -> str:
-        raise RuntimeError("SMTP down")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_password", "secret")
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_from", "from@example.com")
 
-    monkeypatch.setattr("app.services.user.send_welcome_email", _raise_send_welcome)
-
-    response = client.post(
-        "/auth/register",
-        json={"email": "still-created@example.com", "password": "password123"},
-    )
+    with patch(
+        "app.infrastructure.email.smtp.smtplib.SMTP",
+        side_effect=OSError("SMTP down"),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={"email": "still-created@example.com", "password": "password123"},
+        )
 
     assert response.status_code == 201, response.text
     assert response.json()["email"] == "still-created@example.com"
