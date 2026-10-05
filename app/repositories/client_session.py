@@ -17,10 +17,10 @@ class ClientSessionRecord(BaseModel):
 
     id: UUID4
     user_id: UUID4
-    active_token_id: UUID4 | None
-    revoked_at: datetime | None
+    active_token_id: UUID4 | None = None
+    revoked_at: datetime | None = None
     created_at: datetime
-    rotated_at: datetime | None
+    rotated_at: datetime | None = None
     expires_at: datetime
 
 

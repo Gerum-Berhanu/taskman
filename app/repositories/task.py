@@ -16,13 +16,13 @@ class TaskRecord(BaseModel):
 
     id: UUID4
     title: str
-    description: str | None
+    description: str | None = None
     status: str
-    due_date: datetime | None
+    due_date: datetime | None = None
     workspace_id: UUID4
-    assigned_user_id: UUID4 | None
+    assigned_user_id: UUID4 | None = None
     created_at: datetime
-    updated_at: datetime | None
+    updated_at: datetime | None = None
 
 
 class TaskCreateData(BaseModel):
