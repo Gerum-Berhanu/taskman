@@ -34,10 +34,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.app_name, 
-    version="0.1.0", 
+    title=settings.app_name,
+    version="0.1.0",
     debug=settings.debug,
-    lifespan=lifespan
+    lifespan=lifespan,
+    **settings.docs_kwargs,
 )
 register_exception_handlers(app)
 register_middlewares(app)

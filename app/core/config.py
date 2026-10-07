@@ -2,6 +2,7 @@
 
 from enum import StrEnum
 import os
+from typing import TypedDict
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,6 +15,14 @@ class AppEnv(StrEnum):
     STAGING = "staging"
     TEST = "test"
     PRODUCTION = "production"
+
+
+class FastAPIDocsKwargs(TypedDict, total=False):
+    """Optional FastAPI constructor kwargs that control docs/OpenAPI routes."""
+
+    docs_url: str | None
+    redoc_url: str | None
+    openapi_url: str | None
 
 
 def _resolve_app_env() -> AppEnv:
@@ -40,6 +49,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Taskman"
+    app_env: AppEnv = _APP_ENV
     debug: bool = False
     secret_key: str = ""
     algorithm: str = "HS256"
@@ -69,6 +79,13 @@ class Settings(BaseSettings):
         if not value:
             raise ValueError("SECRET_KEY must be set in environment or .env file")
         return value
+
+    @property
+    def docs_kwargs(self) -> FastAPIDocsKwargs:
+        """FastAPI docs/OpenAPI URLs; empty in development (framework defaults)."""
+        if self.app_env == AppEnv.DEVELOPMENT:
+            return {}
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
 
 settings = Settings()
