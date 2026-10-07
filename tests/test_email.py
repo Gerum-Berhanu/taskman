@@ -1,4 +1,4 @@
-"""Welcome-email mailer and register hook tests (no real SMTP)."""
+"""Welcome-email mailer and register hook tests (no real SMTP/Resend)."""
 
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +10,7 @@ from app.infrastructure.email.smtp import send_mail, send_welcome_email
 
 def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
@@ -36,17 +37,50 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
     assert "<p>Body text</p>" in sent_msg.get_content()
 
 
-def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", False)
+def test_send_mail_uses_resend_when_api_key_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "re_test_key")
+    monkeypatch.setattr(
+        "app.infrastructure.email.smtp.settings.resend_from",
+        "onboarding@resend.dev",
+    )
 
-    with patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls:
+    with (
+        patch(
+            "app.infrastructure.email.resend_transport.resend.Emails.send",
+            return_value={"id": "msg_1"},
+        ) as send,
+        patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls,
+    ):
         send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
     smtp_cls.assert_not_called()
+    send.assert_called_once_with(
+        {
+            "from": "onboarding@resend.dev",
+            "to": ["to@example.com"],
+            "subject": "Hello",
+            "html": "<p>Body text</p>",
+        }
+    )
+
+
+def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", False)
+
+    with (
+        patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls,
+        patch("app.infrastructure.email.smtp.send_via_resend") as resend_send,
+    ):
+        send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
+
+    smtp_cls.assert_not_called()
+    resend_send.assert_not_called()
 
 
 def test_send_mail_swallows_smtp_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
@@ -104,6 +138,7 @@ def test_register_succeeds_when_smtp_fails(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
     monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")

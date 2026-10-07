@@ -1,6 +1,13 @@
-# Email (SMTP + Jinja HTML)
+# Email (Resend / SMTP + Jinja HTML)
 
-Taskman sends HTML emails over SMTP. Bodies are Jinja2 templates under `app/infrastructure/email/templates/`, with shared layout and CSS in `base.html`.
+Taskman sends HTML emails. Bodies are Jinja2 templates under `app/infrastructure/email/templates/`, with shared layout and CSS in `base.html`.
+
+Transport is chosen in `send_mail`:
+
+1. If `RESEND_API_KEY` is set → **Resend HTTPS** (official `resend` Python SDK)
+2. Otherwise → **SMTP** (`smtplib` + STARTTLS)
+
+Use Resend on hosts that block outbound SMTP (e.g. Render free web services). Keep SMTP for local development if you prefer.
 
 ## Welcome email
 
@@ -14,7 +21,7 @@ After a successful `POST /auth/register` commit, Taskman sends a welcome email i
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent. That way `add_task` lands on `BackgroundTasks` in time.
 5. After the 201 is sent, Starlette runs the background task → `send_welcome_email` → `send_mail`.
 
-`send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on SMTP success/failure it logs `email_sent` / `email_send_failed` and never raises (registration stays 201).
+`send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on success/failure it logs `email_sent` / `email_send_failed` and never raises (registration stays 201).
 
 ## Task export email
 
@@ -24,7 +31,7 @@ A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/
 
 1. `TaskService.export` schedules `run_tasks_export` on `BackgroundTasks` with the requester’s email and `actor_id` from request context.
 2. The HTTP response is sent (202) before the background job runs.
-3. `run_tasks_export` opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so SMTP stays off the event loop.
+3. `run_tasks_export` opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so the sync mailer stays off the event loop.
 4. On success the worker logs `task_export_sent`. Any load/CSV/worker failure logs `task_export_failed` with traceback; the client already got 202 (fail-soft).
 
 Unlike registration, export does not use `after_commit` — the request path does not persist export state.
@@ -44,8 +51,9 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 
 | Path | Role |
 |------|------|
-| `app/core/config.py` | `EMAIL_*` / `SMTP_*` settings |
-| `app/infrastructure/email/smtp.py` | Sync `smtplib` send helpers + Jinja render (`email_enabled` + transport logs) |
+| `app/core/config.py` | `EMAIL_*` / `RESEND_*` / `SMTP_*` settings |
+| `app/infrastructure/email/smtp.py` | `send_mail` router + Jinja helpers (`email_enabled` + transport logs) |
+| `app/infrastructure/email/resend_transport.py` | Sync Resend SDK send |
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
 | `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
@@ -59,17 +67,21 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 
 | Variable | Purpose |
 |----------|---------|
-| `EMAIL_ENABLED` | Master switch for all SMTP sends (`false` in test). Enforced in `send_mail`. |
-| `SMTP_HOST` | SMTP host (e.g. `smtp.gmail.com`) |
+| `EMAIL_ENABLED` | Master switch for all sends (`false` in test). Enforced in `send_mail`. |
+| `RESEND_API_KEY` | When set, send via Resend HTTPS instead of SMTP |
+| `RESEND_FROM` | From address for Resend (default `onboarding@resend.dev`) |
+| `SMTP_HOST` | SMTP host (e.g. `smtp.gmail.com`); used when Resend key is empty |
 | `SMTP_PORT` | SMTP port (e.g. `587` for STARTTLS) |
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASSWORD` | SMTP password / Gmail App Password |
-| `EMAIL_FROM` | From address on outgoing messages |
+| `EMAIL_FROM` | From address for SMTP sends |
 
-Put real secrets only in local `env/.env.*` (gitignored). `env-example/` keeps placeholders.
+On Render free: set `EMAIL_ENABLED=true` and `RESEND_API_KEY`. Resend uses `RESEND_FROM` (defaults to `onboarding@resend.dev`). SMTP vars can stay unset.
+
+Put real secrets only in local `env/.env.*` (gitignored) or the host’s secret store. `env-example/` keeps placeholders.
 
 ## Tests
 
-Pytest keeps email off in the test overlay. Dedicated tests mock SMTP / the welcome helper so CI never hits a real mailbox.
+Pytest keeps email off in the test overlay. Dedicated tests mock SMTP / Resend / the welcome helper so CI never hits a real mailbox.
 
 See also: [log-events.md](log-events.md) (`email_sent`, `email_send_failed`, `email_skipped`).

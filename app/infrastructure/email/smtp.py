@@ -1,4 +1,4 @@
-"""Sync SMTP helpers (feature flag + transport logging live here)."""
+"""Email send helpers (feature flag + transport logging live here)."""
 
 from email.message import EmailMessage
 import logging
@@ -7,6 +7,7 @@ import smtplib
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from app.core.config import settings
+from app.infrastructure.email.resend_transport import send_via_resend
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ _env = Environment(
 )
 
 
-def send_mail(
+def _send_via_smtp(
     *,
     to: str,
     subject: str,
@@ -27,15 +28,7 @@ def send_mail(
     attachment_bytes: bytes | None = None,
     attachment_mime: str = "text/csv",
 ) -> None:
-    """Send one HTML message. No-op when email is disabled; never raises."""
-    if not settings.email_enabled:
-        logger.info(
-            "email_skipped email=%s reason=email_disabled subject=%s",
-            to,
-            repr(subject),
-        )
-        return
-
+    """Send one HTML message over SMTP. Raises on transport failure."""
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = settings.email_from or settings.smtp_user
@@ -51,11 +44,52 @@ def send_mail(
             filename=attachment_filename,
         )
 
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
+        smtp.starttls()
+        smtp.login(settings.smtp_user, settings.smtp_password)
+        smtp.send_message(msg)
+
+
+def send_mail(
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    attachment_filename: str | None = None,
+    attachment_bytes: bytes | None = None,
+    attachment_mime: str = "text/csv",
+) -> None:
+    """Send one HTML message. No-op when email is disabled; never raises.
+
+    Prefers Resend HTTPS when ``RESEND_API_KEY`` is set; otherwise SMTP.
+    """
+    if not settings.email_enabled:
+        logger.info(
+            "email_skipped email=%s reason=email_disabled subject=%s",
+            to,
+            repr(subject),
+        )
+        return
+
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
-            smtp.starttls()
-            smtp.login(settings.smtp_user, settings.smtp_password)
-            smtp.send_message(msg)
+        if settings.resend_api_key:
+            send_via_resend(
+                to=to,
+                subject=subject,
+                html=html,
+                attachment_filename=attachment_filename,
+                attachment_bytes=attachment_bytes,
+                attachment_mime=attachment_mime,
+            )
+        else:
+            _send_via_smtp(
+                to=to,
+                subject=subject,
+                html=html,
+                attachment_filename=attachment_filename,
+                attachment_bytes=attachment_bytes,
+                attachment_mime=attachment_mime,
+            )
     except Exception:
         logger.exception(
             "email_send_failed email=%s subject=%s",
