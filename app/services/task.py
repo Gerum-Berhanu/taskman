@@ -36,16 +36,16 @@ class TaskService:
             return
         if await self._uow.users.get(assigned_user_id) is None:
             raise UserNotFoundError
-        member = await self._uow.workspace_members.get(
+        membership = await self._uow.workspace_members.get(
             workspace_id, assigned_user_id
         )
-        if member is None:
+        if membership is None:
             raise AssigneeNotInWorkspaceError
 
-    async def create(self, data: TaskCreate, workspace_id: UUID) -> TaskRecord:
+    async def create(self, payload: TaskCreate, workspace_id: UUID) -> TaskRecord:
         """Create a task in the workspace after validating the optional assignee."""
-        await self._validate_assignee(workspace_id, data.assigned_user_id)
-        fields = TaskCreateData(**data.model_dump(), workspace_id=workspace_id)
+        await self._validate_assignee(workspace_id, payload.assigned_user_id)
+        fields = TaskCreateData(**payload.model_dump(), workspace_id=workspace_id)
         task = await self._uow.tasks.create(fields)
         task_id = task.id
         actor_id = current_user_id_ctx.get()
@@ -72,13 +72,13 @@ class TaskService:
         return await self._uow.tasks.list_all(workspace_id)
 
     async def update(
-        self, workspace_id: UUID, task_id: UUID, data: TaskUpdate
+        self, workspace_id: UUID, task_id: UUID, payload: TaskUpdate
     ) -> TaskRecord:
         """Update a task; exist-check before assignee validation."""
         if await self._uow.tasks.get(workspace_id, task_id) is None:
             raise TaskNotFoundError
 
-        updates = data.model_dump(exclude_unset=True)
+        updates = payload.model_dump(exclude_unset=True)
         if "assigned_user_id" in updates:
             await self._validate_assignee(workspace_id, updates["assigned_user_id"])
 

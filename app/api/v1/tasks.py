@@ -23,22 +23,24 @@ OWNER = WorkspaceMemberRole.OWNER
 
 
 @router.post(
-    "", 
-    response_model=TaskRead, 
-    status_code=HTTP_201_CREATED, 
+    "",
+    response_model=TaskRead,
+    status_code=HTTP_201_CREATED,
     dependencies=[Depends(RequireRole(EDITOR))],
 )
 async def create_task(
-    new_task: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
+    payload: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
 ) -> TaskRecord:
-    return await task_service.create(new_task, workspace_id)
+    return await task_service.create(payload, workspace_id)
 
 
 @router.get(
     "/summary", response_model=TaskSummaryRead, dependencies=[Depends(RequireRole(VIEWER))]
 )
-async def get_summary(workspace_id: UUID4, service: TaskServiceDep) -> dict[str, UUID4 | int]:
-    return await service.summary(workspace_id)
+async def get_task_summary(
+    workspace_id: UUID4, task_service: TaskServiceDep
+) -> dict[str, UUID4 | int]:
+    return await task_service.summary(workspace_id)
 
 
 @router.post(
@@ -49,11 +51,11 @@ async def get_summary(workspace_id: UUID4, service: TaskServiceDep) -> dict[str,
 )
 async def export_tasks(
     workspace_id: UUID4,
-    service: TaskServiceDep,
+    task_service: TaskServiceDep,
     current_user: CurrentUserDep,
     bg_tasks: BackgroundTasks,
 ) -> Response:
-    await service.export(
+    await task_service.export(
         workspace_id,
         to_email=current_user.email,
         bg_tasks=bg_tasks,
@@ -62,27 +64,33 @@ async def export_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])
-async def get_task_by_id(workspace_id: UUID4, task_id: UUID4, service: TaskServiceDep) -> TaskRecord:
-    return await service.get(workspace_id, task_id)
+async def get_task(
+    workspace_id: UUID4, task_id: UUID4, task_service: TaskServiceDep
+) -> TaskRecord:
+    return await task_service.get(workspace_id, task_id)
 
 
 @router.get("", response_model=list[TaskRead], dependencies=[Depends(RequireRole(VIEWER))])
-async def list_by_workspace(workspace_id: UUID4, service: TaskServiceDep) -> list[TaskRecord]:
-    return await service.list_all(workspace_id)
+async def list_tasks(
+    workspace_id: UUID4, task_service: TaskServiceDep
+) -> list[TaskRecord]:
+    return await task_service.list_all(workspace_id)
 
 
 @router.patch("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(EDITOR))])
 async def update_task(
     workspace_id: UUID4,
     task_id: UUID4,
-    task_in: TaskUpdate,
-    service: TaskServiceDep,
+    payload: TaskUpdate,
+    task_service: TaskServiceDep,
 ) -> TaskRecord:
-    return await service.update(workspace_id, task_id, task_in)
+    return await task_service.update(workspace_id, task_id, payload)
 
 
 @router.delete(
     "/{task_id}", status_code=HTTP_204_NO_CONTENT, dependencies=[Depends(RequireRole(OWNER))]
 )
-async def delete_task(workspace_id: UUID4, task_id: UUID4, service: TaskServiceDep) -> None:
-    await service.delete(workspace_id, task_id)
+async def delete_task(
+    workspace_id: UUID4, task_id: UUID4, task_service: TaskServiceDep
+) -> None:
+    await task_service.delete(workspace_id, task_id)

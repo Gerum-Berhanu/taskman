@@ -29,7 +29,7 @@ router = APIRouter(
 )
 async def add_workspace_member(
     workspace_id: UUID4,
-    new_membership: WorkspaceMemberCreate,
+    payload: WorkspaceMemberCreate,
     member_service: WorkspaceMemberServiceDep,
 ) -> WorkspaceMemberRecord:
-    return await member_service.create(workspace_id, new_membership)
+    return await member_service.create(workspace_id, payload)

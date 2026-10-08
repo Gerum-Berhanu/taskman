@@ -16,16 +16,16 @@ router = APIRouter(
 
 @router.post("", response_model=WorkspaceRead, status_code=HTTP_201_CREATED)
 async def create_workspace(
-    new_workspace: WorkspaceCreate,
+    payload: WorkspaceCreate,
     current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
 ) -> WorkspaceRecord:
-    return await workspace_service.create(new_workspace, current_user.id)
+    return await workspace_service.create(payload, current_user.id)
 
 
 @router.get("", response_model=list[WorkspaceRead])
 async def list_workspaces(
-    current_user: CurrentUserDep, 
-    workspace_service: WorkspaceServiceDep
+    current_user: CurrentUserDep,
+    workspace_service: WorkspaceServiceDep,
 ) -> list[WorkspaceRecord]:
     return await workspace_service.list_by_user(current_user.id)

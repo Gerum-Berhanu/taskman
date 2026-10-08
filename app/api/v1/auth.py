@@ -17,9 +17,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserCreateResponse, status_code=HTTP_201_CREATED)
 async def register_user(
-    user_in: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
+    payload: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
 ) -> UserCreateResponse:
-    user = await user_service.register(user_in, bg_tasks)
+    user = await user_service.register(payload, bg_tasks)
     return UserCreateResponse(id=user.id, email=user.email)
 
 
@@ -42,31 +42,31 @@ async def login_user(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    refresh_payload: RefreshTokenPayload, 
-    auth_service: AuthServiceDep
+    payload: RefreshTokenPayload,
+    auth_service: AuthServiceDep,
 ) -> Token:
-    token = refresh_payload.refresh_token
+    token = payload.refresh_token
     return await auth_service.refresh(token)
 
 
 @router.post("/logout", status_code=HTTP_204_NO_CONTENT)
 async def logout_user(
-    refresh_payload: RefreshTokenPayload,
-    auth_service: AuthServiceDep
+    payload: RefreshTokenPayload,
+    auth_service: AuthServiceDep,
 ) -> None:
-    token = refresh_payload.refresh_token
+    token = payload.refresh_token
     await auth_service.logout(token)
 
 
 @router.post("/logout-all", status_code=HTTP_204_NO_CONTENT)
 async def logout_all_sessions(
-    refresh_payload: RefreshTokenPayload,
+    payload: RefreshTokenPayload,
     auth_service: AuthServiceDep,
 ) -> None:
-    token = refresh_payload.refresh_token
+    token = payload.refresh_token
     await auth_service.logout_all_user_sessions(token)
 
 
 @router.get("/me", response_model=UserRead)
-async def get_me(user: CurrentUserDep) -> UserRead:
-    return user
+async def get_me(current_user: CurrentUserDep) -> UserRead:
+    return current_user

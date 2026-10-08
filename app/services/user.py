@@ -22,15 +22,15 @@ class UserService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
-    async def register(self, data: UserCreate, bg_tasks: BackgroundTasks) -> UserRecord:
+    async def register(self, payload: UserCreate, bg_tasks: BackgroundTasks) -> UserRecord:
         """Create a user; conflict on duplicate email (including concurrent races)."""
-        if await self._uow.users.get_by_email(data.email) is not None:
+        if await self._uow.users.get_by_email(payload.email) is not None:
             raise EmailAlreadyRegisteredError
 
-        hashed_password = get_password_hash(data.password)
+        hashed_password = get_password_hash(payload.password)
         try:
             user = await self._uow.users.create(UserCreateData(
-                email=data.email, hashed_password=hashed_password
+                email=payload.email, hashed_password=hashed_password
             ))
         except IntegrityError:
             raise EmailAlreadyRegisteredError from None

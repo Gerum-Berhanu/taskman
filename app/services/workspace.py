@@ -20,14 +20,14 @@ class WorkspaceService:
 
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
-        self._members = WorkspaceMemberService(uow)
+        self._member_service = WorkspaceMemberService(uow)
 
-    async def create(self, data: WorkspaceCreate, user_id: UUID) -> WorkspaceRecord:
+    async def create(self, payload: WorkspaceCreate, user_id: UUID) -> WorkspaceRecord:
         """Create a workspace and add the creating user as owner."""
         workspace = await self._uow.workspaces.create(
-            WorkspaceCreateData(name=data.name)
+            WorkspaceCreateData(name=payload.name)
         )
-        await self._members.create(
+        await self._member_service.create(
             workspace.id,
             WorkspaceMemberCreate(
                 user_id=user_id,
@@ -52,11 +52,10 @@ class WorkspaceService:
         return workspace
 
     async def list_by_user(self, user_id: UUID) -> list[WorkspaceRecord]:
-        """Return a list of workspaces that the provided user is a member of"""
-        members = await self._uow.workspace_members.list_user_memberships(user_id)
-        if not members:
+        """Return a list of workspaces that the provided user is a member of."""
+        memberships = await self._uow.workspace_members.list_user_memberships(user_id)
+        if not memberships:
             raise WorkspaceForbiddenError
-        
-        workspace_ids = {member.workspace_id for member in members}
-        workspaces = await self._uow.workspaces.list_all(workspace_ids)
-        return workspaces
+
+        workspace_ids = {membership.workspace_id for membership in memberships}
+        return await self._uow.workspaces.list_all(workspace_ids)

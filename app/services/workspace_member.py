@@ -29,7 +29,7 @@ class WorkspaceMemberService:
         self._uow = uow
 
     async def create(
-        self, workspace_id: UUID, new_membership: WorkspaceMemberCreate
+        self, workspace_id: UUID, payload: WorkspaceMemberCreate
     ) -> WorkspaceMemberRecord:
         """Add a member; missing workspace looks like forbidden (no enumeration)."""
         workspace = await self._uow.workspaces.get(workspace_id)
@@ -37,18 +37,18 @@ class WorkspaceMemberService:
             # Same as non-member: do not reveal whether the workspace exists.
             raise WorkspaceForbiddenError
 
-        user = await self._uow.users.get(new_membership.user_id)
+        user = await self._uow.users.get(payload.user_id)
         if user is None:
             raise UserNotFoundError
 
-        member = await self._uow.workspace_members.get(workspace_id, user.id)
-        if member is not None:
+        membership = await self._uow.workspace_members.get(workspace_id, user.id)
+        if membership is not None:
             raise MembershipAlreadyExistsError
 
         fields = WorkspaceMemberCreateData(
             workspace_id=workspace_id,
-            user_id=new_membership.user_id,
-            role=new_membership.role.value,
+            user_id=payload.user_id,
+            role=payload.role.value,
         )
         try:
             created = await self._uow.workspace_members.create(fields)
@@ -79,8 +79,7 @@ class WorkspaceMemberService:
     ) -> WorkspaceMemberRole:
         """Return the user's role; missing workspace and non-member are both forbidden."""
         # Missing workspace and non-membership must be indistinguishable.
-        member = await self._uow.workspace_members.get(workspace_id, user_id)
-        if member is None:
+        membership = await self._uow.workspace_members.get(workspace_id, user_id)
+        if membership is None:
             raise WorkspaceForbiddenError
-        return WorkspaceMemberRole(member.role)
-        
+        return WorkspaceMemberRole(membership.role)
