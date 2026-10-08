@@ -18,10 +18,14 @@ class WorkspaceRecord(BaseModel):
     created_at: datetime
 
 
+class WorkspaceCreateData(BaseModel):
+    name: str
+
+
 class WorkspaceRepository(BaseRepository):
-    async def create(self, name: str) -> WorkspaceRecord:
+    async def create(self, fields: WorkspaceCreateData) -> WorkspaceRecord:
         """Insert a workspace and return the persisted record."""
-        workspace = Workspace(name=name)
+        workspace = Workspace(**fields.model_dump())
         await self.add_flush_refresh(workspace)
         return self.to_record(WorkspaceRecord, workspace)
 

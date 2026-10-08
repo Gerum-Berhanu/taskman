@@ -6,6 +6,7 @@ from uuid import UUID
 from app.core.exceptions import WorkspaceForbiddenError
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories import WorkspaceRecord
+from app.repositories.workspace import WorkspaceCreateData
 from app.schemas.workspace import WorkspaceCreate
 from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 from app.services.workspace_member import WorkspaceMemberService
@@ -23,7 +24,9 @@ class WorkspaceService:
 
     async def create(self, data: WorkspaceCreate, user_id: UUID) -> WorkspaceRecord:
         """Create a workspace and add the creating user as owner."""
-        workspace = await self._uow.workspaces.create(data.name)
+        workspace = await self._uow.workspaces.create(
+            WorkspaceCreateData(name=data.name)
+        )
         await self._members.create(
             workspace.id,
             WorkspaceMemberCreate(

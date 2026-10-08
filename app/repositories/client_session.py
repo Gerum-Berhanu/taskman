@@ -24,10 +24,14 @@ class ClientSessionRecord(BaseModel):
     expires_at: datetime
 
 
+class ClientSessionCreateData(BaseModel):
+    user_id: UUID4
+
+
 class ClientSessionRepository(BaseRepository):
-    async def create(self, user_id: UUID) -> ClientSessionRecord:
+    async def create(self, fields: ClientSessionCreateData) -> ClientSessionRecord:
         """Create a new client session for the user."""
-        client_session = ClientSession(user_id=user_id)
+        client_session = ClientSession(**fields.model_dump())
         await self.add_flush_refresh(client_session)
         return self.to_record(ClientSessionRecord, client_session)
 
