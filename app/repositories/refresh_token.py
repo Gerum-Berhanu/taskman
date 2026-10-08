@@ -25,7 +25,7 @@ class RefreshTokenRepository(BaseRepository):
         """Insert a refresh-token hash row for a client session."""
         refresh_token = RefreshToken(**fields.model_dump())
         await self.add_flush_refresh(refresh_token)
-        return self.to_record(RefreshTokenRecord, refresh_token)
+        return self.to_record(refresh_token)
 
     async def get_by_token_hash(self, token_hash: str) -> RefreshTokenRecord | None:
         """Look up a refresh token by its stored hash, or None."""
@@ -34,4 +34,4 @@ class RefreshTokenRepository(BaseRepository):
         refresh_token = result.first()
         if refresh_token is None:
             return None
-        return self.to_record(RefreshTokenRecord, refresh_token)
+        return self.to_record(refresh_token)

@@ -33,20 +33,20 @@ class UserRepository(BaseRepository):
         user = result.first()
         if user is None:
             return None
-        return self.to_record(UserRecord, user)
+        return self.to_record(user)
 
     async def get_by_id(self, user_id: UUID) -> UserRecord | None:
         """Fetch a user by id, or None."""
         user = await self._session.get(User, user_id)
         if user is None:
             return None
-        return self.to_record(UserRecord, user)
+        return self.to_record(user)
 
     async def create(self, fields: UserCreateData) -> UserRecord:
         """Insert a new user and return the persisted record."""
         user = User(**fields.model_dump())
         await self.add_flush_refresh(user)
-        return self.to_record(UserRecord, user)
+        return self.to_record(user)
 
     async def set_is_active(
         self, user_id: UUID, *, is_active: bool
@@ -57,4 +57,4 @@ class UserRepository(BaseRepository):
             return None
         user.is_active = is_active
         await self.flush_refresh(user)
-        return self.to_record(UserRecord, user)
+        return self.to_record(user)

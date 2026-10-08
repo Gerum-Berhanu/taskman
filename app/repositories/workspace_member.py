@@ -30,7 +30,7 @@ class WorkspaceMemberRepository(BaseRepository):
         """Insert a membership and return the persisted record."""
         membership = WorkspaceMember(**fields.model_dump())
         await self.add_flush_refresh(membership)
-        return self.to_record(WorkspaceMemberRecord, membership)
+        return self.to_record(membership)
 
     async def get(
         self, workspace_id: UUID, user_id: UUID
@@ -39,9 +39,9 @@ class WorkspaceMemberRepository(BaseRepository):
         member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
         if member is None:
             return None
-        return self.to_record(WorkspaceMemberRecord, member)
+        return self.to_record(member)
 
     async def list_user_memberships(self, user_id: UUID) -> list[WorkspaceMemberRecord]:
         statement = select(WorkspaceMember).where(WorkspaceMember.user_id == user_id)
         result = await self._session.exec(statement)
-        return [self.to_record(WorkspaceMemberRecord, member) for member in result.all()]
+        return [self.to_record(member) for member in result.all()]

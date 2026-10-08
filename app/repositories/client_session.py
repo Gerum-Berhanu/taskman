@@ -33,14 +33,14 @@ class ClientSessionRepository(BaseRepository):
         """Create a new client session for the user."""
         client_session = ClientSession(**fields.model_dump())
         await self.add_flush_refresh(client_session)
-        return self.to_record(ClientSessionRecord, client_session)
+        return self.to_record(client_session)
 
     async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
         """Fetch a client session by id, or None."""
         client_session = await self._session.get(ClientSession, client_id)
         if client_session is None:
             return None
-        return self.to_record(ClientSessionRecord, client_session)
+        return self.to_record(client_session)
 
     async def set_active_token_id(
         self,
@@ -62,7 +62,7 @@ class ClientSessionRepository(BaseRepository):
             )
 
         await self.flush_refresh(client_session)
-        return self.to_record(ClientSessionRecord, client_session)
+        return self.to_record(client_session)
 
     async def revoke(self, client_id: UUID) -> bool:
         """Revoke one session; False if it did not exist."""

@@ -5,27 +5,27 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
-class BaseRepository:
+class BaseRepository[ModelT: SQLModel, RecordT: BaseModel]:
     """Thin base holding the session and common persistence helpers."""
+
+    record: type[RecordT]
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def add_flush_refresh[T](self, entity: T) -> T:
+    async def add_flush_refresh(self, entity: ModelT) -> ModelT:
         """Add entity, flush, and refresh so DB-generated fields are loaded."""
         self._session.add(entity)
         await self._session.flush()
         await self._session.refresh(entity)
         return entity
 
-    async def flush_refresh[T](self, entity: T) -> T:
+    async def flush_refresh(self, entity: ModelT) -> ModelT:
         """Flush and refresh a tracked entity (updates; no add)."""
         await self._session.flush()
         await self._session.refresh(entity)
         return entity
 
-    def to_record[T: BaseModel](
-        self, record_class: type[T], orm_object: SQLModel
-    ) -> T:
+    def to_record(self, entity: ModelT) -> RecordT:
         """Map an ORM instance to a repository record model."""
-        return record_class.model_validate(orm_object)
+        return self.record.model_validate(entity)
