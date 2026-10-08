@@ -37,7 +37,7 @@ class WorkspaceMemberService:
             # Same as non-member: do not reveal whether the workspace exists.
             raise WorkspaceForbiddenError
 
-        user = await self._uow.users.get_by_id(new_membership.user_id)
+        user = await self._uow.users.get(new_membership.user_id)
         if user is None:
             raise UserNotFoundError
 

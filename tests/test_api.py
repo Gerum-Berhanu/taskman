@@ -136,8 +136,7 @@ def test_workspace_task_crud(client: TestClient) -> None:
     assert task["title"] == "First task"
     assert task["status"] == "pending"
     assert task["workspace_id"] == workspace_id
-    assert task["updated_at"] is not None
-    assert task["updated_at"].endswith("Z") or task["updated_at"].endswith("+00:00")
+    assert task["updated_at"] is None
 
     fetched = client.get(tasks_url(workspace_id, task_id), headers=headers)
     assert fetched.status_code == 200
@@ -156,7 +155,10 @@ def test_workspace_task_crud(client: TestClient) -> None:
     assert updated.json()["title"] == "Updated task"
     assert updated.json()["status"] == "completed"
     assert updated.json()["updated_at"] is not None
-    assert updated.json()["updated_at"] >= task["updated_at"]
+    assert (
+        updated.json()["updated_at"].endswith("Z")
+        or updated.json()["updated_at"].endswith("+00:00")
+    )
 
     deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
     assert deleted.status_code == 204

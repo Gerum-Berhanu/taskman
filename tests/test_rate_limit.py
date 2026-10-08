@@ -49,11 +49,12 @@ def test_default_policy_returns_429_with_retry_after(
     # Keep auth limit high so this exercises the default policy only.
     monkeypatch.setattr(settings, "rate_limit_auth_requests", 100)
 
+    # OpenAPI is disabled outside development; use a stable default-policy path.
     for _ in range(3):
-        response = client.get("/openapi.json")
-        assert response.status_code == 200
+        response = client.get("/workspaces")
+        assert response.status_code == 401
 
-    blocked = client.get("/openapi.json")
+    blocked = client.get("/workspaces")
     assert blocked.status_code == 429
     assert blocked.json() == {"detail": "Rate limit exceeded"}
     assert blocked.headers.get("Retry-After") == "60"

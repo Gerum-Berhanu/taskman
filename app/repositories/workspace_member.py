@@ -25,21 +25,11 @@ class WorkspaceMemberCreateData(BaseModel):
     role: str
 
 
-class WorkspaceMemberRepository(BaseRepository):
-    async def create(self, fields: WorkspaceMemberCreateData) -> WorkspaceMemberRecord:
-        """Insert a membership and return the persisted record."""
-        membership = WorkspaceMember(**fields.model_dump())
-        await self.add_flush_refresh(membership)
-        return self.to_record(membership)
-
-    async def get(
-        self, workspace_id: UUID, user_id: UUID
-    ) -> WorkspaceMemberRecord | None:
-        """Fetch membership by composite key, or None."""
-        member = await self._session.get(WorkspaceMember, (workspace_id, user_id))
-        if member is None:
-            return None
-        return self.to_record(member)
+class WorkspaceMemberRepository(
+    BaseRepository[WorkspaceMember, WorkspaceMemberRecord, WorkspaceMemberCreateData]
+):
+    model = WorkspaceMember
+    record = WorkspaceMemberRecord
 
     async def list_user_memberships(self, user_id: UUID) -> list[WorkspaceMemberRecord]:
         statement = select(WorkspaceMember).where(WorkspaceMember.user_id == user_id)

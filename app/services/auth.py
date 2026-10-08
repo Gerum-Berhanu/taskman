@@ -88,7 +88,7 @@ class AuthService:
         if row is None:
             raise InvalidTokenError
         
-        session = await self._uow.client_sessions.get_by_id(row.client_session_id)
+        session = await self._uow.client_sessions.get(row.client_session_id)
         if session is None:
             raise InvalidTokenError
 
@@ -114,7 +114,7 @@ class AuthService:
         if ensure_utc(session.expires_at) <= utcnow():
             await self._revoke_and_reject(session.id)
 
-        user = await self._uow.users.get_by_id(session.user_id)
+        user = await self._uow.users.get(session.user_id)
         if user is None or not user.is_active:
             await self._revoke_and_reject(session.id)
 
@@ -229,7 +229,7 @@ class AuthService:
     async def get_user_from_token(self, token: str) -> UserRead:
         """Load the active user for an access token as a credential-free UserRead."""
         user_id = self._get_id_from_token(token)
-        user = await self._uow.users.get_by_id(user_id)
+        user = await self._uow.users.get(user_id)
         if user is None or not user.is_active:
             raise InvalidTokenError
         return UserRead.model_validate(user, from_attributes=True)

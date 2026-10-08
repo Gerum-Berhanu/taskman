@@ -28,19 +28,11 @@ class ClientSessionCreateData(BaseModel):
     user_id: UUID4
 
 
-class ClientSessionRepository(BaseRepository):
-    async def create(self, fields: ClientSessionCreateData) -> ClientSessionRecord:
-        """Create a new client session for the user."""
-        client_session = ClientSession(**fields.model_dump())
-        await self.add_flush_refresh(client_session)
-        return self.to_record(client_session)
-
-    async def get_by_id(self, client_id: UUID) -> ClientSessionRecord | None:
-        """Fetch a client session by id, or None."""
-        client_session = await self._session.get(ClientSession, client_id)
-        if client_session is None:
-            return None
-        return self.to_record(client_session)
+class ClientSessionRepository(
+    BaseRepository[ClientSession, ClientSessionRecord, ClientSessionCreateData]
+):
+    model = ClientSession
+    record = ClientSessionRecord
 
     async def set_active_token_id(
         self,

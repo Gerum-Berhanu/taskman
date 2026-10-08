@@ -34,7 +34,7 @@ class TaskService:
         """Ensure an assignee exists and belongs to the workspace (no-op if None)."""
         if assigned_user_id is None:
             return
-        if await self._uow.users.get_by_id(assigned_user_id) is None:
+        if await self._uow.users.get(assigned_user_id) is None:
             raise UserNotFoundError
         member = await self._uow.workspace_members.get(
             workspace_id, assigned_user_id

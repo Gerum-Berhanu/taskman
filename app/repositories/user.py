@@ -25,7 +25,12 @@ class UserCreateData(BaseModel):
     hashed_password: str
 
 
-class UserRepository(BaseRepository):
+class UserRepository(
+    BaseRepository[User, UserRecord, UserCreateData]
+):
+    model = User
+    record = UserRecord
+
     async def get_by_email(self, email: str) -> UserRecord | None:
         """Fetch a user by email, or None."""
         statement = select(User).where(User.email == email)
@@ -33,19 +38,6 @@ class UserRepository(BaseRepository):
         user = result.first()
         if user is None:
             return None
-        return self.to_record(user)
-
-    async def get_by_id(self, user_id: UUID) -> UserRecord | None:
-        """Fetch a user by id, or None."""
-        user = await self._session.get(User, user_id)
-        if user is None:
-            return None
-        return self.to_record(user)
-
-    async def create(self, fields: UserCreateData) -> UserRecord:
-        """Insert a new user and return the persisted record."""
-        user = User(**fields.model_dump())
-        await self.add_flush_refresh(user)
         return self.to_record(user)
 
     async def set_is_active(

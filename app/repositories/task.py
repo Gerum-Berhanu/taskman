@@ -41,12 +41,11 @@ class TaskUpdateData(BaseModel):
     assigned_user_id: UUID4 | None = None
 
 
-class TaskRepository(BaseRepository):
-    async def create(self, fields: TaskCreateData) -> TaskRecord:
-        """Insert a task and return the persisted record."""
-        task = Task(**fields.model_dump())
-        await self.add_flush_refresh(task)
-        return self.to_record(task)
+class TaskRepository(
+    BaseRepository[Task, TaskRecord, TaskCreateData]
+):
+    model = Task
+    record = TaskRecord
 
     async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
         """Load the ORM task scoped to a workspace, or None."""
