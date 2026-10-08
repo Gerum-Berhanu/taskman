@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
+from sqlmodel import select
 
 from app.models import WorkspaceMember
 from app.repositories.base import BaseRepository
@@ -39,3 +40,8 @@ class WorkspaceMemberRepository(BaseRepository):
         if member is None:
             return None
         return self.to_record(WorkspaceMemberRecord, member)
+
+    async def list_user_memberships(self, user_id: UUID) -> list[WorkspaceMemberRecord]:
+        statement = select(WorkspaceMember).where(WorkspaceMember.user_id == user_id)
+        result = await self._session.exec(statement)
+        return [self.to_record(WorkspaceMemberRecord, member) for member in result.all()]

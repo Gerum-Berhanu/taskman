@@ -83,3 +83,4 @@ class WorkspaceMemberService:
         if member is None:
             raise WorkspaceForbiddenError
         return WorkspaceMemberRole(member.role)
+        

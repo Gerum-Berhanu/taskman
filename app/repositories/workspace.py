@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, ConfigDict
+from sqlmodel import col, select
 
 from app.models import Workspace
 from app.repositories.base import BaseRepository
@@ -30,3 +31,9 @@ class WorkspaceRepository(BaseRepository):
         if workspace is None:
             return None
         return self.to_record(WorkspaceRecord, workspace)
+
+    async def list_all(self, workspace_ids: set[UUID]) -> list[WorkspaceRecord]:
+        """List all workspaces for the provided Ids"""
+        statement = select(Workspace).where(col(Workspace.id).in_(workspace_ids))
+        result = await self._session.exec(statement)
+        return [self.to_record(WorkspaceRecord, workspace) for workspace in result.all()]

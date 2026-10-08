@@ -47,3 +47,13 @@ class WorkspaceService:
         if workspace is None:
             raise WorkspaceForbiddenError
         return workspace
+
+    async def list_by_user(self, user_id: UUID) -> list[WorkspaceRecord]:
+        """Return a list of workspaces that the provided user is a member of"""
+        members = await self._uow.workspace_members.list_user_memberships(user_id)
+        if not members:
+            raise WorkspaceForbiddenError
+        
+        workspace_ids = {member.workspace_id for member in members}
+        workspaces = await self._uow.workspaces.list_all(workspace_ids)
+        return workspaces
