@@ -24,8 +24,7 @@ class BaseRepository[
         return self._to_record(instance)
 
     async def get(self, *identity: object) -> RecordT | None:
-        pk = identity[0] if len(identity) == 1 else identity
-        result = await self._session.get(self.model, pk)
+        result = await self._get_orm(identity)
         if result is None:
             return None
         return self._to_record(result)
@@ -42,6 +41,10 @@ class BaseRepository[
         await self._session.flush()
         await self._session.refresh(entity)
         return entity
+
+    async def _get_orm(self, *identity: object) -> ModelT | None:
+        pk = identity[0] if len(identity) == 1 else identity
+        return await self._session.get(self.model, pk)
 
     def _to_record(self, entity: ModelT) -> RecordT:
         """Map an ORM instance to a repository record model."""
