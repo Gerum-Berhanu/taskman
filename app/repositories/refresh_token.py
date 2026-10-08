@@ -33,4 +33,4 @@ class RefreshTokenRepository(
         refresh_token = result.first()
         if refresh_token is None:
             return None
-        return self.to_record(refresh_token)
+        return self._to_record(refresh_token)

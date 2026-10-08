@@ -38,7 +38,7 @@ class UserRepository(
         user = result.first()
         if user is None:
             return None
-        return self.to_record(user)
+        return self._to_record(user)
 
     async def set_is_active(
         self, user_id: UUID, *, is_active: bool
@@ -48,5 +48,5 @@ class UserRepository(
         if user is None:
             return None
         user.is_active = is_active
-        await self.flush_refresh(user)
-        return self.to_record(user)
+        await self._flush_refresh(user)
+        return self._to_record(user)

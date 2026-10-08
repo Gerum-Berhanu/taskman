@@ -32,4 +32,4 @@ class WorkspaceRepository(
         """List all workspaces for the provided Ids"""
         statement = select(Workspace).where(col(Workspace.id).in_(workspace_ids))
         result = await self._session.exec(statement)
-        return [self.to_record(workspace) for workspace in result.all()]
+        return [self._to_record(workspace) for workspace in result.all()]

@@ -53,8 +53,8 @@ class ClientSessionRepository(
                 minutes=settings.refresh_token_expire_minutes
             )
 
-        await self.flush_refresh(client_session)
-        return self.to_record(client_session)
+        await self._flush_refresh(client_session)
+        return self._to_record(client_session)
 
     async def revoke(self, client_id: UUID) -> bool:
         """Revoke one session; False if it did not exist."""
@@ -63,7 +63,7 @@ class ClientSessionRepository(
             return False
         client_session.active_token_id = None
         client_session.revoked_at = utcnow()
-        await self.flush_refresh(client_session)
+        await self._flush_refresh(client_session)
         return True
 
     async def revoke_all_user_sessions(self, user_id: UUID) -> int:

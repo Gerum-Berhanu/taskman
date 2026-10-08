@@ -60,7 +60,7 @@ class TaskRepository(
         task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
-        return self.to_record(task)
+        return self._to_record(task)
 
     async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
         """List tasks in a workspace ordered by created_at, title, id."""
@@ -70,7 +70,7 @@ class TaskRepository(
             .order_by(col(Task.created_at), col(Task.title), col(Task.id))
         )
         result = await self._session.exec(statement)
-        return [self.to_record(task) for task in result.all()]
+        return [self._to_record(task) for task in result.all()]
 
     async def update(
         self, workspace_id: UUID, task_id: UUID, fields: TaskUpdateData
@@ -82,14 +82,14 @@ class TaskRepository(
 
         updates = fields.model_dump(exclude_unset=True)
         if not updates:
-            return self.to_record(task)
+            return self._to_record(task)
 
         for key, value in updates.items():
             setattr(task, key, value)
         task.updated_at = utcnow()
 
-        await self.flush_refresh(task)
-        return self.to_record(task)
+        await self._flush_refresh(task)
+        return self._to_record(task)
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> bool:
         """Delete a workspace-scoped task; False if it did not exist."""

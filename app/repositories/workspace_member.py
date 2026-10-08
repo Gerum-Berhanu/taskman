@@ -34,4 +34,4 @@ class WorkspaceMemberRepository(
     async def list_user_memberships(self, user_id: UUID) -> list[WorkspaceMemberRecord]:
         statement = select(WorkspaceMember).where(WorkspaceMember.user_id == user_id)
         result = await self._session.exec(statement)
-        return [self.to_record(member) for member in result.all()]
+        return [self._to_record(member) for member in result.all()]
