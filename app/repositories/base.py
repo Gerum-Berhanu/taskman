@@ -19,9 +19,9 @@ class BaseRepository[
         self._session = session
 
     async def create(self, fields: CreateT) -> RecordT:
-        instance = self.model(**fields.model_dump())
-        await self._add_flush_refresh(instance)
-        return self._to_record(instance)
+        entity = self.model(**fields.model_dump())
+        await self._add_flush_refresh(entity)
+        return self._to_record(entity)
 
     async def get(self, *identity: object) -> RecordT | None:
         result = await self._get_orm(identity)

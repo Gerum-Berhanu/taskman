@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import UUID4, BaseModel, ConfigDict, Field
+from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import col, func, select
 
 from app.core.timeutils import utcnow
@@ -47,7 +47,7 @@ class TaskRepository(
     model = Task
     record = TaskRecord
 
-    async def _get_task_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
+    async def _get_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
         """Load the ORM task scoped to a workspace, or None."""
         statement = select(Task).where(
             Task.id == task_id, Task.workspace_id == workspace_id
@@ -57,7 +57,7 @@ class TaskRepository(
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord | None:
         """Fetch a task by id within a workspace, or None."""
-        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
+        task = await self._get_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
         return self._to_record(task)
@@ -76,7 +76,7 @@ class TaskRepository(
         self, workspace_id: UUID, task_id: UUID, fields: TaskUpdateData
     ) -> TaskRecord | None:
         """Apply partial updates to a workspace-scoped task; None if missing."""
-        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
+        task = await self._get_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return None
 
@@ -93,7 +93,7 @@ class TaskRepository(
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> bool:
         """Delete a workspace-scoped task; False if it did not exist."""
-        task = await self._get_task_orm(workspace_id=workspace_id, task_id=task_id)
+        task = await self._get_orm(workspace_id=workspace_id, task_id=task_id)
         if task is None:
             return False
         await self._session.delete(task)
