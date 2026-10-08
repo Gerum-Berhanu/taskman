@@ -3,10 +3,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import UUID4, BaseModel, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict, Field
 from sqlmodel import col, func, select
 
-from app.core import timeutils as tu
+from app.core.timeutils import utcnow
 from app.models.task import Task
 from app.repositories.base import BaseRepository
 
@@ -44,7 +44,7 @@ class TaskUpdateData(BaseModel):
 class TaskRepository(BaseRepository):
     async def create(self, fields: TaskCreateData) -> TaskRecord:
         """Insert a task and return the persisted record."""
-        task = Task(**fields.model_dump(), updated_at=tu.utcnow())
+        task = Task(**fields.model_dump())
         await self.add_flush_refresh(task)
         return self.to_record(TaskRecord, task)
 
@@ -87,7 +87,7 @@ class TaskRepository(BaseRepository):
 
         for key, value in updates.items():
             setattr(task, key, value)
-        task.updated_at = tu.utcnow()
+        task.updated_at = utcnow()
 
         await self.flush_refresh(task)
         return self.to_record(TaskRecord, task)
