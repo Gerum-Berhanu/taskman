@@ -21,5 +21,8 @@
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | SMTP mailer + email templates |
 | `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |
+| `app/dto/api/` | HTTP request/response DTOs (public contract) |
+| `app/dto/repository/` | Persistence DTOs (`*Record` / `*CreateData` / `*UpdateData`) |
 | `app/repositories/` | Persistence repos + `UnitOfWork`; shared `create` / `get` on `BaseRepository` |
-| `app/services/`, `app/api/`, `app/models/`, `app/schemas/` | Domain services, routes, models, schemas |
+| `app/services/` | Application services (public: `dto.api`; persistence: `dto.repository`) |
+| `app/api/`, `app/models/` | Routes (`dto.api` only), ORM models |

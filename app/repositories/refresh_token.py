@@ -1,23 +1,10 @@
-﻿"""Refresh token persistence."""
+"""Refresh token persistence."""
 
-from pydantic import UUID4, BaseModel, ConfigDict
 from sqlmodel import select
 
 from app.models import RefreshToken
 from app.repositories.base import BaseRepository
-
-
-class RefreshTokenRecord(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID4
-    client_session_id: UUID4
-    token_hash: str
-
-
-class RefreshTokenCreateData(BaseModel):
-    client_session_id: UUID4
-    token_hash: str
+from app.dto.repository import RefreshTokenCreateData, RefreshTokenRecord
 
 
 class RefreshTokenRepository(

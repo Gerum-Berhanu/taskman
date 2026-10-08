@@ -1,33 +1,15 @@
 """User persistence."""
 
-from datetime import datetime
 from uuid import UUID
 
-from pydantic import UUID4, BaseModel, ConfigDict, EmailStr
 from sqlmodel import select
 
 from app.models.user import User
 from app.repositories.base import BaseRepository
+from app.dto.repository import UserCreateData, UserRecord
 
 
-class UserRecord(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID4
-    email: EmailStr
-    hashed_password: str
-    is_active: bool
-    created_at: datetime
-
-
-class UserCreateData(BaseModel):
-    email: EmailStr
-    hashed_password: str
-
-
-class UserRepository(
-    BaseRepository[User, UserRecord, UserCreateData]
-):
+class UserRepository(BaseRepository[User, UserRecord, UserCreateData]):
     model = User
     record = UserRecord
 

@@ -8,9 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
 from app.infrastructure.email.smtp import send_welcome_email
+from app.dto.repository import UserCreateData
 from app.repositories.unit_of_work import UnitOfWork
-from app.repositories.user import UserCreateData, UserRecord
-from app.schemas.user import UserCreate
+from app.dto.api.user import UserCreate, UserRead
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class UserService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
-    async def register(self, payload: UserCreate, bg_tasks: BackgroundTasks) -> UserRecord:
+    async def register(self, payload: UserCreate, bg_tasks: BackgroundTasks) -> UserRead:
         """Create a user; conflict on duplicate email (including concurrent races)."""
         if await self._uow.users.get_by_email(payload.email) is not None:
             raise EmailAlreadyRegisteredError
@@ -45,4 +45,4 @@ class UserService:
         self._uow.after_commit(
             lambda: bg_tasks.add_task(send_welcome_email, email)
         )
-        return user
+        return UserRead.model_validate(user, from_attributes=True)

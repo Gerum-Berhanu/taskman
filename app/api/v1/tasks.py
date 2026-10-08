@@ -5,10 +5,9 @@ from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from app.rbac import RequireRole
-from app.repositories.task import TaskRecord
 from app.deps import CurrentUserDep, TaskServiceDep, get_current_user
-from app.schemas.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
-from app.schemas.workspace_member import WorkspaceMemberRole
+from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
+from app.dto.api.workspace_member import WorkspaceMemberRole
 
 router = APIRouter(
     prefix="/workspaces/{workspace_id}/tasks",
@@ -30,7 +29,7 @@ OWNER = WorkspaceMemberRole.OWNER
 )
 async def create_task(
     payload: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
-) -> TaskRecord:
+) -> TaskRead:
     return await task_service.create(payload, workspace_id)
 
 
@@ -39,7 +38,7 @@ async def create_task(
 )
 async def get_task_summary(
     workspace_id: UUID4, task_service: TaskServiceDep
-) -> dict[str, UUID4 | int]:
+) -> TaskSummaryRead:
     return await task_service.summary(workspace_id)
 
 
@@ -66,14 +65,14 @@ async def export_tasks(
 @router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])
 async def get_task(
     workspace_id: UUID4, task_id: UUID4, task_service: TaskServiceDep
-) -> TaskRecord:
+) -> TaskRead:
     return await task_service.get(workspace_id, task_id)
 
 
 @router.get("", response_model=list[TaskRead], dependencies=[Depends(RequireRole(VIEWER))])
 async def list_tasks(
     workspace_id: UUID4, task_service: TaskServiceDep
-) -> list[TaskRecord]:
+) -> list[TaskRead]:
     return await task_service.list_all(workspace_id)
 
 
@@ -83,7 +82,7 @@ async def update_task(
     task_id: UUID4,
     payload: TaskUpdate,
     task_service: TaskServiceDep,
-) -> TaskRecord:
+) -> TaskRead:
     return await task_service.update(workspace_id, task_id, payload)
 
 

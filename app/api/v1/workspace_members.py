@@ -6,8 +6,7 @@ from starlette.status import HTTP_201_CREATED
 
 from app.deps import WorkspaceMemberServiceDep, get_current_user
 from app.rbac import RequireRole
-from app.repositories import WorkspaceMemberRecord
-from app.schemas.workspace_member import (
+from app.dto.api.workspace_member import (
     WorkspaceMemberCreate,
     WorkspaceMemberRead,
     WorkspaceMemberRole,
@@ -31,5 +30,5 @@ async def add_workspace_member(
     workspace_id: UUID4,
     payload: WorkspaceMemberCreate,
     member_service: WorkspaceMemberServiceDep,
-) -> WorkspaceMemberRecord:
+) -> WorkspaceMemberRead:
     return await member_service.create(workspace_id, payload)

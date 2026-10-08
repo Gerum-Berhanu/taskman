@@ -10,7 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.request_context import current_user_id_ctx
 from app.infrastructure.database.session import async_session_factory
 from app.repositories.unit_of_work import UnitOfWork
-from app.schemas.user import UserRead
+from app.dto.api.user import UserRead
 from app.services.auth import AuthService
 from app.services.task import TaskService
 from app.services.user import UserService

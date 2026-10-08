@@ -7,7 +7,7 @@ from pydantic import UUID4
 
 from app.core.exceptions import WorkspaceForbiddenError
 from app.deps import CurrentUserDep, WorkspaceMemberServiceDep
-from app.schemas.workspace_member import WorkspaceMemberRole
+from app.dto.api.workspace_member import WorkspaceMemberRole
 
 
 _ROLE_RANK: dict[WorkspaceMemberRole, int] = {

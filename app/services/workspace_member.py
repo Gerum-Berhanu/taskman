@@ -11,12 +11,13 @@ from app.core.exceptions import (
     WorkspaceForbiddenError,
 )
 from app.core.request_context import current_user_id_ctx
+from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
 from app.repositories.unit_of_work import UnitOfWork
-from app.repositories.workspace_member import (
-    WorkspaceMemberCreateData,
-    WorkspaceMemberRecord,
+from app.dto.api.workspace_member import (
+    WorkspaceMemberCreate,
+    WorkspaceMemberRead,
+    WorkspaceMemberRole,
 )
-from app.schemas.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 
 
 logger = logging.getLogger(__name__)
@@ -28,9 +29,13 @@ class WorkspaceMemberService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
+    @staticmethod
+    def _to_read(record: WorkspaceMemberRecord) -> WorkspaceMemberRead:
+        return WorkspaceMemberRead.model_validate(record, from_attributes=True)
+
     async def create(
         self, workspace_id: UUID, payload: WorkspaceMemberCreate
-    ) -> WorkspaceMemberRecord:
+    ) -> WorkspaceMemberRead:
         """Add a member; missing workspace looks like forbidden (no enumeration)."""
         workspace = await self._uow.workspaces.get(workspace_id)
         if workspace is None:
@@ -66,13 +71,16 @@ class WorkspaceMemberService:
                 actor_id,
             )
         )
-        return created
+        return self._to_read(created)
 
     async def get(
         self, workspace_id: UUID, user_id: UUID
-    ) -> WorkspaceMemberRecord | None:
-        """Return a membership row if present."""
-        return await self._uow.workspace_members.get(workspace_id, user_id)
+    ) -> WorkspaceMemberRead | None:
+        """Return a membership if present."""
+        membership = await self._uow.workspace_members.get(workspace_id, user_id)
+        if membership is None:
+            return None
+        return self._to_read(membership)
 
     async def get_role(
         self, workspace_id: UUID, user_id: UUID

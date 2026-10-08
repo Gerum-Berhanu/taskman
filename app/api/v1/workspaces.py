@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends
 from starlette.status import HTTP_201_CREATED
 
 from app.deps import CurrentUserDep, WorkspaceServiceDep, get_current_user
-from app.repositories import WorkspaceRecord
-from app.schemas.workspace import WorkspaceCreate, WorkspaceRead
+from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
 
 router = APIRouter(
     prefix="/workspaces",
@@ -19,7 +18,7 @@ async def create_workspace(
     payload: WorkspaceCreate,
     current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
-) -> WorkspaceRecord:
+) -> WorkspaceRead:
     return await workspace_service.create(payload, current_user.id)
 
 
@@ -27,5 +26,5 @@ async def create_workspace(
 async def list_workspaces(
     current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
-) -> list[WorkspaceRecord]:
+) -> list[WorkspaceRead]:
     return await workspace_service.list_by_user(current_user.id)

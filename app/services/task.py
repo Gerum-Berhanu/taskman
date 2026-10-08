@@ -14,9 +14,9 @@ from app.core.exceptions import (
 from app.core.request_context import current_user_id_ctx
 from app.infrastructure.export.task_export import run_tasks_export
 from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task_summary_key
+from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.repositories.unit_of_work import UnitOfWork
-from app.repositories.task import TaskCreateData, TaskRecord, TaskUpdateData
-from app.schemas.task import TaskCreate, TaskSummaryRead, TaskUpdate
+from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,11 @@ class TaskService:
         if membership is None:
             raise AssigneeNotInWorkspaceError
 
-    async def create(self, payload: TaskCreate, workspace_id: UUID) -> TaskRecord:
+    @staticmethod
+    def _to_read(record: TaskRecord) -> TaskRead:
+        return TaskRead.model_validate(record, from_attributes=True)
+
+    async def create(self, payload: TaskCreate, workspace_id: UUID) -> TaskRead:
         """Create a task in the workspace after validating the optional assignee."""
         await self._validate_assignee(workspace_id, payload.assigned_user_id)
         fields = TaskCreateData(**payload.model_dump(), workspace_id=workspace_id)
@@ -58,22 +62,23 @@ class TaskService:
             )
         )
         await self._invalidate_summary(workspace_id)
-        return task
+        return self._to_read(task)
 
-    async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRecord:
+    async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRead:
         """Return a task in the workspace or raise not-found."""
         task = await self._uow.tasks.get(workspace_id, task_id)
         if not task:
             raise TaskNotFoundError
-        return task
+        return self._to_read(task)
 
-    async def list_all(self, workspace_id: UUID) -> list[TaskRecord]:
+    async def list_all(self, workspace_id: UUID) -> list[TaskRead]:
         """List all tasks in the workspace."""
-        return await self._uow.tasks.list_all(workspace_id)
+        tasks = await self._uow.tasks.list_all(workspace_id)
+        return [self._to_read(task) for task in tasks]
 
     async def update(
         self, workspace_id: UUID, task_id: UUID, payload: TaskUpdate
-    ) -> TaskRecord:
+    ) -> TaskRead:
         """Update a task; exist-check before assignee validation."""
         if await self._uow.tasks.get(workspace_id, task_id) is None:
             raise TaskNotFoundError
@@ -100,7 +105,7 @@ class TaskService:
             )
         )
         await self._invalidate_summary(workspace_id)
-        return task
+        return self._to_read(task)
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
         """Delete a task in the workspace or raise not-found."""
@@ -117,28 +122,27 @@ class TaskService:
         )
         await self._invalidate_summary(workspace_id)
 
-    async def summary(self, workspace_id: UUID) -> dict[str, UUID | int]:
+    async def summary(self, workspace_id: UUID) -> TaskSummaryRead:
         key = task_summary_key(workspace_id)
 
         try:
             cached = await get_json(key)
             if cached is not None:
-                # cached workspace_id is a str; response_model coerces to UUID4
-                return cached
+                return TaskSummaryRead.model_validate(cached)
         except Exception:
             logger.exception("cache_backend_error op=get key=%s", key)
 
         status_count = await self._uow.tasks.count_by_status(workspace_id)
-        summary = {
-            "workspace_id": workspace_id,
-            "total": sum(status_count.values()),
+        summary = TaskSummaryRead(
+            workspace_id=workspace_id,
+            total=sum(status_count.values()),
             **status_count,
-        }
+        )
 
         try:
             await set_json(
                 key,
-                {**summary, "workspace_id": str(workspace_id)},
+                {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
             )
         except Exception:
             logger.exception("cache_backend_error op=set key=%s", key)

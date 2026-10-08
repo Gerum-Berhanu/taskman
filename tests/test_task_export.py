@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.export.tasks_csv import CSV_COLUMNS, tasks_to_csv
-from app.repositories.task import TaskRecord
+from app.dto.repository import TaskRecord
 from tests.test_api import (
     FORBIDDEN_DETAIL,
     create_workspace,

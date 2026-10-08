@@ -3,7 +3,7 @@ import io
 from collections.abc import Sequence
 from typing import Any
 
-from app.repositories import TaskRecord
+from app.dto.repository import TaskRecord
 
 CSV_COLUMNS = (
     "id",
