@@ -76,7 +76,7 @@ The system utilizes a relational database architecture. Students must use Alembi
 | workspace_id | UUID / Integer | Foreign Key referencing Workspace.id |
 | assigned_user_id | UUID / Integer | Foreign Key referencing User.id (Nullable) |
 | created_at | DateTime | Default: UTC Now |
-| updated_at | DateTime | On update current timestamp |
+| updated_at | DateTime | Nullable; null on create, set to UTC now on update |
 
 ## **4. API Endpoints & Request/Response Contracts**
 

@@ -21,5 +21,5 @@
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | SMTP mailer + email templates |
 | `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |
-| `app/repositories/` | Persistence repos + `UnitOfWork` |
+| `app/repositories/` | Persistence repos + `UnitOfWork`; shared `create` / `get` on `BaseRepository` |
 | `app/services/`, `app/api/`, `app/models/`, `app/schemas/` | Domain services, routes, models, schemas |

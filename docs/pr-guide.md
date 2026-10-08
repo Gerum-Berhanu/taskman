@@ -30,11 +30,11 @@ Why this change exists; the problem or goal, not a restatement of What.
 
 ```markdown
 ## What
-- One persistence idiom across repositories (`*Record` / `*CreateData`, shared flush/refresh + `to_record` via `BaseRepository`)
+- One persistence idiom across repositories (`*Record` / `*CreateData` / `*UpdateData`, `BaseRepository` with shared `create` / `get` and private flush/refresh + `_to_record`)
 - Split workspace membership into its own repository and service
 - Short CRUD names at the workspace API/service boundary
 - Stable task list ordering / param order; `revoke_all` without N+1
 
 ## Why
-The repository layer had grown several parallel styles, and membership lived inside workspace persistence. That made the next features harder to reason about. This branch locks one idiom and a clean membership boundary before more design/auth work.
+The repository layer had grown several parallel styles, and membership lived inside workspace persistence. That made the next features harder to reason about. This branch locks one idiom (including shared create/get on `BaseRepository`) and a clean membership boundary before more design/auth work.
 ```
