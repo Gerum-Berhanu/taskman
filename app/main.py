@@ -1,7 +1,6 @@
 """FastAPI application entrypoint."""
 
 from contextlib import asynccontextmanager
-import logging
 from fastapi import FastAPI
 from sqlmodel.sql.expression import select
 
@@ -18,18 +17,12 @@ from app.observability.setup import setup_logging
 
 setup_logging()
 
-logger = logging.getLogger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        await redis_client.init_redis()
-    except Exception:
-        logger.exception("redis_unavailable_at_startup")
-        # log and continue with redis uninitialized (fail-open)
+    await redis_client.init_redis_fail_open()
     yield
-    await redis_client.close_redis() # already no-ops if _client is None
+    await redis_client.close_redis()  # already no-ops if _client is None
     await engine.dispose()
 
 

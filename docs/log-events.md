@@ -30,7 +30,6 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 | Tag | Logger package | Envelope |
 |-----|----------------|----------|
-| `redis_unavailable_at_startup` | `app.main` | `ops` (not `infra`) |
 | `cache_backend_error` | `app.services.task` | `domain` (not `infra`) |
 
 ## Catalog
@@ -53,17 +52,17 @@ Login/refresh failures surface as `app_error`, not service tags.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
+| `redis_unavailable_at_startup` | `ERROR` + tb | Redis init failed at startup; app continues (`init_redis_fail_open`) | — |
 | `email_sent` | `INFO` | Mail accepted | `email`, `subject` |
 | `email_send_failed` | `ERROR` + tb | Send raised; caller still succeeds | `email`, `subject` |
 | `email_skipped` | `INFO` | `EMAIL_ENABLED=false` | `email`, `reason` (`email_disabled`), `subject` |
 | `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
 | `task_export_failed` | `ERROR` + tb | Export failed after 202 | `workspace_id`, `email`, `actor_id` |
 
-### `ops` — `app.main`, `app.repositories.*`
+### `ops` — `app.repositories.*`
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
-| `redis_unavailable_at_startup` | `ERROR` + tb | Redis init failed; app continues | — |
 | `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit | — |
 
 ### `domain` — `app.services.*`

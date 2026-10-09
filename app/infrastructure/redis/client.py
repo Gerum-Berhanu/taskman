@@ -1,5 +1,6 @@
 """Async Redis client wrapper (rate limiting, task-summary cache, …)."""
 
+import logging
 from typing import get_args
 
 from redis.asyncio import Redis
@@ -7,6 +8,9 @@ from redis.commands.core import AsyncScript
 
 from app.core.config import settings
 from app.infrastructure.redis.lua import LUA_SCRIPTS, LuaScriptName
+
+
+logger = logging.getLogger(__name__)
 
 
 class RedisClient:
@@ -28,6 +32,17 @@ class RedisClient:
         self._client = client
         self._register_scripts(LUA_SCRIPTS)
         return self._client
+
+    async def init_redis_fail_open(
+        self, redis_url: str = settings.redis_url
+    ) -> Redis | None:
+        """Like ``init_redis``, but log and return ``None`` on failure (app continues)."""
+        try:
+            return await self.init_redis(redis_url)
+        except Exception:
+            logger.exception("redis_unavailable_at_startup")
+            return None
+
 
     async def close_redis(self) -> None:
         """Close the connection if one is open."""
