@@ -43,8 +43,9 @@ Inventory matches current `logger.*` call sites. Section header = expected envel
 | `http_access` | `INFO` (`DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
 | `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `policy`, `client`, `path` |
 | `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `policy`, `client`, `path` |
-| `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `status`, `detail`, `path`, `actor_id` |
-| `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `path`, `actor_id` |
+| `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `method`, `path`, `status`, `detail`, `actor_id` |
+| `validation_error` | `WARNING` | FastAPI/Pydantic `RequestValidationError` (422); client gets first error only as `"<msg> at <field>"` | `method`, `path`, `status`, `detail`, `actor_id` |
+| `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `method`, `path`, `status`, `detail`, `actor_id` |
 
 Login/refresh failures surface as `app_error`, not service tags.
 

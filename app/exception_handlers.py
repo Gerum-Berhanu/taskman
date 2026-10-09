@@ -2,6 +2,7 @@
 
 import logging
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import AppError
@@ -11,9 +12,11 @@ from app.observability.events import HttpLogEvent
 
 logger = logging.getLogger(__name__)
 
+_HTTP_ERROR_FMT = "%s method=%s path=%s status=%s detail=%s actor_id=%s"
+
 
 def register_exception_handlers(app: FastAPI) -> None:
-    """Attach AppError and catch-all Exception handlers to the FastAPI app."""
+    """Register handlers for AppError, RequestValidationError, and bare Exception."""
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
@@ -21,11 +24,12 @@ def register_exception_handlers(app: FastAPI) -> None:
 
         log_fn = logger.warning if exc.status_code < 500 else logger.error
         log_fn(
-            "%s status=%s detail=%s path=%s actor_id=%s",
+            _HTTP_ERROR_FMT,
             HttpLogEvent.APP_ERROR,
+            request.method,
+            request.url.path,
             exc.status_code,
             repr(exc.detail),
-            request.url.path,
             actor_id,
         )
         return JSONResponse(
@@ -44,9 +48,12 @@ def register_exception_handlers(app: FastAPI) -> None:
 
         try:
             logger.exception(
-                "%s path=%s actor_id=%s",
+                _HTTP_ERROR_FMT,
                 HttpLogEvent.UNHANDLED_ERROR,
+                request.method,
                 request.url.path,
+                500,
+                "Something went wrong",
                 actor_id,
             )
         finally:
@@ -56,3 +63,32 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=500,
             content={"detail": "Something went wrong"},
         )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        actor_id = getattr(request.state, "actor_id", "-")
+
+        errors = exc.errors()
+        if errors:
+            err = errors[0]
+            loc = err["loc"][-1]
+            msg = err["msg"]
+            detail = f"{msg} at {loc}"
+        else:
+            detail = "Invalid request"
+
+        logger.warning(
+            _HTTP_ERROR_FMT,
+            HttpLogEvent.VALIDATION_ERROR,
+            request.method,
+            request.url.path,
+            422,
+            repr(detail),
+            actor_id,
+        )
+
+        return JSONResponse(
+            status_code=422,
+            content={"detail": detail},
+        )
+        
