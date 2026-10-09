@@ -46,7 +46,7 @@ class WorkspaceService:
                 logging.INFO,
                 DomainLogEvent.WORKSPACE_CREATED,
                 workspace_id=workspace_id,
-                actor_id=user_id,
+                owner_id=user_id,
             )
         )
         return self._to_read(workspace)

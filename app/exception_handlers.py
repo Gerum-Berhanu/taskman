@@ -61,7 +61,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         errors = exc.errors()
         if errors:
             err = errors[0]
-            detail = f"{err['msg']} at {err['loc'][-1]}"
+            msg = err.get("msg", "Invalid request")
+            loc = err.get("loc") or ()
+            detail = f"{msg} at {loc[-1]}" if loc else msg
         else:
             detail = "Invalid request"
 
