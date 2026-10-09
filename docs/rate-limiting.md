@@ -8,7 +8,7 @@ Redis keys look like `rl_sliding_window_counter:{policy}:{identity}` (e.g. `…:
 
 | Path | Role |
 |------|------|
-| `app/http/middleware/rate_limit.py` | HTTP policy selection and 429 / fail-open responses |
+| `app/middleware/rate_limit.py` | HTTP policy selection and 429 / fail-open responses |
 | `app/infrastructure/redis/rate_limit_algorithms.py` | Hit helpers (`hit_sliding_window_counter` is what middleware uses) |
 | `app/infrastructure/redis/client.py` | Redis client + registered Lua scripts |
 | `app/infrastructure/redis/lua.py` | Declared script names and packaged source loading |

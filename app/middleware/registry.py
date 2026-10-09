@@ -2,9 +2,9 @@
 
 from fastapi import FastAPI
 
-from app.http.middleware.rate_limit import RateLimitMiddleware
-from app.http.middleware.request_id import RequestIdMiddleware
-from app.http.middleware.request_logging import LogMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_id import RequestIdMiddleware
+from app.middleware.request_logging import LogMiddleware
 
 
 def register_middlewares(app: FastAPI) -> None:

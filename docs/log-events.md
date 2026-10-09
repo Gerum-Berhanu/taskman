@@ -14,7 +14,7 @@ Put new high-value events in **services** (after a successful write). Keep tags 
 
 ## HTTP / middleware
 
-Handlers and middleware live under `app/http/` (`exception_handlers.py`, `middleware/`).
+Handlers and middleware live at `app/exception_handlers.py` and `app/middleware/`.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|

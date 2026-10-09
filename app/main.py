@@ -9,8 +9,8 @@ from app.api.v1 import auth, tasks, workspaces, workspace_members
 from app.core.config import settings
 from app.core.exceptions import FailedDatabaseConnection
 from app.deps import SessionDep
-from app.http.exception_handlers import register_exception_handlers
-from app.http.middleware.registry import register_middlewares
+from app.exception_handlers import register_exception_handlers
+from app.middleware.registry import register_middlewares
 from app.infrastructure.database.session import engine
 from app.infrastructure.redis.client import redis_client
 from app.observability.logging_setup import setup_logging
