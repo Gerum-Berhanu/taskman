@@ -14,7 +14,7 @@ class AppError(Exception):
     """Base domain error carrying HTTP status, detail, and optional headers."""
 
     status_code: int = 500
-    detail: str = "Internal server error"
+    detail: str = "Something went wrong"
     headers: dict[str, str] | None = None
 
 
