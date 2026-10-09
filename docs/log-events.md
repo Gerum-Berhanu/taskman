@@ -1,16 +1,33 @@
 # Log event tags
 
-Stable message tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Domain write events emit only via `UnitOfWork.after_commit` after a successful commit.
+Stable event tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Emit catalog events only via `log_event` in `app/observability/log_event.py`. Domain write events emit only via `UnitOfWork.after_commit` after a successful commit.
 
 ## Format
 
-- Shape: `snake_case_tag key=%s ...` — no prose; no `category=` in the message.
-- Pass the template and args to the logger (`logger.info("tag key=%s", value)`); do not pre-build the message string.
-- On failure inside an `except`: prefer `logger.exception(...)` over `logger.error(..., exc_info=True)`.
+App events share one call shape: `log_event(logger, level, event, *, exc_info=False, **fields)`. Field keys come from the catalog below — no prose, no `category=` in the payload. On failure inside an `except`, pass `exc_info=True`.
+
+**Text** (`LOG_JSON=false`): envelope then `event key=value …`. Values for `detail` / `subject` are `repr`'d (may contain spaces). Tag-only events are just the event string.
+
+```text
+2026-01-01 12:00:00Z | WARNING | http | app.exception_handlers | req-1 | validation_error actor_id=- detail='Field required at email'
+```
+
+**JSON** (`LOG_JSON=true`): same envelope keys as top-level fields, plus `event` (catalog tag) and `fields` (attr object; `{}` if tag-only). No top-level rendered `message` for app events — do not nest attrs under a `message` object. Third-party / non-catalog logs (no `event` on the record) keep a `message` string. When a traceback is attached, JSON also has `exception`.
+
+```json
+{
+  "timestamp": "2026-01-01 12:00:00Z",
+  "level": "WARNING",
+  "category": "http",
+  "logger": "app.exception_handlers",
+  "request_id": "req-1",
+  "event": "validation_error",
+  "fields": {"actor_id": "-", "detail": "Field required at email"}
+}
+```
+
 - Domain success tags: past tense (`task_created`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
 - Ids as strings; missing actor/session/user-like ids → `-`.
-- Use `repr(value)` when the value may contain spaces (e.g. `subject`, `app_error` / `validation_error` `detail`).
-- Field keys: reuse the catalog below.
 - **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `ip`+`policy`). Join on envelope `request_id` when you need both.
 
 ## Category
@@ -35,7 +52,7 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 ## Catalog
 
-Inventory matches current `logger.*` call sites. Section header = expected envelope category.
+Inventory matches current `log_event` call sites. Section header = expected envelope category.
 
 ### `http` — `app.middleware.*`, `app.exception_handlers`
 
