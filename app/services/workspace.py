@@ -41,7 +41,7 @@ class WorkspaceService:
         workspace_id = workspace.id
         self._uow.after_commit(
             lambda: logger.info(
-                "%s workspace_id=%s owner_id=%s",
+                "%s workspace_id=%s actor_id=%s",
                 DomainLogEvent.WORKSPACE_CREATED,
                 workspace_id,
                 user_id,
