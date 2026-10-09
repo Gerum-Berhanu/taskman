@@ -11,6 +11,7 @@ from app.infrastructure.email.smtp import send_welcome_email
 from app.dto.api.user import UserCreate, UserRead
 from app.dto.repository import UserCreateData
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.repositories.unit_of_work import UnitOfWork
 
 
@@ -38,8 +39,12 @@ class UserService:
 
         user_id, email = user.id, user.email
         self._uow.after_commit(
-            lambda: logger.info(
-                "%s user_id=%s email=%s", DomainLogEvent.USER_REGISTERED, user_id, email
+            lambda: log_event(
+                logger,
+                logging.INFO,
+                DomainLogEvent.USER_REGISTERED,
+                user_id=user_id,
+                email=email,
             )
         )
 

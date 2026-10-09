@@ -17,6 +17,7 @@ from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.repositories.unit_of_work import UnitOfWork
 
 
@@ -55,12 +56,13 @@ class TaskService:
         task_id = task.id
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
-            lambda: logger.info(
-                "%s workspace_id=%s task_id=%s actor_id=%s",
+            lambda: log_event(
+                logger,
+                logging.INFO,
                 DomainLogEvent.TASK_CREATED,
-                workspace_id,
-                task_id,
-                actor_id,
+                workspace_id=workspace_id,
+                task_id=task_id,
+                actor_id=actor_id,
             )
         )
         await self._invalidate_summary(workspace_id)
@@ -99,12 +101,13 @@ class TaskService:
 
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
-            lambda: logger.info(
-                "%s workspace_id=%s task_id=%s actor_id=%s",
+            lambda: log_event(
+                logger,
+                logging.INFO,
                 DomainLogEvent.TASK_UPDATED,
-                workspace_id,
-                task_id,
-                actor_id,
+                workspace_id=workspace_id,
+                task_id=task_id,
+                actor_id=actor_id,
             )
         )
         await self._invalidate_summary(workspace_id)
@@ -116,12 +119,13 @@ class TaskService:
             raise TaskNotFoundError
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
-            lambda: logger.info(
-                "%s workspace_id=%s task_id=%s actor_id=%s",
+            lambda: log_event(
+                logger,
+                logging.INFO,
                 DomainLogEvent.TASK_DELETED,
-                workspace_id,
-                task_id,
-                actor_id,
+                workspace_id=workspace_id,
+                task_id=task_id,
+                actor_id=actor_id,
             )
         )
         await self._invalidate_summary(workspace_id)
@@ -134,8 +138,13 @@ class TaskService:
             if cached is not None:
                 return TaskSummaryRead.model_validate(cached)
         except Exception:
-            logger.exception(
-                "%s op=get key=%s", DomainLogEvent.CACHE_BACKEND_ERROR, key
+            log_event(
+                logger,
+                logging.ERROR,
+                DomainLogEvent.CACHE_BACKEND_ERROR,
+                exc_info=True,
+                op="get",
+                key=key,
             )
 
         status_count = await self._uow.tasks.count_by_status(workspace_id)
@@ -151,8 +160,13 @@ class TaskService:
                 {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
             )
         except Exception:
-            logger.exception(
-                "%s op=set key=%s", DomainLogEvent.CACHE_BACKEND_ERROR, key
+            log_event(
+                logger,
+                logging.ERROR,
+                DomainLogEvent.CACHE_BACKEND_ERROR,
+                exc_info=True,
+                op="set",
+                key=key,
             )
 
         return summary
@@ -163,11 +177,14 @@ class TaskService:
         try:
             await delete_keys(key)
         except Exception:
-            logger.exception(
-                "%s op=delete key=%s workspace_id=%s",
+            log_event(
+                logger,
+                logging.ERROR,
                 DomainLogEvent.CACHE_BACKEND_ERROR,
-                key,
-                workspace_id,
+                exc_info=True,
+                op="delete",
+                key=key,
+                workspace_id=workspace_id,
             )
 
     async def export(

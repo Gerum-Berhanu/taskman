@@ -9,6 +9,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from app.core.config import settings
 from app.infrastructure.email.resend_transport import send_via_resend
 from app.observability.events import InfraLogEvent
+from app.observability.log_event import log_event
 
 
 logger = logging.getLogger(__name__)
@@ -65,11 +66,13 @@ def send_mail(
     Prefers Resend HTTPS when ``RESEND_API_KEY`` is set; otherwise SMTP.
     """
     if not settings.email_enabled:
-        logger.info(
-            "%s email=%s reason=email_disabled subject=%s",
+        log_event(
+            logger,
+            logging.INFO,
             InfraLogEvent.EMAIL_SKIPPED,
-            to,
-            repr(subject),
+            email=to,
+            reason="email_disabled",
+            subject=subject,
         )
         return
 
@@ -93,15 +96,23 @@ def send_mail(
                 attachment_mime=attachment_mime,
             )
     except Exception:
-        logger.exception(
-            "%s email=%s subject=%s",
+        log_event(
+            logger,
+            logging.ERROR,
             InfraLogEvent.EMAIL_SEND_FAILED,
-            to,
-            repr(subject),
+            exc_info=True,
+            email=to,
+            subject=subject,
         )
         return
 
-    logger.info("%s email=%s subject=%s", InfraLogEvent.EMAIL_SENT, to, repr(subject))
+    log_event(
+        logger,
+        logging.INFO,
+        InfraLogEvent.EMAIL_SENT,
+        email=to,
+        subject=subject,
+    )
 
 
 def send_welcome_email(to: str) -> str:

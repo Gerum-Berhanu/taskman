@@ -6,6 +6,7 @@ from app.infrastructure.database.session import async_session_factory
 from app.infrastructure.email.smtp import send_tasks_export_email
 from app.infrastructure.export.tasks_csv import tasks_to_csv
 from app.observability.events import InfraLogEvent
+from app.observability.log_event import log_event
 from app.repositories.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -31,20 +32,23 @@ async def run_tasks_export(
             csv_text=csv_text,
         )
     except Exception:
-        logger.exception(
-            "%s workspace_id=%s email=%s actor_id=%s",
+        log_event(
+            logger,
+            logging.ERROR,
             InfraLogEvent.TASK_EXPORT_FAILED,
-            workspace_id,
-            to_email,
-            actor_id or "-",
+            exc_info=True,
+            workspace_id=workspace_id,
+            email=to_email,
+            actor_id=actor_id or "-",
         )
         return
 
-    logger.info(
-        "%s workspace_id=%s email=%s actor_id=%s subject=%s",
+    log_event(
+        logger,
+        logging.INFO,
         InfraLogEvent.TASK_EXPORT_SENT,
-        workspace_id,
-        to_email,
-        actor_id or "-",
-        repr(subject),
+        workspace_id=workspace_id,
+        email=to_email,
+        actor_id=actor_id or "-",
+        subject=subject,
     )
