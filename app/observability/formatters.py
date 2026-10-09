@@ -5,7 +5,9 @@ import logging
 
 
 _DATEFMT = "%Y-%m-%d %H:%M:%SZ"
-_TEXT_FMT = "%(asctime)s | %(levelname)s | %(name)s | %(request_id)s | %(message)s"
+_TEXT_FMT = (
+    "%(asctime)s | %(levelname)s | %(category)s | %(name)s | %(request_id)s | %(message)s"
+)
 
 
 class DefaultFormatter(logging.Formatter):
@@ -25,6 +27,7 @@ class JsonFormatter(logging.Formatter):
         payload = {
             "timestamp": self.formatTime(record, self.datefmt),
             "level": record.levelname,
+            "category": getattr(record, "category", "ops"),
             "logger": record.name,
             "request_id": getattr(record, "request_id", "-"),
             "message": record.getMessage(),
