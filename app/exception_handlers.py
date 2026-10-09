@@ -41,11 +41,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         rid_ctx = request_id_ctx.set(rid)
 
         try:
-            logger.error(
+            logger.exception(
                 "unhandled_error path=%s actor_id=%s",
                 request.url.path,
                 actor_id,
-                exc_info=True,
             )
         finally:
             request_id_ctx.reset(rid_ctx)

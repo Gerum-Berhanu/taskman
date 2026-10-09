@@ -20,19 +20,13 @@ class LogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         process_time = time.perf_counter() - start_time
 
-        log_message = (
-            "http_access method=%s path=%s status=%s duration_ms=%.1f"
-            % (
-                request.method,
-                request.url.path,
-                response.status_code,
-                process_time * 1000,
-            )
+        log_fn = logger.debug if request.url.path in _SKIP_OR_DEBUG else logger.info
+        log_fn(
+            "http_access method=%s path=%s status=%s duration_ms=%.1f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            process_time * 1000,
         )
-
-        if request.url.path in _SKIP_OR_DEBUG:
-            logger.debug(log_message)
-        else:
-            logger.info(log_message)
 
         return response
