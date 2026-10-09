@@ -13,7 +13,7 @@ from app.exception_handlers import register_exception_handlers
 from app.middleware.registry import register_middlewares
 from app.infrastructure.database.session import engine
 from app.infrastructure.redis.client import redis_client
-from app.observability.logging_setup import setup_logging
+from app.observability.setup import setup_logging
 
 
 setup_logging()

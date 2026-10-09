@@ -1,0 +1,34 @@
+"""Log record formatters for text and JSON envelopes."""
+
+import json
+import logging
+
+
+_DATEFMT = "%Y-%m-%d %H:%M:%SZ"
+_TEXT_FMT = "%(asctime)s | %(levelname)s | %(name)s | %(request_id)s | %(message)s"
+
+
+class DefaultFormatter(logging.Formatter):
+    """Human-readable text envelope."""
+
+    def __init__(self) -> None:
+        super().__init__(fmt=_TEXT_FMT, datefmt=_DATEFMT)
+
+
+class JsonFormatter(logging.Formatter):
+    """Format log records as single-line JSON objects."""
+
+    def __init__(self) -> None:
+        super().__init__(datefmt=_DATEFMT)
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "request_id": getattr(record, "request_id", "-"),
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
