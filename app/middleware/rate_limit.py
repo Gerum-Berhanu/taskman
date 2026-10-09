@@ -10,14 +10,13 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_429_TOO_MANY_REQUESTS
 from app.core.config import settings
 from app.infrastructure.redis.rate_limit_algorithms import hit_sliding_window_counter
 from app.observability.events import HttpLogEvent
+from app.observability.log_event import log_event
 
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
 _AUTH_PATH_PREFIX = "/auth"
 
 logger = logging.getLogger(__name__)
-
-_RATE_LIMIT_FMT = "%s ip=%s policy=%s"
 
 
 def _select_policy(request: Request) -> tuple[str, int, int]:
@@ -54,20 +53,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 window_seconds=window_seconds,
             )
         except Exception:  # broad Exception for now; later narrow to Redis/timeouts
-            logger.exception(
-                _RATE_LIMIT_FMT,
+            log_event(
+                logger,
+                logging.ERROR,
                 HttpLogEvent.RATE_LIMIT_BACKEND_ERROR,
-                ip,
-                policy,
+                exc_info=True,
+                ip=ip,
+                policy=policy,
             )
             return await call_next(request)  # fail-open
 
         if not result.allowed:
-            logger.warning(
-                _RATE_LIMIT_FMT,
+            log_event(
+                logger,
+                logging.WARNING,
                 HttpLogEvent.RATE_LIMIT_EXCEEDED,
-                ip,
-                policy,
+                ip=ip,
+                policy=policy,
             )
             return JSONResponse(
                 status_code=HTTP_429_TOO_MANY_REQUESTS,

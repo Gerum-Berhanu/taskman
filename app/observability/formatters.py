@@ -24,14 +24,19 @@ class JsonFormatter(logging.Formatter):
         super().__init__(datefmt=_DATEFMT)
 
     def format(self, record: logging.LogRecord) -> str:
-        payload = {
+        payload: dict[str, object] = {
             "timestamp": self.formatTime(record, self.datefmt),
             "level": record.levelname,
             "category": getattr(record, "category", "ops"),
             "logger": record.name,
             "request_id": getattr(record, "request_id", "-"),
-            "message": record.getMessage(),
         }
+        event = getattr(record, "event", None)
+        if event is not None:
+            payload["event"] = event
+            payload["fields"] = getattr(record, "fields", {})
+        else:
+            payload["message"] = record.getMessage()
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, default=str)
