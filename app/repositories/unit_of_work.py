@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.observability.events import OpsLogEvent
 from app.repositories.client_session import ClientSessionRepository
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.task import TaskRepository
@@ -53,7 +54,7 @@ class UnitOfWork:
             except Exception:
                 # Logging must never turn a successful database operation
                 # into a failed API request.
-                logger.exception("after_commit_failed")
+                logger.exception(OpsLogEvent.AFTER_COMMIT_FAILED)
 
     async def rollback(self) -> None:
         """Roll back the session and discard pending after-commit callbacks."""

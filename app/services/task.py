@@ -14,9 +14,10 @@ from app.core.exceptions import (
 from app.core.request_context import current_user_id_ctx
 from app.infrastructure.export.task_export import run_tasks_export
 from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task_summary_key
-from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
-from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
+from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
+from app.observability.events import DomainLogEvent
+from app.repositories.unit_of_work import UnitOfWork
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,8 @@ class TaskService:
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
             lambda: logger.info(
-                "task_created workspace_id=%s task_id=%s actor_id=%s",
+                "%s workspace_id=%s task_id=%s actor_id=%s",
+                DomainLogEvent.TASK_CREATED,
                 workspace_id,
                 task_id,
                 actor_id,
@@ -98,7 +100,8 @@ class TaskService:
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
             lambda: logger.info(
-                "task_updated workspace_id=%s task_id=%s actor_id=%s",
+                "%s workspace_id=%s task_id=%s actor_id=%s",
+                DomainLogEvent.TASK_UPDATED,
                 workspace_id,
                 task_id,
                 actor_id,
@@ -114,7 +117,8 @@ class TaskService:
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
             lambda: logger.info(
-                "task_deleted workspace_id=%s task_id=%s actor_id=%s",
+                "%s workspace_id=%s task_id=%s actor_id=%s",
+                DomainLogEvent.TASK_DELETED,
                 workspace_id,
                 task_id,
                 actor_id,
@@ -130,7 +134,9 @@ class TaskService:
             if cached is not None:
                 return TaskSummaryRead.model_validate(cached)
         except Exception:
-            logger.exception("cache_backend_error op=get key=%s", key)
+            logger.exception(
+                "%s op=get key=%s", DomainLogEvent.CACHE_BACKEND_ERROR, key
+            )
 
         status_count = await self._uow.tasks.count_by_status(workspace_id)
         summary = TaskSummaryRead(
@@ -145,7 +151,9 @@ class TaskService:
                 {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
             )
         except Exception:
-            logger.exception("cache_backend_error op=set key=%s", key)
+            logger.exception(
+                "%s op=set key=%s", DomainLogEvent.CACHE_BACKEND_ERROR, key
+            )
 
         return summary
 
@@ -156,7 +164,8 @@ class TaskService:
             await delete_keys(key)
         except Exception:
             logger.exception(
-                "cache_backend_error op=delete key=%s workspace_id=%s",
+                "%s op=delete key=%s workspace_id=%s",
+                DomainLogEvent.CACHE_BACKEND_ERROR,
                 key,
                 workspace_id,
             )

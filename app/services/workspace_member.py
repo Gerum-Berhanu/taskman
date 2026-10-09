@@ -11,13 +11,14 @@ from app.core.exceptions import (
     WorkspaceForbiddenError,
 )
 from app.core.request_context import current_user_id_ctx
-from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
-from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.workspace_member import (
     WorkspaceMemberCreate,
     WorkspaceMemberRead,
     WorkspaceMemberRole,
 )
+from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
+from app.observability.events import DomainLogEvent
+from app.repositories.unit_of_work import UnitOfWork
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,8 @@ class WorkspaceMemberService:
         actor_id = current_user_id_ctx.get()
         self._uow.after_commit(
             lambda: logger.info(
-                "workspace_member_added workspace_id=%s member_id=%s role=%s actor_id=%s",
+                "%s workspace_id=%s member_id=%s role=%s actor_id=%s",
+                DomainLogEvent.WORKSPACE_MEMBER_ADDED,
                 workspace_id,
                 member_id,
                 role,

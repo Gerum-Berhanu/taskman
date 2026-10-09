@@ -9,6 +9,7 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_429_TOO_MANY_REQUESTS
 
 from app.core.config import settings
 from app.infrastructure.redis.rate_limit_algorithms import hit_sliding_window_counter
+from app.observability.events import HttpLogEvent
 
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
@@ -52,7 +53,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
         except Exception:  # broad Exception for now; later narrow to Redis/timeouts
             logger.exception(
-                "rate_limit_backend_error policy=%s client=%s path=%s",
+                "%s policy=%s client=%s path=%s",
+                HttpLogEvent.RATE_LIMIT_BACKEND_ERROR,
                 policy,
                 ip,
                 request.url.path,
@@ -61,7 +63,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if not result.allowed:
             logger.warning(
-                "rate_limit_exceeded policy=%s client=%s path=%s",
+                "%s policy=%s client=%s path=%s",
+                HttpLogEvent.RATE_LIMIT_EXCEEDED,
                 policy,
                 ip,
                 request.url.path,

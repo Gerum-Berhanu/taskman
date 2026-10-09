@@ -8,6 +8,7 @@ from app.dto.repository import WorkspaceCreateData, WorkspaceRecord
 from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
 from app.dto.api.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
+from app.observability.events import DomainLogEvent
 from app.services.workspace_member import WorkspaceMemberService
 
 
@@ -40,7 +41,8 @@ class WorkspaceService:
         workspace_id = workspace.id
         self._uow.after_commit(
             lambda: logger.info(
-                "workspace_created workspace_id=%s owner_id=%s",
+                "%s workspace_id=%s owner_id=%s",
+                DomainLogEvent.WORKSPACE_CREATED,
                 workspace_id,
                 user_id,
             )

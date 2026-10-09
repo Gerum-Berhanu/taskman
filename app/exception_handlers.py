@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.exceptions import AppError
 from app.core.request_context import request_id_ctx
+from app.observability.events import HttpLogEvent
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 
         log_fn = logger.warning if exc.status_code < 500 else logger.error
         log_fn(
-            "app_error status=%s detail=%s path=%s actor_id=%s",
+            "%s status=%s detail=%s path=%s actor_id=%s",
+            HttpLogEvent.APP_ERROR,
             exc.status_code,
             repr(exc.detail),
             request.url.path,
@@ -42,7 +44,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 
         try:
             logger.exception(
-                "unhandled_error path=%s actor_id=%s",
+                "%s path=%s actor_id=%s",
+                HttpLogEvent.UNHANDLED_ERROR,
                 request.url.path,
                 actor_id,
             )

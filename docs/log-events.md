@@ -1,6 +1,6 @@
 # Log event tags
 
-Stable message tags for app logs. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Domain write events emit only via `UnitOfWork.after_commit` after a successful commit.
+Stable message tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Domain write events emit only via `UnitOfWork.after_commit` after a successful commit.
 
 ## Format
 

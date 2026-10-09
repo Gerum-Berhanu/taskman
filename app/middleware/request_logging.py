@@ -6,6 +6,8 @@ import time
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.observability.events import HttpLogEvent
+
 
 _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
 
@@ -22,7 +24,8 @@ class LogMiddleware(BaseHTTPMiddleware):
 
         log_fn = logger.debug if request.url.path in _SKIP_OR_DEBUG else logger.info
         log_fn(
-            "http_access method=%s path=%s status=%s duration_ms=%.1f",
+            "%s method=%s path=%s status=%s duration_ms=%.1f",
+            HttpLogEvent.HTTP_ACCESS,
             request.method,
             request.url.path,
             response.status_code,

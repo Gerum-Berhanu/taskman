@@ -8,9 +8,10 @@ from sqlalchemy.exc import IntegrityError
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
 from app.infrastructure.email.smtp import send_welcome_email
-from app.dto.repository import UserCreateData
-from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.user import UserCreate, UserRead
+from app.dto.repository import UserCreateData
+from app.observability.events import DomainLogEvent
+from app.repositories.unit_of_work import UnitOfWork
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class UserService:
         user_id, email = user.id, user.email
         self._uow.after_commit(
             lambda: logger.info(
-                "user_registered user_id=%s email=%s", user_id, email
+                "%s user_id=%s email=%s", DomainLogEvent.USER_REGISTERED, user_id, email
             )
         )
 

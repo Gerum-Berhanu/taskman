@@ -27,6 +27,7 @@ from app.dto.repository import (
 )
 from app.dto.api.auth import Token
 from app.dto.api.user import UserRead
+from app.observability.events import DomainLogEvent
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,9 @@ class AuthService:
 
         user_id = user.id
         self._uow.after_commit(
-            lambda: logger.info("user_login_succeeded user_id=%s", user_id)
+            lambda: logger.info(
+                "%s user_id=%s", DomainLogEvent.USER_LOGIN_SUCCEEDED, user_id
+            )
         )
         return Token(
             access_token=access_token,
@@ -166,7 +169,10 @@ class AuthService:
         user_id, session_id = session.user_id, session.id
         self._uow.after_commit(
             lambda: logger.info(
-                "user_logout user_id=%s session_id=%s", user_id, session_id
+                "%s user_id=%s session_id=%s",
+                DomainLogEvent.USER_LOGOUT,
+                user_id,
+                session_id,
             )
         )
 
@@ -188,7 +194,10 @@ class AuthService:
         user_id, session_id = session.user_id, session.id
         self._uow.after_commit(
             lambda: logger.info(
-                "user_logout_all user_id=%s session_id=%s", user_id, session_id
+                "%s user_id=%s session_id=%s",
+                DomainLogEvent.USER_LOGOUT_ALL,
+                user_id,
+                session_id,
             )
         )
 

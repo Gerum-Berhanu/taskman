@@ -8,6 +8,7 @@ from redis.commands.core import AsyncScript
 
 from app.core.config import settings
 from app.infrastructure.redis.lua import LUA_SCRIPTS, LuaScriptName
+from app.observability.events import InfraLogEvent
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class RedisClient:
         try:
             return await self.init_redis(redis_url)
         except Exception:
-            logger.exception("redis_unavailable_at_startup")
+            logger.exception(InfraLogEvent.REDIS_UNAVAILABLE_AT_STARTUP)
             return None
 
 
