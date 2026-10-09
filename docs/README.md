@@ -18,7 +18,7 @@
 | `app/core/` | Shared primitives (config, exceptions, security, time, request context) |
 | `app/observability/` | Logging setup |
 | `app/exception_handlers.py` | Map AppError / unhandled errors to JSON responses |
-| `app/middleware/` | ASGI middleware (request id, access log, rate limit) |
+| `app/middleware/` | ASGI middleware (`AccessLogMiddleware`, request id, rate limit) |
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | SMTP mailer + email templates |
 | `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |

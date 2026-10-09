@@ -2,14 +2,16 @@
 
 from fastapi import FastAPI
 
-from app.middleware.rate_limit import RateLimitMiddleware
-from app.middleware.request_id import RequestIdMiddleware
-from app.middleware.request_logging import LogMiddleware
+from app.middleware import (
+    AccessLogMiddleware,
+    RateLimitMiddleware,
+    RequestIdMiddleware,
+)
 
 
 def register_middlewares(app: FastAPI) -> None:
     """Add rate-limit, request-id, and access-log middleware (Starlette LIFO order)."""
     # Starlette stacks middleware LIFO: last added runs first on the request.
-    app.add_middleware(LogMiddleware)
+    app.add_middleware(AccessLogMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(RateLimitMiddleware)

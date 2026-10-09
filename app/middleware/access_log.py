@@ -1,4 +1,4 @@
-"""HTTP middleware that emits structured access logs per request."""
+"""HTTP access-log middleware (``http_access`` per request)."""
 
 import logging
 import time
@@ -14,8 +14,8 @@ _SKIP_OR_DEBUG = {"/health", "/favicon.ico"}
 logger = logging.getLogger(__name__)
 
 
-class LogMiddleware(BaseHTTPMiddleware):
-    """Log method, path, status, and duration after each response."""
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    """Emit ``http_access`` with method, path, status, and duration after each response."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.perf_counter()

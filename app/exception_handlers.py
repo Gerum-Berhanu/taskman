@@ -12,11 +12,11 @@ from app.observability.events import HttpLogEvent
 
 logger = logging.getLogger(__name__)
 
-_HTTP_ERROR_FMT = "%s method=%s path=%s status=%s detail=%s actor_id=%s"
+_HTTP_ERROR_FMT = "%s actor_id=%s detail=%s"
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    """Register handlers for AppError, RequestValidationError, and bare Exception."""
+    """Register AppError, RequestValidationError, and bare Exception handlers."""
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
@@ -26,11 +26,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         log_fn(
             _HTTP_ERROR_FMT,
             HttpLogEvent.APP_ERROR,
-            request.method,
-            request.url.path,
-            exc.status_code,
-            repr(exc.detail),
             actor_id,
+            repr(exc.detail),
         )
         return JSONResponse(
             status_code=exc.status_code,
@@ -46,22 +43,21 @@ def register_exception_handlers(app: FastAPI) -> None:
         # put it back so the filter, enabling %(request_id)s, works for this log line
         rid_ctx = request_id_ctx.set(rid)
 
+        detail = "Something went wrong"
+
         try:
             logger.exception(
                 _HTTP_ERROR_FMT,
                 HttpLogEvent.UNHANDLED_ERROR,
-                request.method,
-                request.url.path,
-                500,
-                "Something went wrong",
                 actor_id,
+                repr(detail),
             )
         finally:
             request_id_ctx.reset(rid_ctx)
 
         return JSONResponse(
             status_code=500,
-            content={"detail": "Something went wrong"},
+            content={"detail": detail},
         )
 
     @app.exception_handler(RequestValidationError)
@@ -80,11 +76,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         logger.warning(
             _HTTP_ERROR_FMT,
             HttpLogEvent.VALIDATION_ERROR,
-            request.method,
-            request.url.path,
-            422,
-            repr(detail),
             actor_id,
+            repr(detail),
         )
 
         return JSONResponse(

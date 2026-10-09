@@ -17,6 +17,8 @@ _AUTH_PATH_PREFIX = "/auth"
 
 logger = logging.getLogger(__name__)
 
+_RATE_LIMIT_FMT = "%s ip=%s policy=%s"
+
 
 def _select_policy(request: Request) -> tuple[str, int, int]:
     """Pick (policy, limit, window_seconds) for this request."""
@@ -37,8 +39,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if not request.client:
             return JSONResponse(
-                {"detail": "Unknown client address"},
                 status_code=HTTP_400_BAD_REQUEST,
+                content={"detail": "Unknown client address"},
             )
 
         ip = request.client.host
@@ -53,25 +55,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
         except Exception:  # broad Exception for now; later narrow to Redis/timeouts
             logger.exception(
-                "%s policy=%s client=%s path=%s",
+                _RATE_LIMIT_FMT,
                 HttpLogEvent.RATE_LIMIT_BACKEND_ERROR,
-                policy,
                 ip,
-                request.url.path,
+                policy,
             )
             return await call_next(request)  # fail-open
 
         if not result.allowed:
             logger.warning(
-                "%s policy=%s client=%s path=%s",
+                _RATE_LIMIT_FMT,
                 HttpLogEvent.RATE_LIMIT_EXCEEDED,
-                policy,
                 ip,
-                request.url.path,
+                policy,
             )
             return JSONResponse(
-                {"detail": "Rate limit exceeded"},
                 status_code=HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Rate limit exceeded"},
                 headers={"Retry-After": str(window_seconds)},
             )
         return await call_next(request)

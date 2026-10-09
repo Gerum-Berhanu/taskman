@@ -9,8 +9,9 @@ Stable message tags for app logs. Tags are registered in code as category enums 
 - On failure inside an `except`: prefer `logger.exception(...)` over `logger.error(..., exc_info=True)`.
 - Domain success tags: past tense (`task_created`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
 - Ids as strings; missing actor/session/user-like ids → `-`.
-- Use `repr(value)` when the value may contain spaces (e.g. `subject`, `app_error` `detail`).
+- Use `repr(value)` when the value may contain spaces (e.g. `subject`, `app_error` / `validation_error` `detail`).
 - Field keys: reuse the catalog below.
+- **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `ip`+`policy`). Join on envelope `request_id` when you need both.
 
 ## Category
 
@@ -38,14 +39,16 @@ Inventory matches current `logger.*` call sites. Section header = expected envel
 
 ### `http` — `app.middleware.*`, `app.exception_handlers`
 
+Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`).
+
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
 | `http_access` | `INFO` (`DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
-| `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `policy`, `client`, `path` |
-| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `policy`, `client`, `path` |
-| `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `method`, `path`, `status`, `detail`, `actor_id` |
-| `validation_error` | `WARNING` | FastAPI/Pydantic `RequestValidationError` (422); client gets first error only as `"<msg> at <field>"` | `method`, `path`, `status`, `detail`, `actor_id` |
-| `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `method`, `path`, `status`, `detail`, `actor_id` |
+| `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `ip`, `policy` |
+| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `ip`, `policy` |
+| `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `actor_id`, `detail` |
+| `validation_error` | `WARNING` | FastAPI/Pydantic `RequestValidationError` (422); client gets first error only as `"<msg> at <field>"` | `actor_id`, `detail` |
+| `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `actor_id`, `detail` |
 
 Login/refresh failures surface as `app_error`, not service tags.
 
