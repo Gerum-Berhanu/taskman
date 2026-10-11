@@ -19,11 +19,11 @@ _AUTH_PATH_PREFIX = "/auth"
 logger = logging.getLogger(__name__)
 
 
-def _select_policy(request: Request) -> tuple[str, int, int]:
-    """Pick (policy, limit, window_seconds) for this request."""
+def _select_scope(request: Request) -> tuple[str, int, int]:
+    """Pick (scope, limit, window_seconds) for this request."""
     if request.method == "POST" and request.url.path.startswith(_AUTH_PATH_PREFIX):
         return ("auth", settings.rate_limit_auth_requests, settings.rate_limit_auth_window_seconds)
-    return ("default", settings.rate_limit_requests, settings.rate_limit_window_seconds)
+    return ("domain", settings.rate_limit_requests, settings.rate_limit_window_seconds)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -43,11 +43,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
         ip = request.client.host
-        policy, limit, window_seconds = _select_policy(request)
+        scope, limit, window_seconds = _select_scope(request)
 
         try:
             result = await hit_sliding_window_counter(
-                policy=policy,
+                scope=scope,
                 identity=ip,
                 limit=limit,
                 window_seconds=window_seconds,
@@ -59,7 +59,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 HttpLogEvent.RATE_LIMIT_BACKEND_ERROR,
                 exc_info=True,
                 ip=ip,
-                policy=policy,
+                scope=scope,
             )
             return await call_next(request)  # fail-open
 
@@ -69,7 +69,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 logging.WARNING,
                 HttpLogEvent.RATE_LIMIT_EXCEEDED,
                 ip=ip,
-                policy=policy,
+                scope=scope,
             )
             return JSONResponse(
                 status_code=HTTP_429_TOO_MANY_REQUESTS,

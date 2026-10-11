@@ -20,14 +20,14 @@ class RateLimitResult:
 
 async def _hit(
     script_name: LuaScriptName,
-    policy: str,
+    scope: str,
     identity: str,
     limit: int,
     window_seconds: int,
     *extra_args: EncodableT,
 ) -> RateLimitResult:
-    prefix = f"rl_{script_name}"
-    key = f"{prefix}:{policy}:{identity}"
+    prefix = "rl"
+    key = f"{prefix}:{script_name}:{scope}:{identity}"
     now_ms = int(utcnow().timestamp() * 1000)
     window_ms = window_seconds * 1000
     allowed_flag, count = await redis_client.scripts[script_name](
@@ -42,21 +42,21 @@ async def _hit(
 
 
 async def hit_sliding_window_counter(
-    policy: str, identity: str, limit: int, window_seconds: int
+    scope: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
     """Approximate sliding-window counter hit (used by HTTP rate-limit middleware)."""
     return await _hit(
-        "sliding_window_counter", policy, identity, limit, window_seconds
+        "sliding_window_counter", scope, identity, limit, window_seconds
     )
 
 
 async def hit_sliding_window_log(
-    policy: str, identity: str, limit: int, window_seconds: int
+    scope: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
     """Exact ZSET sliding-window hit (alternate; middleware uses the counter)."""
     now_ms = int(utcnow().timestamp() * 1000)
     member = f"{now_ms}:{uuid4()}"
     return await _hit(
-        "sliding_window_log", policy, identity, limit, window_seconds, member
+        "sliding_window_log", scope, identity, limit, window_seconds, member
     )
     
