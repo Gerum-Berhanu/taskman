@@ -1,6 +1,8 @@
 """Per-route Redis rate-limit dependencies and scope presets."""
 
+from dataclasses import dataclass
 import logging
+from typing import Any, Literal
 
 from fastapi import Depends, Request
 
@@ -15,23 +17,42 @@ from app.observability.log_event import log_event
 
 logger = logging.getLogger(__name__)
 
+IdentityMode = Literal["ip", "user"]
+
+
+@dataclass(frozen=True, slots=True)
+class ScopeSpec:
+    """Budget for one named rate-limit scope."""
+
+    identity: IdentityMode
+    limit: int
+    window_seconds: int = 60
+    algorithm: LuaScriptName = "sliding_window_counter"
+
+
+# Single place to tune budgets. Same scope name => shared Redis counter.
+SCOPES: dict[str, ScopeSpec] = {
+    "auth.register": ScopeSpec(identity="ip", limit=3),
+    "auth.login": ScopeSpec(identity="ip", limit=5),
+    "auth.refresh": ScopeSpec(identity="ip", limit=30),
+    "auth.logout": ScopeSpec(identity="ip", limit=10),
+    "domain.read": ScopeSpec(identity="user", limit=100),
+    "domain.write": ScopeSpec(identity="user", limit=30),
+    "domain.export": ScopeSpec(identity="user", limit=5),
+}
+
 
 class _RequireLimit:
-    def __init__(
-        self,
-        scope: str,
-        *,
-        limit: int,
-        window_seconds: int,
-        algorithm: LuaScriptName = "sliding_window_counter",
-    ) -> None:
+    """Shared Redis hit pipeline; constructed from a SCOPES entry."""
+
+    def __init__(self, scope: str) -> None:
+        spec = SCOPES[scope]
         self.scope = scope
-        self.limit = limit
-        self.window_seconds = window_seconds
-        self.algorithm: LuaScriptName = algorithm
+        self.limit = spec.limit
+        self.window_seconds = spec.window_seconds
+        self.algorithm: LuaScriptName = spec.algorithm
 
     async def _enforce_limit(self, identifier: str, log_kwargs: dict) -> None:
-        """Shared execution pipeline for all rate limiters"""
         if not settings.rate_limit_enabled:
             return
 
@@ -68,28 +89,28 @@ class _RequireLimit:
 class RequireUserLimit(_RequireLimit):
     async def __call__(self, current_user: CurrentUserDep) -> None:
         user_id = str(current_user.id)
-        await self._enforce_limit(
-            identifier=user_id,
-            log_kwargs={"user_id": user_id},
-        )
+        await self._enforce_limit(user_id, {"user_id": user_id})
 
 
 class RequireIPLimit(_RequireLimit):
     async def __call__(self, request: Request) -> None:
         if not request.client:
             raise UnknownClientError
-
         ip = request.client.host
-        await self._enforce_limit(
-            identifier=ip,
-            log_kwargs={"ip": ip},
-        )
+        await self._enforce_limit(ip, {"ip": ip})
 
 
-AuthRegisterLimit = Depends(RequireIPLimit("auth.register", limit=3, window_seconds=60))
-AuthLoginLimit = Depends(RequireIPLimit("auth.login", limit=5, window_seconds=60))
-AuthRefreshLimit = Depends(RequireIPLimit("auth.refresh", limit=30, window_seconds=60))
-AuthLogoutLimit = Depends(RequireIPLimit("auth.logout", limit=10, window_seconds=60))
-DomainReadLimit = Depends(RequireUserLimit("domain.read", limit=100, window_seconds=60))
-DomainWriteLimit = Depends(RequireUserLimit("domain.write", limit=30, window_seconds=60))
-DomainExportLimit = Depends(RequireUserLimit("domain.export", limit=5, window_seconds=60))
+def _limit_dep(scope: str) -> Any:
+    """Build Depends(...) from SCOPES; picks IP vs user by identity mode."""
+    spec = SCOPES[scope]
+    cls = RequireIPLimit if spec.identity == "ip" else RequireUserLimit
+    return Depends(cls(scope))
+
+
+AuthRegisterLimit = _limit_dep("auth.register")
+AuthLoginLimit = _limit_dep("auth.login")
+AuthRefreshLimit = _limit_dep("auth.refresh")
+AuthLogoutLimit = _limit_dep("auth.logout")
+DomainReadLimit = _limit_dep("domain.read")
+DomainWriteLimit = _limit_dep("domain.write")
+DomainExportLimit = _limit_dep("domain.export")
