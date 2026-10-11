@@ -7,6 +7,7 @@ from starlette.status import HTTP_201_CREATED
 from app.deps import CurrentUserDep, WorkspaceMemberServiceDep, WorkspaceServiceDep, get_current_user
 from app.dto.api import WorkspaceMemberCreate, WorkspaceMemberRead, WorkspaceMemberRole
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
+from app.rate_limit import DomainReadLimit, DomainWriteLimit
 from app.rbac import RequireRole
 
 router = APIRouter(
@@ -16,7 +17,12 @@ router = APIRouter(
 )
 
 
-@router.post("", response_model=WorkspaceRead, status_code=HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=WorkspaceRead,
+    status_code=HTTP_201_CREATED,
+    dependencies=[DomainWriteLimit],
+)
 async def create_workspace(
     payload: WorkspaceCreate,
     current_user: CurrentUserDep,
@@ -25,7 +31,7 @@ async def create_workspace(
     return await workspace_service.create(payload, current_user.id)
 
 
-@router.get("", response_model=list[WorkspaceRead])
+@router.get("", response_model=list[WorkspaceRead], dependencies=[DomainReadLimit])
 async def list_workspaces(
     current_user: CurrentUserDep,
     workspace_service: WorkspaceServiceDep,
@@ -37,7 +43,10 @@ async def list_workspaces(
     "/{workspace_id}/members",
     response_model=WorkspaceMemberRead,
     status_code=HTTP_201_CREATED,
-    dependencies=[Depends(RequireRole(WorkspaceMemberRole.OWNER))],
+    dependencies=[
+        DomainWriteLimit,
+        Depends(RequireRole(WorkspaceMemberRole.OWNER)),
+    ],
 )
 async def add_workspace_member(
     workspace_id: UUID4,

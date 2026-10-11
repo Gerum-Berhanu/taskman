@@ -6,6 +6,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
+    HTTP_429_TOO_MANY_REQUESTS,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
@@ -63,3 +64,17 @@ class AssigneeNotInWorkspaceError(AppError):
 class FailedDatabaseConnection(AppError):
     status_code = HTTP_503_SERVICE_UNAVAILABLE
     detail = "Database connection failed"
+
+
+class UnknownClientError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Unknown client address"
+
+
+class RateLimitExceededError(AppError):
+    status_code = HTTP_429_TOO_MANY_REQUESTS
+    detail = "Too many requests"
+    
+    def __init__(self, retry_after: int | float | None = None) -> None:
+        if retry_after is not None:
+            self.headers = {"Retry-After": str(round(retry_after, 2))}

@@ -1,5 +1,6 @@
-"""Redis sliding-window rate-limit algorithm helpers."""
+"""Redis rate-limit algorithm helpers and name → hit dispatch."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -12,10 +13,14 @@ from app.infrastructure.redis.lua import LuaScriptName
 
 @dataclass(frozen=True)
 class RateLimitResult:
-    """Outcome of one sliding-window rate-limit check."""
+    """Outcome of one rate-limit check."""
+
     allowed: bool
     count: int
     limit: int
+
+
+HitFn = Callable[..., Awaitable[RateLimitResult]]
 
 
 async def _hit(
@@ -44,7 +49,7 @@ async def _hit(
 async def hit_sliding_window_counter(
     scope: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
-    """Approximate sliding-window counter hit (used by HTTP rate-limit middleware)."""
+    """Approximate sliding-window counter hit."""
     return await _hit(
         "sliding_window_counter", scope, identity, limit, window_seconds
     )
@@ -53,10 +58,15 @@ async def hit_sliding_window_counter(
 async def hit_sliding_window_log(
     scope: str, identity: str, limit: int, window_seconds: int
 ) -> RateLimitResult:
-    """Exact ZSET sliding-window hit (alternate; middleware uses the counter)."""
+    """Exact ZSET sliding-window hit."""
     now_ms = int(utcnow().timestamp() * 1000)
     member = f"{now_ms}:{uuid4()}"
     return await _hit(
         "sliding_window_log", scope, identity, limit, window_seconds, member
     )
-    
+
+
+HITTERS: dict[LuaScriptName, HitFn] = {
+    "sliding_window_counter": hit_sliding_window_counter,
+    "sliding_window_log": hit_sliding_window_log,
+}

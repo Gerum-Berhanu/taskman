@@ -61,10 +61,6 @@ class Settings(BaseSettings):
     log_json: bool = False
     log_file: bool = True
     rate_limit_enabled: bool = True
-    rate_limit_auth_requests: int = 5
-    rate_limit_auth_window_seconds: int = 60
-    rate_limit_requests: int = 100
-    rate_limit_window_seconds: int = 60
     email_enabled: bool = False
     resend_api_key: str = ""
     resend_from: str = "onboarding@resend.dev"

@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
+from app.rate_limit import DomainExportLimit, DomainReadLimit, DomainWriteLimit
 from app.rbac import RequireRole
 from app.deps import CurrentUserDep, TaskServiceDep, get_current_user
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
@@ -25,7 +26,10 @@ OWNER = WorkspaceMemberRole.OWNER
     "",
     response_model=TaskRead,
     status_code=HTTP_201_CREATED,
-    dependencies=[Depends(RequireRole(EDITOR))],
+    dependencies=[
+        DomainWriteLimit,
+        Depends(RequireRole(EDITOR)),
+    ],
 )
 async def create_task(
     payload: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
@@ -34,7 +38,12 @@ async def create_task(
 
 
 @router.get(
-    "/summary", response_model=TaskSummaryRead, dependencies=[Depends(RequireRole(VIEWER))]
+    "/summary",
+    response_model=TaskSummaryRead,
+    dependencies=[
+        DomainReadLimit,
+        Depends(RequireRole(VIEWER)),
+    ]
 )
 async def get_task_summary(
     workspace_id: UUID4, task_service: TaskServiceDep
@@ -46,7 +55,10 @@ async def get_task_summary(
     "/export",
     status_code=HTTP_202_ACCEPTED,
     response_class=Response,
-    dependencies=[Depends(RequireRole(VIEWER))],
+    dependencies=[
+        DomainExportLimit,
+        Depends(RequireRole(VIEWER)),
+    ],
 )
 async def export_tasks(
     workspace_id: UUID4,
@@ -62,21 +74,42 @@ async def export_tasks(
     return Response(status_code=HTTP_202_ACCEPTED)
 
 
-@router.get("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(VIEWER))])
+@router.get(
+    "/{task_id}",
+    response_model=TaskRead,
+    dependencies=[
+        DomainReadLimit,
+        Depends(RequireRole(VIEWER)),
+    ]
+)
 async def get_task(
     workspace_id: UUID4, task_id: UUID4, task_service: TaskServiceDep
 ) -> TaskRead:
     return await task_service.get(workspace_id, task_id)
 
 
-@router.get("", response_model=list[TaskRead], dependencies=[Depends(RequireRole(VIEWER))])
+@router.get(
+    "",
+    response_model=list[TaskRead],
+    dependencies=[
+        DomainReadLimit,
+        Depends(RequireRole(VIEWER)),
+    ]
+)
 async def list_tasks(
     workspace_id: UUID4, task_service: TaskServiceDep
 ) -> list[TaskRead]:
     return await task_service.list_all(workspace_id)
 
 
-@router.patch("/{task_id}", response_model=TaskRead, dependencies=[Depends(RequireRole(EDITOR))])
+@router.patch(
+    "/{task_id}",
+    response_model=TaskRead,
+    dependencies=[
+        DomainWriteLimit,
+        Depends(RequireRole(EDITOR)),
+    ]
+)
 async def update_task(
     workspace_id: UUID4,
     task_id: UUID4,
@@ -87,7 +120,12 @@ async def update_task(
 
 
 @router.delete(
-    "/{task_id}", status_code=HTTP_204_NO_CONTENT, dependencies=[Depends(RequireRole(OWNER))]
+    "/{task_id}",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[
+        DomainWriteLimit,
+        Depends(RequireRole(OWNER)),
+    ]
 )
 async def delete_task(
     workspace_id: UUID4, task_id: UUID4, task_service: TaskServiceDep

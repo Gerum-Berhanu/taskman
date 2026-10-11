@@ -11,11 +11,23 @@ from app.core.exceptions import InvalidCredentialsError
 from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
 from app.dto.api.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
 from app.dto.api.user import UserCreate, UserRead
+from app.rate_limit import (
+    AuthLoginLimit,
+    AuthLogoutLimit,
+    AuthRefreshLimit,
+    AuthRegisterLimit,
+    DomainReadLimit,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserCreateResponse, status_code=HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserCreateResponse,
+    status_code=HTTP_201_CREATED,
+    dependencies=[AuthRegisterLimit],
+)
 async def register_user(
     payload: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
 ) -> UserCreateResponse:
@@ -23,7 +35,11 @@ async def register_user(
     return UserCreateResponse(id=user.id, email=user.email)
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[AuthLoginLimit],
+)
 async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
@@ -40,7 +56,11 @@ async def login_user(
     return await auth_service.login(valid_form.email, valid_form.password)
 
 
-@router.post("/refresh", response_model=Token)
+@router.post(
+    "/refresh",
+    response_model=Token,
+    dependencies=[AuthRefreshLimit],
+)
 async def refresh_token(
     payload: RefreshTokenPayload,
     auth_service: AuthServiceDep,
@@ -49,7 +69,11 @@ async def refresh_token(
     return await auth_service.refresh(token)
 
 
-@router.post("/logout", status_code=HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[AuthLogoutLimit],
+)
 async def logout_user(
     payload: RefreshTokenPayload,
     auth_service: AuthServiceDep,
@@ -58,7 +82,11 @@ async def logout_user(
     await auth_service.logout(token)
 
 
-@router.post("/logout-all", status_code=HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout-all",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[AuthLogoutLimit],
+)
 async def logout_all_sessions(
     payload: RefreshTokenPayload,
     auth_service: AuthServiceDep,
@@ -67,6 +95,6 @@ async def logout_all_sessions(
     await auth_service.logout_all_user_sessions(token)
 
 
-@router.get("/me", response_model=UserRead)
+@router.get("/me", response_model=UserRead, dependencies=[DomainReadLimit])
 async def get_me(current_user: CurrentUserDep) -> UserRead:
     return current_user
