@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlmodel.sql.expression import select
 
-from app.api.v1 import auth, tasks, workspaces, workspace_members
+from app.api.v1 import auth, tasks, workspaces
 from app.core.config import settings
 from app.core.exceptions import FailedDatabaseConnection
 from app.deps import SessionDep
@@ -37,7 +37,6 @@ register_exception_handlers(app)
 register_middlewares(app)
 app.include_router(auth.router)
 app.include_router(workspaces.router)
-app.include_router(workspace_members.router)
 app.include_router(tasks.router)
 
 
