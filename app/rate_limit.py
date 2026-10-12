@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import logging
+import math
 from typing import Any, Literal
 
 from fastapi import Depends, Request
@@ -26,19 +27,19 @@ class ScopeSpec:
 
     identity: IdentityMode
     limit: int
+    algorithm: LuaScriptName
     window_seconds: int = 60
-    algorithm: LuaScriptName = "sliding_window_counter"
 
 
 # Single place to tune budgets. Same scope name => shared Redis counter.
 SCOPES: dict[str, ScopeSpec] = {
-    "auth.register": ScopeSpec(identity="ip", limit=3),
-    "auth.login": ScopeSpec(identity="ip", limit=5),
-    "auth.refresh": ScopeSpec(identity="ip", limit=30),
-    "auth.logout": ScopeSpec(identity="ip", limit=10),
-    "domain.read": ScopeSpec(identity="user", limit=100),
-    "domain.write": ScopeSpec(identity="user", limit=30),
-    "domain.export": ScopeSpec(identity="user", limit=5),
+    "auth.register": ScopeSpec(identity="ip", limit=3, algorithm="leaky_bucket"),
+    "auth.login": ScopeSpec(identity="ip", limit=5, algorithm="leaky_bucket"),
+    "auth.refresh": ScopeSpec(identity="ip", limit=30, algorithm="token_bucket"),
+    "auth.logout": ScopeSpec(identity="ip", limit=10, algorithm="sliding_window_counter"),
+    "domain.read": ScopeSpec(identity="user", limit=100, algorithm="sliding_window_counter"),
+    "domain.write": ScopeSpec(identity="user", limit=30, algorithm="sliding_window_counter"),
+    "domain.export": ScopeSpec(identity="user", limit=5, algorithm="leaky_bucket"),
 }
 
 
@@ -83,7 +84,8 @@ class _RequireLimit:
                 scope=self.scope,
                 **log_kwargs,
             )
-            raise RateLimitExceededError(self.window_seconds)
+            retry_after = max(1, math.ceil(result.retry_after_ms / 1000))
+            raise RateLimitExceededError(retry_after)
 
 
 class RequireUserLimit(_RequireLimit):

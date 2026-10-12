@@ -3,7 +3,8 @@
 -- ARGV[1] = now (unix time; same unit as window)
 -- ARGV[2] = window W (cycle length)
 -- ARGV[3] = limit
--- Returns {allowed (0|1), estimated_count}
+-- Returns {allowed (0|1), retry_after_ms}; 0 when allowed.
+-- On deny: ms until current cycle ends (prev-bucket weight drops).
 
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
@@ -41,14 +42,13 @@ local estimate = (tp / window) * counter_prev + counter_curr
 if estimate >= limit then
     -- If rotated, save updated counters even on deny; don't refresh TTL.
     redis.call('HSET', key, 'counter_prev', counter_prev, 'counter_curr', counter_curr, 'cycle', cycle_num_curr)
-    return {0, math.floor(estimate)}
+    return {0, math.ceil(tp)}
 end
 
 counter_curr = counter_curr + 1
-estimate = (tp / window) * counter_prev + counter_curr
 
 redis.call('HSET', key, 'counter_prev', counter_prev, 'counter_curr', counter_curr, 'cycle', cycle_num_curr)
 -- Expire at end_of_current + 2*W == (cycle_num_curr + 3) * W
 redis.call('PEXPIREAT', key, (cycle_num_curr + 3) * window)
 
-return {1, math.floor(estimate)}
+return {1, 0}

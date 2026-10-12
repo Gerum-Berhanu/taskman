@@ -4,7 +4,13 @@ from importlib.resources import files
 from typing import Literal, get_args
 
 
-LuaScriptName = Literal["sliding_window_counter", "sliding_window_log"]
+LuaScriptName = Literal[
+    "fixed_window_counter",
+    "leaky_bucket",
+    "sliding_window_counter",
+    "sliding_window_log",
+    "token_bucket",
+]
 
 
 def load_all_lua() -> dict[LuaScriptName, str]:
