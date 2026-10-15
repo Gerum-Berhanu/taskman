@@ -1,10 +1,12 @@
 """Workspace-scoped task application services."""
 
+import json
 import logging
 from uuid import UUID
 
 from fastapi import BackgroundTasks
-from pydantic import UUID4
+from pydantic import UUID4, ValidationError
+from redis.exceptions import RedisError
 
 from app.core.exceptions import (
     AssigneeNotInWorkspaceError,
@@ -22,6 +24,10 @@ from app.repositories.unit_of_work import UnitOfWork
 
 
 logger = logging.getLogger(__name__)
+
+# Redis outages / timeouts, plus unreadable or invalid cache payloads.
+_CACHE_BACKEND_ERRORS = (RedisError, TimeoutError, json.JSONDecodeError)
+_CACHE_GET_ERRORS = (*_CACHE_BACKEND_ERRORS, ValidationError)
 
 
 class TaskService:
@@ -137,7 +143,7 @@ class TaskService:
             cached = await get_json(key)
             if cached is not None:
                 return TaskSummaryRead.model_validate(cached)
-        except Exception:
+        except _CACHE_GET_ERRORS:
             log_event(
                 logger,
                 logging.ERROR,
@@ -159,7 +165,7 @@ class TaskService:
                 key,
                 {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
             )
-        except Exception:
+        except _CACHE_BACKEND_ERRORS:
             log_event(
                 logger,
                 logging.ERROR,
@@ -176,7 +182,7 @@ class TaskService:
         key = task_summary_key(workspace_id)
         try:
             await delete_keys(key)
-        except Exception:
+        except _CACHE_BACKEND_ERRORS:
             log_event(
                 logger,
                 logging.ERROR,

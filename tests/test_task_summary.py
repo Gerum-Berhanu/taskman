@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from tests.test_api import (
     FORBIDDEN_DETAIL,
@@ -215,11 +216,11 @@ def test_summary_succeeds_when_cache_backend_errors(
 
     monkeypatch.setattr(
         "app.services.task.get_json",
-        AsyncMock(side_effect=RuntimeError("redis down")),
+        AsyncMock(side_effect=RedisConnectionError("redis down")),
     )
     monkeypatch.setattr(
         "app.services.task.set_json",
-        AsyncMock(side_effect=RuntimeError("redis down")),
+        AsyncMock(side_effect=RedisConnectionError("redis down")),
     )
 
     response = client.get(summary_url(workspace_id), headers=headers)

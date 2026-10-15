@@ -6,6 +6,7 @@ import pytest
 from fastapi.params import Depends as DependsParam
 from fastapi.testclient import TestClient
 from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.config import settings
 from app.infrastructure.redis.rate_limit_algorithms import HITTERS
@@ -245,7 +246,7 @@ def test_fail_open_when_hit_raises(
     algorithm = _dep_instance(AuthLoginLimit).algorithm
 
     async def boom(**_kwargs):
-        raise RuntimeError("redis down")
+        raise RedisConnectionError("redis down")
 
     monkeypatch.setitem(HITTERS, algorithm, boom)
 
@@ -254,3 +255,22 @@ def test_fail_open_when_hit_raises(
         data={"username": "nobody@example.com", "password": "wrong"},
     )
     assert response.status_code == 401
+
+
+def test_non_backend_errors_are_not_swallowed(
+    client: TestClient,
+    enable_rate_limits: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    algorithm = _dep_instance(AuthLoginLimit).algorithm
+
+    async def boom(**_kwargs):
+        raise ValueError("programmer error")
+
+    monkeypatch.setitem(HITTERS, algorithm, boom)
+
+    with pytest.raises(ValueError, match="programmer error"):
+        client.post(
+            "/auth/login",
+            data={"username": "nobody@example.com", "password": "wrong"},
+        )

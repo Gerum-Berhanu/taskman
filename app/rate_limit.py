@@ -6,6 +6,7 @@ import math
 from typing import Any, Literal
 
 from fastapi import Depends, Request
+from redis.exceptions import RedisError
 
 from app.core.config import settings
 from app.core.exceptions import RateLimitExceededError, UnknownClientError
@@ -14,6 +15,9 @@ from app.infrastructure.redis.lua import LuaScriptName
 from app.infrastructure.redis.rate_limit_algorithms import HITTERS
 from app.observability.events import HttpLogEvent
 from app.observability.log_event import log_event
+
+# Redis outages, timeouts, and missing scripts when init failed at startup.
+_BACKEND_ERRORS = (RedisError, TimeoutError, KeyError)
 
 
 logger = logging.getLogger(__name__)
@@ -65,7 +69,7 @@ class _RequireLimit:
                 limit=self.limit,
                 window_seconds=self.window_seconds,
             )
-        except Exception:
+        except _BACKEND_ERRORS:
             log_event(
                 logger,
                 logging.ERROR,

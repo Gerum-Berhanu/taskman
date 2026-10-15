@@ -29,6 +29,6 @@ Value is a JSON object matching the summary response (`workspace_id` stored as a
 Caching is **not** on the critical path:
 
 - Redis down at startup → app still boots (`redis_unavailable_at_startup`).
-- Get/set/delete failures at request time → log `cache_backend_error` and continue (DB path for reads; mutation still succeeds).
+- Get/set/delete failures at request time (`redis.exceptions.RedisError`, `TimeoutError`, corrupt JSON, or invalid cached shape on get) → log `cache_backend_error` and continue (DB path for reads; mutation still succeeds). Other exceptions are not swallowed.
 
 See also: [log-events.md](log-events.md) (`cache_backend_error`), [rate-limiting.md](rate-limiting.md) (same Redis client, fail-open pattern).

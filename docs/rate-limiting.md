@@ -78,7 +78,7 @@ Unknown client address on the IP path raises `UnknownClientError` (400).
 Rate limiting is **not** on the critical path for API availability:
 
 - If Redis is down at startup, the app still boots (`redis_unavailable_at_startup`) and leaves the client uninitialized.
-- If a limit check fails at request time (Redis down, timeouts, uninitialized client, script errors), `_enforce_limit` logs `rate_limit_backend_error` (fields: `scope` + `ip` or `user_id`) and **allows the request**.
+- If a limit check hits a backend failure at request time (`redis.exceptions.RedisError`, `TimeoutError`, or `KeyError` when scripts were never registered after a failed init), `_enforce_limit` logs `rate_limit_backend_error` (fields: `scope` + `ip` or `user_id`) and **allows the request**. Other exceptions are not swallowed.
 - Real **429** responses only happen when Redis answered and the client is over the limit.
 
 During a Redis outage, limits are effectively off until Redis is healthy again and the process has a working client (today that means a successful init, typically after restart).

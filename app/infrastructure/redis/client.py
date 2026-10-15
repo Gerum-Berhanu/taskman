@@ -1,10 +1,12 @@
-"""Async Redis client wrapper (rate limiting, task-summary cache, …)."""
+"""Async Redis client wrapper (rate limiting, task-summary cache, ...)."""
 
 import logging
 from typing import get_args
 
 from redis.asyncio import Redis
 from redis.commands.core import AsyncScript
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 
 from app.core.config import settings
 from app.infrastructure.redis.lua import LUA_SCRIPTS, LuaScriptName
@@ -13,6 +15,9 @@ from app.observability.log_event import log_event
 
 
 logger = logging.getLogger(__name__)
+
+# Ping / connect failures at startup (redis-py plus socket-level errors).
+_INIT_ERRORS = (RedisError, TimeoutError, OSError)
 
 
 class RedisClient:
@@ -27,7 +32,7 @@ class RedisClient:
         client = Redis.from_url(redis_url, decode_responses=True)
         try:
             await client.ping()
-        except Exception:
+        except _INIT_ERRORS:
             await client.aclose()
             self._client = None
             raise
@@ -41,7 +46,7 @@ class RedisClient:
         """Like ``init_redis``, but log and return ``None`` on failure (app continues)."""
         try:
             return await self.init_redis(redis_url)
-        except Exception:
+        except _INIT_ERRORS:
             log_event(
                 logger,
                 logging.ERROR,
@@ -49,7 +54,6 @@ class RedisClient:
                 exc_info=True,
             )
             return None
-
 
     async def close_redis(self) -> None:
         """Close the connection if one is open."""
@@ -62,7 +66,7 @@ class RedisClient:
     def get_redis_client(self) -> Redis:
         """Return the live client or raise if not initialized."""
         if self._client is None:
-            raise RuntimeError("Redis is not initialized")
+            raise RedisConnectionError("Redis is not initialized")
         return self._client
 
     def _register_scripts(self, lua_scripts: dict[LuaScriptName, str]) -> None:

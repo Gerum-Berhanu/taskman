@@ -1,7 +1,9 @@
 """FastAPI application entrypoint."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel.sql.expression import select
 
 from app.api.v1 import auth, tasks, workspaces
@@ -44,6 +46,6 @@ app.include_router(tasks.router)
 async def health(session: SessionDep) -> dict[str, str]:
     try:
         await session.exec(select(1))
-    except Exception:
-        raise FailedDatabaseConnection
+    except SQLAlchemyError as exc:
+        raise FailedDatabaseConnection from exc
     return {"status": "ok"}

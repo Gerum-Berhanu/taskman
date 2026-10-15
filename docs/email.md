@@ -21,7 +21,7 @@ After a successful `POST /auth/register` commit, Taskman sends a welcome email i
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent. That way `add_task` lands on `BackgroundTasks` in time.
 5. After the 201 is sent, Starlette runs the background task → `send_welcome_email` → `send_mail`.
 
-`send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on success/failure it logs `email_sent` / `email_send_failed` and never raises (registration stays 201).
+`send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on transport failure (`smtplib.SMTPException`, `OSError`, `TimeoutError`, `resend.exceptions.ResendError`) it logs `email_send_failed` and returns without raising so registration stays 201. Non-transport errors are not swallowed.
 
 ## Task export email
 

@@ -5,6 +5,7 @@ import logging
 import smtplib
 
 from jinja2 import Environment, PackageLoader, select_autoescape
+from resend.exceptions import ResendError
 
 from app.core.config import settings
 from app.infrastructure.email.resend_transport import send_via_resend
@@ -13,6 +14,9 @@ from app.observability.log_event import log_event
 
 
 logger = logging.getLogger(__name__)
+
+# Transport failures only; programming errors in callers still propagate.
+_SEND_ERRORS = (smtplib.SMTPException, OSError, TimeoutError, ResendError)
 
 
 _env = Environment(
@@ -95,7 +99,7 @@ def send_mail(
                 attachment_bytes=attachment_bytes,
                 attachment_mime=attachment_mime,
             )
-    except Exception:
+    except _SEND_ERRORS:
         log_event(
             logger,
             logging.ERROR,
