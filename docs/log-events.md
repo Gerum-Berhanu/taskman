@@ -28,7 +28,7 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
 
 - Domain success tags: past tense (`task_created`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
 - Ids as strings; missing actor/session/user-like ids → `-`.
-- **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `ip`+`policy`). Join on envelope `request_id` when you need both.
+- **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `scope`+`ip`/`user_id`). Join on envelope `request_id` when you need both.
 
 ## Category
 
@@ -41,6 +41,7 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 | `infrastructure` | `infra` |
 | `middleware` | `http` |
 | `exception_handlers` | `http` |
+| `rate_limit` | `http` |
 | `repositories` | `ops` |
 | `main` | `ops` |
 
@@ -54,15 +55,15 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 Inventory matches current `log_event` call sites. Section header = expected envelope category.
 
-### `http` — `app.middleware.*`, `app.exception_handlers`
+### `http` — `app.middleware.*`, `app.exception_handlers`, `app.rate_limit`
 
-Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`).
+Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). Rate limits: `app/rate_limit.py`.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
 | `http_access` | `INFO` (`DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
-| `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `ip`, `policy` |
-| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `ip`, `policy` |
+| `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `scope`, plus `ip` or `user_id` |
+| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `scope`, plus `ip` or `user_id` |
 | `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `actor_id`, `detail` |
 | `validation_error` | `WARNING` | FastAPI/Pydantic `RequestValidationError` (422); client gets first error only as `"<msg> at <field>"` | `actor_id`, `detail` |
 | `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `actor_id`, `detail` |

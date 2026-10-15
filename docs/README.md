@@ -19,6 +19,7 @@
 | `app/observability/` | Logging setup |
 | `app/exception_handlers.py` | Map AppError / unhandled errors to JSON responses |
 | `app/middleware/` | ASGI middleware (`AccessLogMiddleware`, request id) |
+| `app/rate_limit.py` | Per-route Redis rate-limit dependencies and `SCOPES` |
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | SMTP mailer + email templates |
 | `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |
