@@ -65,3 +65,12 @@ class SlidingWindowLog(RateLimitAlgorithm):
     def extra_argv(self, **kwargs: Unpack[ExtraArgvKwargs]) -> tuple[EncodableT, ...]:
         member = f"{kwargs["now_ms"]}:{uuid4()}"
         return (member,)
+
+
+HITTERS: dict[LuaScriptName, RateLimitAlgorithm] = {
+    "fixed_window_counter": RateLimitAlgorithm("fixed_window_counter"),
+    "leaky_bucket": RateLimitAlgorithm("leaky_bucket"),
+    "sliding_window_counter": RateLimitAlgorithm("sliding_window_counter"),
+    "sliding_window_log": SlidingWindowLog(),
+    "token_bucket": RateLimitAlgorithm("token_bucket"),
+}

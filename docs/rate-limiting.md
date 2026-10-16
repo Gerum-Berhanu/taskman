@@ -9,7 +9,7 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 | Path | Role |
 |------|------|
 | `app/dependencies/rate_limit.py` | `SCOPES` presets, `RequireIPLimit` / `RequireUserLimit`, module aliases |
-| `app/infrastructure/redis/rate_limit/` | `algorithm.py` (`RateLimitAlgorithm` / `SlidingWindowLog`) + `HITTERS` registry |
+| `app/infrastructure/redis/rate_limit/` | `algorithm.py` (strategies + `HITTERS`); `__init__.py` re-exports only |
 | `app/infrastructure/redis/client.py` | Async Redis client + registered Lua scripts |
 | `app/infrastructure/redis/lua_loader.py` | Declared script names and packaged source loading |
 | `app/infrastructure/redis/scripts/*.lua` | One script per algorithm (see catalog below) |
