@@ -9,7 +9,7 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 | Path | Role |
 |------|------|
 | `app/dependencies/rate_limit.py` | `SCOPES` presets, `RequireIPLimit` / `RequireUserLimit`, module aliases |
-| `app/infrastructure/redis/rate_limit/` | `hit_*` helpers + `HITTERS` (algorithm name -> hit callable) |
+| `app/infrastructure/redis/rate_limit/` | `algorithm.py` (`RateLimitAlgorithm` / `SlidingWindowLog`) + `HITTERS` registry |
 | `app/infrastructure/redis/client.py` | Async Redis client + registered Lua scripts |
 | `app/infrastructure/redis/lua_loader.py` | Declared script names and packaged source loading |
 | `app/infrastructure/redis/scripts/*.lua` | One script per algorithm (see catalog below) |
@@ -62,7 +62,7 @@ Every Lua script returns `{allowed (0|1), retry_after_ms}`. On allow, `retry_aft
 | `token_bucket` | `token_bucket.lua` | Burst + steady refill |
 | `leaky_bucket` | `leaky_bucket.lua` | Strict min-gap (no burst); `limit`/`window` set the gap |
 
-Dispatch is only via `HITTERS` in `app/infrastructure/redis/rate_limit/`. The HTTP layer picks `SCOPES[scope].algorithm` and calls the mapped hit helper.
+Dispatch is only via `HITTERS` (name -> `RateLimitAlgorithm` instance). The HTTP layer picks `SCOPES[scope].algorithm` and calls `.hit(...)` on the mapped strategy.
 
 ## Identity
 

@@ -61,9 +61,9 @@ class _RequireLimit:
         if not settings.rate_limit_enabled:
             return
 
-        hit = HITTERS[self.algorithm]
+        rl = HITTERS[self.algorithm]
         try:
-            result = await hit(
+            result = await rl.hit(
                 scope=self.scope,
                 identity=identifier,
                 limit=self.limit,

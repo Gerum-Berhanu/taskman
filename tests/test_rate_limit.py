@@ -248,7 +248,7 @@ def test_fail_open_when_hit_raises(
     async def boom(**_kwargs):
         raise RedisConnectionError("redis down")
 
-    monkeypatch.setitem(HITTERS, algorithm, boom)
+    monkeypatch.setattr(HITTERS[algorithm], "hit", boom)
 
     response = client.post(
         "/auth/login",
@@ -267,7 +267,7 @@ def test_non_backend_errors_are_not_swallowed(
     async def boom(**_kwargs):
         raise ValueError("programmer error")
 
-    monkeypatch.setitem(HITTERS, algorithm, boom)
+    monkeypatch.setattr(HITTERS[algorithm], "hit", boom)
 
     with pytest.raises(ValueError, match="programmer error"):
         client.post(
