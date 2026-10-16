@@ -15,7 +15,7 @@ from app.core.exceptions import (
 )
 from app.core.request_context import current_user_id_ctx
 from app.infrastructure.export.task_export import run_tasks_export
-from app.infrastructure.redis.cache import delete_keys, get_json, set_json, task_summary_key
+from app.infrastructure.redis.cache import delete_keys, get_json, set_json
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events import DomainLogEvent
@@ -36,6 +36,9 @@ class TaskService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
+    def _summary_cache_key(self, workspace_id: UUID) -> str:
+        return f"cache:ws:{workspace_id}:tasks:summary"
+
     async def _validate_assignee(
         self, workspace_id: UUID, assigned_user_id: UUID4 | None
     ) -> None:
@@ -50,8 +53,7 @@ class TaskService:
         if membership is None:
             raise AssigneeNotInWorkspaceError
 
-    @staticmethod
-    def _to_read(record: TaskRecord) -> TaskRead:
+    def _to_read(self, record: TaskRecord) -> TaskRead:
         return TaskRead.model_validate(record, from_attributes=True)
 
     async def create(self, payload: TaskCreate, workspace_id: UUID) -> TaskRead:
@@ -137,7 +139,7 @@ class TaskService:
         await self._invalidate_summary(workspace_id)
 
     async def summary(self, workspace_id: UUID) -> TaskSummaryRead:
-        key = task_summary_key(workspace_id)
+        key = self._summary_cache_key(workspace_id)
 
         try:
             cached = await get_json(key)
@@ -179,7 +181,7 @@ class TaskService:
 
     async def _invalidate_summary(self, workspace_id: UUID) -> None:
         """Early invalidate is fine (worst case: extra DB read if commit fails)."""
-        key = task_summary_key(workspace_id)
+        key = self._summary_cache_key(workspace_id)
         try:
             await delete_keys(key)
         except _CACHE_BACKEND_ERRORS:
