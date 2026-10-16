@@ -4,9 +4,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
-from app.rate_limit import DomainExportLimit, DomainReadLimit, DomainWriteLimit
-from app.rbac import RequireRole
-from app.deps import CurrentUserDep, TaskServiceDep, get_current_user
+from app.dependencies import (
+    CurrentUserDep,
+    DomainExportLimit,
+    DomainReadLimit,
+    DomainWriteLimit,
+    RequireRole,
+    TaskServiceDep,
+    get_current_user,
+)
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.api.workspace_member import WorkspaceMemberRole
 

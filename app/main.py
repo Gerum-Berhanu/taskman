@@ -9,7 +9,7 @@ from sqlmodel.sql.expression import select
 from app.api.v1 import auth, tasks, workspaces
 from app.core.config import settings
 from app.core.exceptions import FailedDatabaseConnection
-from app.deps import SessionDep
+from app.dependencies import SessionDep
 from app.exception_handlers import register_exception_handlers
 from app.middleware.registry import register_middlewares
 from app.infrastructure.database.session import engine

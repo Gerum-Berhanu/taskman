@@ -8,16 +8,18 @@ from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.core.exceptions import InvalidCredentialsError
-from app.deps import AuthServiceDep, CurrentUserDep, UserServiceDep
-from app.dto.api.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
-from app.dto.api.user import UserCreate, UserRead
-from app.rate_limit import (
+from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,
     AuthRefreshLimit,
     AuthRegisterLimit,
+    AuthServiceDep,
+    CurrentUserDep,
     DomainReadLimit,
+    UserServiceDep,
 )
+from app.dto.api.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
+from app.dto.api.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

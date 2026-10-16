@@ -6,7 +6,7 @@ from fastapi import Path
 from pydantic import UUID4
 
 from app.core.exceptions import WorkspaceForbiddenError
-from app.deps import CurrentUserDep, WorkspaceMemberServiceDep
+from app.dependencies.service import CurrentUserDep, WorkspaceMemberServiceDep
 from app.dto.api.workspace_member import WorkspaceMemberRole
 
 

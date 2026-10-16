@@ -4,11 +4,17 @@ from fastapi import APIRouter, Depends
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED
 
-from app.deps import CurrentUserDep, WorkspaceMemberServiceDep, WorkspaceServiceDep, get_current_user
+from app.dependencies import (
+    CurrentUserDep,
+    DomainReadLimit,
+    DomainWriteLimit,
+    RequireRole,
+    WorkspaceMemberServiceDep,
+    WorkspaceServiceDep,
+    get_current_user,
+)
 from app.dto.api import WorkspaceMemberCreate, WorkspaceMemberRead, WorkspaceMemberRole
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
-from app.rate_limit import DomainReadLimit, DomainWriteLimit
-from app.rbac import RequireRole
 
 router = APIRouter(
     prefix="/workspaces",

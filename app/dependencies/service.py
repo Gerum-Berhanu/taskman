@@ -5,11 +5,9 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.request_context import current_user_id_ctx
-from app.infrastructure.database.session import async_session_factory
-from app.repositories.unit_of_work import UnitOfWork
+from app.dependencies.infra import UowDep
 from app.dto.api.user import UserRead
 from app.services.auth import AuthService
 from app.services.task import TaskService
@@ -18,24 +16,6 @@ from app.services.workspace import WorkspaceService
 from app.services.workspace_member import WorkspaceMemberService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield a request-scoped async DB session."""
-    async with async_session_factory() as session:
-        yield session
-
-
-SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
-
-
-async def get_uow(session: SessionDep) -> AsyncGenerator[UnitOfWork, None]:
-    """Yield a UnitOfWork that commits on success and rolls back on error."""
-    async with UnitOfWork(session) as uow:
-        yield uow
-
-
-UowDep = Annotated[UnitOfWork, Depends(get_uow, scope="function")]
 
 
 def get_task_service(uow: UowDep) -> TaskService:
@@ -75,7 +55,7 @@ WorkspaceMemberServiceDep = Annotated[
 async def get_current_user(
     request: Request,
     token: Annotated[str, Depends(oauth2_scheme)],
-    auth_service: AuthServiceDep
+    auth_service: AuthServiceDep,
 ) -> AsyncGenerator[UserRead, None]:
     """Resolve the bearer token to a user and set actor context for the request."""
     user = await auth_service.get_user_from_token(token)

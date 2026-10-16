@@ -10,7 +10,7 @@ from redis.exceptions import RedisError
 
 from app.core.config import settings
 from app.core.exceptions import RateLimitExceededError, UnknownClientError
-from app.deps import CurrentUserDep
+from app.dependencies.service import CurrentUserDep
 from app.infrastructure.redis.lua_loader import LuaScriptName
 from app.infrastructure.redis.rate_limit import HITTERS
 from app.observability.events import HttpLogEvent

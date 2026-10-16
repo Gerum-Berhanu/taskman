@@ -10,7 +10,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.config import settings
 from app.infrastructure.redis.rate_limit import HITTERS
-from app.rate_limit import (
+from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,
     DomainExportLimit,
