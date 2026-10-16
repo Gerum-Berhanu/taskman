@@ -2,14 +2,12 @@
 
 import json
 from typing import Any
-from uuid import UUID
 
 from app.core.config import settings
+from app.infrastructure.redis.cache.task_summary import task_summary_key
 from app.infrastructure.redis.client import redis_client
 
-
-def task_summary_key(workspace_id: UUID) -> str:
-    return f"cache:ws:{workspace_id}:tasks:summary"
+__all__ = ["delete_keys", "get_json", "set_json", "task_summary_key"]
 
 
 async def get_json(key: str) -> dict[str, Any] | None:

@@ -9,7 +9,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 
 from app.core.config import settings
-from app.infrastructure.redis.lua import LUA_SCRIPTS, LuaScriptName
+from app.infrastructure.redis.lua_loader import LUA_SCRIPTS, LuaScriptName
 from app.observability.events import InfraLogEvent
 from app.observability.log_event import log_event
 
