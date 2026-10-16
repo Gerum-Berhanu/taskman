@@ -8,7 +8,7 @@ from fastapi import BackgroundTasks
 from pydantic import UUID4, ValidationError
 from redis.exceptions import RedisError
 
-from app.core.exceptions import (
+from app.exceptions import (
     AssigneeNotInWorkspaceError,
     TaskNotFoundError,
     UserNotFoundError,

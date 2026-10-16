@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 
-from app.core.exceptions import WorkspaceForbiddenError
+from app.exceptions import WorkspaceForbiddenError
 from app.dto.repository import WorkspaceCreateData, WorkspaceRecord
 from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead

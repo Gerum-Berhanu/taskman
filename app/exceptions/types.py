@@ -74,7 +74,7 @@ class UnknownClientError(AppError):
 class RateLimitExceededError(AppError):
     status_code = HTTP_429_TOO_MANY_REQUESTS
     detail = "Too many requests"
-    
+
     def __init__(self, retry_after: int | float | None = None) -> None:
         if retry_after is not None:
             self.headers = {"Retry-After": str(round(retry_after, 2))}

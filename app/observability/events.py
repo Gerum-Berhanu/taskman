@@ -8,7 +8,7 @@ class LogEvent(StrEnum):
 
 
 class HttpLogEvent(LogEvent):
-    """Tags from ``app.middleware.*`` / ``app.exception_handlers`` → envelope ``http``."""
+    """Tags from ``app.middleware.*`` / ``app.exceptions.handlers`` → envelope ``http``."""
 
     HTTP_ACCESS = "http_access"
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"

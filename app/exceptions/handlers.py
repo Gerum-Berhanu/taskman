@@ -6,8 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.core.exceptions import AppError
 from app.core.request_context import request_id_ctx
+from app.exceptions.types import AppError
 from app.observability.events import HttpLogEvent
 from app.observability.log_event import log_event
 

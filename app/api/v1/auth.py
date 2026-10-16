@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
-from app.core.exceptions import InvalidCredentialsError
+from app.exceptions import InvalidCredentialsError
 from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,

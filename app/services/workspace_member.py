@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 
-from app.core.exceptions import (
+from app.exceptions import (
     MembershipAlreadyExistsError,
     UserNotFoundError,
     WorkspaceForbiddenError,

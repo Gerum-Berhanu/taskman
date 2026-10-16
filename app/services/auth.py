@@ -9,7 +9,7 @@ import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
-from app.core.exceptions import InvalidCredentialsError, InvalidTokenError
+from app.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import (
     generate_refresh_token,
     get_password_hash,

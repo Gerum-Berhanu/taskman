@@ -1,1 +1,1 @@
-"""Shared application primitives: config, security, exceptions, and context."""
+"""Shared application primitives: config, security, time, and context."""

@@ -5,7 +5,7 @@ import logging
 from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 
-from app.core.exceptions import EmailAlreadyRegisteredError
+from app.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
 from app.infrastructure.email.mails import send_welcome_email
 from app.dto.api.user import UserCreate, UserRead

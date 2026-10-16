@@ -15,9 +15,9 @@
 
 | Path | Role |
 |------|------|
-| `app/core/` | Shared primitives (config, exceptions, security, time, request context) |
+| `app/core/` | Shared primitives (config, security, time, request context) |
 | `app/observability/` | Logging setup |
-| `app/exception_handlers.py` | Map AppError / unhandled errors to JSON responses |
+| `app/exceptions/` | Domain error types + FastAPI JSON error handlers |
 | `app/middleware/` | ASGI middleware (`AccessLogMiddleware`, request id) |
 | `app/dependencies/` | FastAPI DI (session/UoW, services, rate limits, RBAC) |
 | `app/infrastructure/database/` | Engine / session factory |

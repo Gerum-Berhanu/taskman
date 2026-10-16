@@ -13,27 +13,31 @@ class LogCategory(StrEnum):
     OPS = "ops"
 
 
-# Top-level package under app.* → category (package layout is the taxonomy)
+# Logger-name prefixes → envelope category. Longest match wins via walk-up.
 _PACKAGE_CATEGORY: dict[str, LogCategory] = {
-    "services": LogCategory.DOMAIN,
-    "infrastructure": LogCategory.INFRA,
-    "middleware": LogCategory.HTTP,
-    "exception_handlers": LogCategory.HTTP,
-    "rate_limit": LogCategory.HTTP,
-    "repositories": LogCategory.OPS,
-    "main": LogCategory.OPS,
+    "app.services": LogCategory.DOMAIN,
+    "app.infrastructure": LogCategory.INFRA,
+    "app.dependencies.rate_limit": LogCategory.HTTP,
+    "app.middleware": LogCategory.HTTP,
+    "app.exceptions": LogCategory.HTTP,
+    "app.repositories": LogCategory.OPS,
+    "app.main": LogCategory.OPS,
 }
+
+
+def _category(name: str) -> LogCategory:
+    while name:
+        if name in _PACKAGE_CATEGORY:
+            return _PACKAGE_CATEGORY[name]
+        name = name.rpartition(".")[0]
+    return LogCategory.OPS
 
 
 class CategoryFilter(logging.Filter):
     """Attach envelope category from the logger name onto each log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        parts = record.name.split(".")
-        if len(parts) >= 2 and parts[0] == "app":
-            record.category = _PACKAGE_CATEGORY.get(parts[1], LogCategory.OPS)
-        else:
-            record.category = LogCategory.OPS
+        record.category = _category(record.name)
         return True
 
 

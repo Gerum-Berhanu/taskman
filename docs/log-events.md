@@ -9,7 +9,7 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
 **Text** (`LOG_JSON=false`): envelope then `event key=value …`. Values for `detail` / `subject` are `repr`'d (may contain spaces). Tag-only events are just the event string.
 
 ```text
-2026-01-01 12:00:00Z | WARNING | http | app.exception_handlers | req-1 | validation_error actor_id=- detail='Field required at email'
+2026-01-01 12:00:00Z | WARNING | http | app.exceptions.handlers | req-1 | validation_error actor_id=- detail='Field required at email'
 ```
 
 **JSON** (`LOG_JSON=true`): same envelope keys as top-level fields, plus `event` (catalog tag) and `fields` (attr object; `{}` if tag-only). No top-level rendered `message` for app events — do not nest attrs under a `message` object. Third-party / non-catalog logs (no `event` on the record) keep a `message` string. When a traceback is attached, JSON also has `exception`.
@@ -19,7 +19,7 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
   "timestamp": "2026-01-01 12:00:00Z",
   "level": "WARNING",
   "category": "http",
-  "logger": "app.exception_handlers",
+  "logger": "app.exceptions.handlers",
   "request_id": "req-1",
   "event": "validation_error",
   "fields": {"actor_id": "-", "detail": "Field required at email"}
@@ -33,17 +33,17 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
 ## Category
 
 Closed set: `http` | `domain` | `infra` | `ops`.  
-`CategoryFilter` maps `app.<package>` → category (unknown / non-`app.*` → `ops`). No `extra=` at call sites — put the logger in the right package.
+`CategoryFilter` walks the logger name upward (`app.services.task` → `app.services` → …) until a prefix in the map matches; unknown → `ops`. More specific prefixes win (e.g. `app.dependencies.rate_limit` over a bare `app.dependencies` if both existed). No `extra=` at call sites — put the logger under the right prefix.
 
-| `app.<package>` | category |
-|-----------------|----------|
-| `services` | `domain` |
-| `infrastructure` | `infra` |
-| `middleware` | `http` |
-| `exception_handlers` | `http` |
-| `rate_limit` | `http` |
-| `repositories` | `ops` |
-| `main` | `ops` |
+| Logger-name prefix | category |
+|--------------------|----------|
+| `app.services` | `domain` |
+| `app.infrastructure` | `infra` |
+| `app.middleware` | `http` |
+| `app.exceptions` | `http` |
+| `app.dependencies.rate_limit` | `http` |
+| `app.repositories` | `ops` |
+| `app.main` | `ops` |
 
 **Intentional mismatches** (tag name ≠ envelope category — package wins):
 
@@ -55,9 +55,9 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 Inventory matches current `log_event` call sites. Section header = expected envelope category.
 
-### `http` — `app.middleware.*`, `app.exception_handlers`, `app.dependencies.rate_limit`
+### `http` — `app.middleware.*`, `app.exceptions.handlers`, `app.dependencies.rate_limit`
 
-Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). Rate limits: `app/dependencies/rate_limit.py`.
+Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). App/validation errors: `app/exceptions/handlers.py`. Rate limits: `app/dependencies/rate_limit.py`.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
