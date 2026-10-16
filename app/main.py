@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel.sql.expression import select
 
-from app.api.v1 import auth, tasks, workspaces
+from app.api import auth, tasks, workspaces
 from app.core.config import settings
 from app.dependencies import SessionDep
 from app.exceptions import FailedDatabaseConnection, register_exception_handlers

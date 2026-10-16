@@ -62,7 +62,7 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/infrastructure/export/task_export.py` | Background worker (`run_tasks_export`) |
 | `app/services/user.py` | `after_commit` + background welcome send |
 | `app/services/task.py` | Schedules export background job |
-| `app/api/v1/tasks.py` | `POST …/tasks/export` → 202 |
+| `app/api/tasks.py` | `POST …/tasks/export` → 202 |
 
 ## Env
 
