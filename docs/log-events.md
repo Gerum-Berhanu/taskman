@@ -55,9 +55,9 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 Inventory matches current `log_event` call sites. Section header = expected envelope category.
 
-### `http` — `app.middleware.*`, `app.exception_handlers`, `app.rate_limit`
+### `http` — `app.middleware.*`, `app.exception_handlers`, `app.dependencies.rate_limit`
 
-Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). Rate limits: `app/rate_limit.py`.
+Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). Rate limits: `app/dependencies/rate_limit.py`.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|

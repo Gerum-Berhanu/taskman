@@ -1,6 +1,6 @@
 # Rate limiting
 
-Per-route Redis limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays; pytest keeps it off unless a test opts in). Routes attach a named dependency alias from `app/rate_limit.py` (for example `dependencies=[DomainWriteLimit]`). Before the handler runs, `RequireIPLimit` or `RequireUserLimit` resolves identity, hits Redis through `HITTERS`, and either allows the request or raises `RateLimitExceededError` (**429**, detail `Too many requests`, `Retry-After` from the algorithm). Backend failures log `rate_limit_backend_error` and **fail open**.
+Per-route Redis limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays; pytest keeps it off unless a test opts in). Routes attach a named dependency alias from `app/dependencies/rate_limit.py` (for example `dependencies=[DomainWriteLimit]`). Before the handler runs, `RequireIPLimit` or `RequireUserLimit` resolves identity, hits Redis through `HITTERS`, and either allows the request or raises `RateLimitExceededError` (**429**, detail `Too many requests`, `Retry-After` from the algorithm). Backend failures log `rate_limit_backend_error` and **fail open**.
 
 Scopes are shared **budget classes**, not one counter per URL. Same scope name => same Redis key family for that identity.
 
@@ -8,10 +8,10 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 
 | Path | Role |
 |------|------|
-| `app/rate_limit.py` | `SCOPES` presets, `RequireIPLimit` / `RequireUserLimit`, module aliases |
-| `app/infrastructure/redis/rate_limit_algorithms.py` | `hit_*` helpers + `HITTERS` (algorithm name -> hit callable) |
+| `app/dependencies/rate_limit.py` | `SCOPES` presets, `RequireIPLimit` / `RequireUserLimit`, module aliases |
+| `app/infrastructure/redis/rate_limit/` | `hit_*` helpers + `HITTERS` (algorithm name -> hit callable) |
 | `app/infrastructure/redis/client.py` | Async Redis client + registered Lua scripts |
-| `app/infrastructure/redis/lua.py` | Declared script names and packaged source loading |
+| `app/infrastructure/redis/lua_loader.py` | Declared script names and packaged source loading |
 | `app/infrastructure/redis/scripts/*.lua` | One script per algorithm (see catalog below) |
 
 ## Scope model
@@ -26,7 +26,7 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 | `domain.write` | user id | CUD (create/update/delete, add member, ...) | 30 / 60s | `sliding_window_counter` |
 | `domain.export` | user id | Export job outlier | 5 / 60s | `leaky_bucket` |
 
-Tune budgets and algorithms in the `SCOPES` dict in `app/rate_limit.py`. Aliases (`AuthLoginLimit`, `DomainWriteLimit`, ...) are built from that registry.
+Tune budgets and algorithms in the `SCOPES` dict in `app/dependencies/rate_limit.py`. Aliases (`AuthLoginLimit`, `DomainWriteLimit`, ...) are built from that registry.
 
 ### Call sites
 
@@ -62,7 +62,7 @@ Every Lua script returns `{allowed (0|1), retry_after_ms}`. On allow, `retry_aft
 | `token_bucket` | `token_bucket.lua` | Burst + steady refill |
 | `leaky_bucket` | `leaky_bucket.lua` | Strict min-gap (no burst); `limit`/`window` set the gap |
 
-Dispatch is only via `HITTERS` in `rate_limit_algorithms.py`. The HTTP layer picks `SCOPES[scope].algorithm` and calls the mapped hit helper.
+Dispatch is only via `HITTERS` in `app/infrastructure/redis/rate_limit/`. The HTTP layer picks `SCOPES[scope].algorithm` and calls the mapped hit helper.
 
 ## Identity
 

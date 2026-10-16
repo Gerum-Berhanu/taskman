@@ -52,8 +52,9 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | Path | Role |
 |------|------|
 | `app/core/config.py` | `EMAIL_*` / `RESEND_*` / `SMTP_*` settings |
-| `app/infrastructure/email/smtp.py` | `send_mail` router + Jinja helpers (`email_enabled` + transport logs) |
-| `app/infrastructure/email/resend_transport.py` | Sync Resend SDK send |
+| `app/infrastructure/email/mails.py` | `send_mail` router + Jinja helpers (`email_enabled` + transport logs) |
+| `app/infrastructure/email/providers/smtp.py` | Pure SMTP transport (raises on failure) |
+| `app/infrastructure/email/providers/resend.py` | Sync Resend SDK send |
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
 | `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
