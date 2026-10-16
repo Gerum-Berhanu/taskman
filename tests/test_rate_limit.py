@@ -1,7 +1,5 @@
 """Scoped dependency rate-limit tests; suite keeps RATE_LIMIT_ENABLED=false."""
 
-from __future__ import annotations
-
 import pytest
 from fastapi.params import Depends as DependsParam
 from fastapi.testclient import TestClient
