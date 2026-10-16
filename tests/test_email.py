@@ -5,24 +5,26 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.infrastructure.email.smtp import send_mail, send_welcome_email
+from app.infrastructure.email.mails import send_mail, send_welcome_email
 
 
 def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_password", "secret")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_from", "from@example.com")
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_host", "smtp.example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_port", 587)
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_user", "user@example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_password", "secret")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.email_from", "from@example.com")
 
     smtp_instance = MagicMock()
     smtp_cm = MagicMock()
     smtp_cm.__enter__.return_value = smtp_instance
     smtp_cm.__exit__.return_value = None
 
-    with patch("app.infrastructure.email.smtp.smtplib.SMTP", return_value=smtp_cm) as smtp_cls:
+    with patch(
+        "app.infrastructure.email.providers.smtp.smtplib.SMTP", return_value=smtp_cm
+    ) as smtp_cls:
         send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
     smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=30)
@@ -38,19 +40,19 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
 
 
 def test_send_mail_uses_resend_when_api_key_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "re_test_key")
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "re_test_key")
     monkeypatch.setattr(
-        "app.infrastructure.email.smtp.settings.resend_from",
+        "app.infrastructure.email.providers.resend.settings.resend_from",
         "onboarding@resend.dev",
     )
 
     with (
         patch(
-            "app.infrastructure.email.resend_transport.resend.Emails.send",
+            "app.infrastructure.email.providers.resend.resend.Emails.send",
             return_value={"id": "msg_1"},
         ) as send,
-        patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls,
+        patch("app.infrastructure.email.providers.smtp.smtplib.SMTP") as smtp_cls,
     ):
         send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
@@ -66,11 +68,11 @@ def test_send_mail_uses_resend_when_api_key_set(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", False)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", False)
 
     with (
-        patch("app.infrastructure.email.smtp.smtplib.SMTP") as smtp_cls,
-        patch("app.infrastructure.email.smtp.send_via_resend") as resend_send,
+        patch("app.infrastructure.email.providers.smtp.smtplib.SMTP") as smtp_cls,
+        patch("app.infrastructure.email.mails.send_via_resend") as resend_send,
     ):
         send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
 
@@ -79,16 +81,16 @@ def test_send_mail_skips_when_email_disabled(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_send_mail_swallows_smtp_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_password", "secret")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_from", "from@example.com")
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_host", "smtp.example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_port", 587)
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_user", "user@example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_password", "secret")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.email_from", "from@example.com")
 
     with patch(
-        "app.infrastructure.email.smtp.smtplib.SMTP",
+        "app.infrastructure.email.providers.smtp.smtplib.SMTP",
         side_effect=OSError("SMTP down"),
     ):
         send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
@@ -104,7 +106,7 @@ def test_send_welcome_email_loads_template_and_returns_subject(
         captured["subject"] = subject
         captured["html"] = html
 
-    monkeypatch.setattr("app.infrastructure.email.smtp.send_mail", _fake_send_mail)
+    monkeypatch.setattr("app.infrastructure.email.mails.send_mail", _fake_send_mail)
 
     subject = send_welcome_email("new@example.com")
 
@@ -137,16 +139,16 @@ def test_register_schedules_welcome_email(client: TestClient, monkeypatch: pytes
 def test_register_succeeds_when_smtp_fails(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_enabled", True)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.resend_api_key", "")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_host", "smtp.example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_port", 587)
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_user", "user@example.com")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.smtp_password", "secret")
-    monkeypatch.setattr("app.infrastructure.email.smtp.settings.email_from", "from@example.com")
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_host", "smtp.example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_port", 587)
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_user", "user@example.com")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_password", "secret")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.email_from", "from@example.com")
 
     with patch(
-        "app.infrastructure.email.smtp.smtplib.SMTP",
+        "app.infrastructure.email.providers.smtp.smtplib.SMTP",
         side_effect=OSError("SMTP down"),
     ):
         response = client.post(

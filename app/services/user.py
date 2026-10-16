@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import EmailAlreadyRegisteredError
 from app.core.security import get_password_hash
-from app.infrastructure.email.smtp import send_welcome_email
+from app.infrastructure.email.mails import send_welcome_email
 from app.dto.api.user import UserCreate, UserRead
 from app.dto.repository import UserCreateData
 from app.observability.events import DomainLogEvent

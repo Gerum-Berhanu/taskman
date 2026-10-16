@@ -1,6 +1,5 @@
-"""Email send helpers (feature flag + transport logging live here)."""
+"""Email compose helpers (feature flag + transport logging live here)."""
 
-from email.message import EmailMessage
 import logging
 import smtplib
 
@@ -8,7 +7,8 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from resend.exceptions import ResendError
 
 from app.core.config import settings
-from app.infrastructure.email.resend_transport import send_via_resend
+from app.infrastructure.email.providers.resend import send_via_resend
+from app.infrastructure.email.providers.smtp import send_via_smtp
 from app.observability.events import InfraLogEvent
 from app.observability.log_event import log_event
 
@@ -23,37 +23,6 @@ _env = Environment(
     loader=PackageLoader("app.infrastructure.email", "templates"),
     autoescape=select_autoescape(["html", "xml"]),
 )
-
-
-def _send_via_smtp(
-    *,
-    to: str,
-    subject: str,
-    html: str,
-    attachment_filename: str | None = None,
-    attachment_bytes: bytes | None = None,
-    attachment_mime: str = "text/csv",
-) -> None:
-    """Send one HTML message over SMTP. Raises on transport failure."""
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = settings.email_from or settings.smtp_user
-    msg["To"] = to
-    msg.set_content(html, subtype="html")
-
-    if attachment_filename is not None and attachment_bytes is not None:
-        maintype, _, subtype = attachment_mime.partition("/")
-        msg.add_attachment(
-            attachment_bytes,
-            maintype=maintype or "text",
-            subtype=subtype or "csv",
-            filename=attachment_filename,
-        )
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
-        smtp.starttls()
-        smtp.login(settings.smtp_user, settings.smtp_password)
-        smtp.send_message(msg)
 
 
 def send_mail(
@@ -91,7 +60,7 @@ def send_mail(
                 attachment_mime=attachment_mime,
             )
         else:
-            _send_via_smtp(
+            send_via_smtp(
                 to=to,
                 subject=subject,
                 html=html,

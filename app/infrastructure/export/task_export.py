@@ -3,7 +3,7 @@ import logging
 from uuid import UUID
 
 from app.infrastructure.database.session import async_session_factory
-from app.infrastructure.email.smtp import send_tasks_export_email
+from app.infrastructure.email.mails import send_tasks_export_email
 from app.infrastructure.export.tasks_csv import tasks_to_csv
 from app.observability.events import InfraLogEvent
 from app.observability.log_event import log_event
