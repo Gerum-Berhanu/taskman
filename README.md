@@ -91,6 +91,7 @@ just migrate-staging
 just migrate-prod
 just migrate-test
 just pytest              # TASKMAN_ENV=test; rate limiting off unless a test opts in
+just purge-expired-sessions   # delete expired client_sessions (manual; + -staging/-prod/-test)
 ```
 
 - Health: `GET /health`
