@@ -14,7 +14,7 @@ from app.exceptions import (
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
-from app.infrastructure.export.task_export import run_tasks_export
+from app.jobs.export.task_export import run_tasks_export
 from app.infrastructure.redis.cache import delete_keys, get_json, set_json
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData

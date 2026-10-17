@@ -43,6 +43,7 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 | `app.exceptions` | `http` |
 | `app.dependencies.rate_limit` | `http` |
 | `app.repositories` | `ops` |
+| `app.jobs` | `ops` |
 | `app.main` | `ops` |
 
 **Intentional mismatches** (tag name ≠ envelope category — package wins):
@@ -78,14 +79,14 @@ Login/refresh failures surface as `app_error`, not service tags.
 | `email_sent` | `INFO` | Mail accepted | `email`, `subject` |
 | `email_send_failed` | `ERROR` + tb | Send raised; caller still succeeds | `email`, `subject` |
 | `email_skipped` | `INFO` | `EMAIL_ENABLED=false` | `email`, `reason` (`email_disabled`), `subject` |
-| `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
-| `task_export_failed` | `ERROR` + tb | Export failed after 202 | `workspace_id`, `email`, `actor_id` |
 
-### `ops` — `app.repositories.*`
+### `ops` — `app.repositories.*`, `app.jobs.*`
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
 | `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit | — |
+| `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
+| `task_export_failed` | `ERROR` + tb | Export failed after 202 | `workspace_id`, `email`, `actor_id` |
 
 ### `domain` — `app.services.*`
 

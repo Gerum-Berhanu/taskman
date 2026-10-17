@@ -25,14 +25,14 @@ class InfraLogEvent(LogEvent):
     EMAIL_SENT = "email_sent"
     EMAIL_SEND_FAILED = "email_send_failed"
     EMAIL_SKIPPED = "email_skipped"
-    TASK_EXPORT_SENT = "task_export_sent"
-    TASK_EXPORT_FAILED = "task_export_failed"
 
 
 class OpsLogEvent(LogEvent):
-    """Tags from ``app.repositories.*`` → envelope ``ops``."""
+    """Tags from ``app.repositories.*`` / ``app.jobs.*`` → envelope ``ops``."""
 
     AFTER_COMMIT_FAILED = "after_commit_failed"
+    TASK_EXPORT_SENT = "task_export_sent"
+    TASK_EXPORT_FAILED = "task_export_failed"
 
 
 class DomainLogEvent(LogEvent):

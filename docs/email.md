@@ -58,8 +58,8 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
 | `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
-| `app/infrastructure/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
-| `app/infrastructure/export/task_export.py` | Background worker (`run_tasks_export`) |
+| `app/jobs/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
+| `app/jobs/export/task_export.py` | Background worker (`run_tasks_export`) |
 | `app/services/user.py` | `after_commit` + background welcome send |
 | `app/services/task.py` | Schedules export background job |
 | `app/api/tasks.py` | `POST …/tasks/export` → 202 |

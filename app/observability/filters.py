@@ -21,6 +21,7 @@ _PACKAGE_CATEGORY: dict[str, LogCategory] = {
     "app.middleware": LogCategory.HTTP,
     "app.exceptions": LogCategory.HTTP,
     "app.repositories": LogCategory.OPS,
+    "app.jobs": LogCategory.OPS,
     "app.main": LogCategory.OPS,
 }
 
