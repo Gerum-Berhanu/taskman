@@ -3,7 +3,7 @@
 from datetime import timedelta
 from uuid import UUID
 
-from sqlmodel import select
+from sqlmodel import col, delete, select
 
 from app.core.config import settings
 from app.core.timeutils import utcnow
@@ -64,3 +64,9 @@ class ClientSessionRepository(
             await self._session.flush(client_sessions)
 
         return len(client_sessions)
+
+    async def delete_expired(self) -> int:
+        result = await self._session.exec(
+            delete(ClientSession).where(col(ClientSession.expires_at) <= utcnow())
+        )
+        return result.rowcount or 0

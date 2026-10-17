@@ -29,6 +29,11 @@ prod $TASKMAN_ENV="production":
 test port="8765" $TASKMAN_ENV="test":
     -uv run fastapi dev --port {{port}}
 
+
+pytest $TASKMAN_ENV="test":
+    uv run pytest -q
+
+
 migrate:
     uv run alembic upgrade head
 
@@ -41,8 +46,6 @@ migrate-prod $TASKMAN_ENV="production":
 migrate-test $TASKMAN_ENV="test":
     uv run alembic upgrade head
 
-pytest $TASKMAN_ENV="test":
-    uv run pytest -q
 
 # Staging stack (Compose). --env-file supplies POSTGRES_* / REDIS_* for URL interpolation.
 compose-staging:
@@ -57,3 +60,16 @@ compose-staging-down:
 
 compose-prod-down:
     docker compose --env-file env/env-compose/.env.production -f compose.yaml -f compose.prod.yaml down
+
+
+purge-expired-sessions:
+    uv run python -m app.jobs.purge.expired_sessions
+
+purge-expired-sessions-staging $TASKMAN_ENV="staging":
+    uv run python -m app.jobs.purge.expired_sessions
+
+purge-expired-sessions-prod $TASKMAN_ENV="production":
+    uv run python -m app.jobs.purge.expired_sessions
+
+purge-expired-sessions-test $TASKMAN_ENV="test":
+    uv run python -m app.jobs.purge.expired_sessions
