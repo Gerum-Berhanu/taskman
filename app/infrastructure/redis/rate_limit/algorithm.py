@@ -1,6 +1,7 @@
 """Rate-limit algorithm strategies (Redis Lua hit + result type)."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TypedDict, Unpack
 from uuid import uuid4
 
@@ -23,7 +24,7 @@ class HitKwargs(TypedDict):
     scope: str
     identity: str
     limit: int
-    window_seconds: int
+    window: timedelta
 
 
 class ExtraArgvKwargs(TypedDict):
@@ -40,7 +41,7 @@ class RateLimitAlgorithm:
 
     async def hit(self, **kwargs: Unpack[HitKwargs]) -> RateLimitResult:
         key = f"rl:{self.script_name}:{kwargs["scope"]}:{kwargs["identity"]}"
-        window_ms = kwargs["window_seconds"] * 1000
+        window_ms = int(kwargs["window"].total_seconds() * 1000)
         now_ms = self._get_now_ms()
         extras = self.extra_argv(now_ms=now_ms)
 

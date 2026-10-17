@@ -18,15 +18,15 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 
 | Scope | Identity | Intent | Default budget | Default algorithm |
 |-------|----------|--------|----------------|-------------------|
-| `auth.register` | IP | Account spam | 3 / 60s | `leaky_bucket` |
-| `auth.login` | IP | Credential stuffing | 5 / 60s | `leaky_bucket` |
-| `auth.refresh` | IP | Refresh storms; keep separate from login | 30 / 60s | `token_bucket` |
-| `auth.logout` | IP | Logout + logout-all share one budget | 10 / 60s | `sliding_window_counter` |
-| `domain.read` | user id | Light reads (list/get/summary/`/me`) | 100 / 60s | `sliding_window_counter` |
-| `domain.write` | user id | CUD (create/update/delete, add member, ...) | 30 / 60s | `sliding_window_counter` |
-| `domain.export` | user id | Export job outlier | 5 / 60s | `leaky_bucket` |
+| `auth.register` | IP | Account spam | 3 / 1m | `leaky_bucket` |
+| `auth.login` | IP | Credential stuffing | 5 / 1m | `leaky_bucket` |
+| `auth.refresh` | IP | Refresh storms; keep separate from login | 30 / 1m | `token_bucket` |
+| `auth.logout` | IP | Logout + logout-all share one budget | 10 / 1m | `sliding_window_counter` |
+| `domain.read` | user id | Light reads (list/get/summary/`/me`) | 100 / 1m | `sliding_window_counter` |
+| `domain.write` | user id | CUD (create/update/delete, add member, ...) | 30 / 1m | `sliding_window_counter` |
+| `domain.export` | user id | Export job outlier | 5 / 1m | `leaky_bucket` |
 
-Tune budgets and algorithms in the `SCOPES` dict in `app/dependencies/rate_limit.py`. Aliases (`AuthLoginLimit`, `DomainWriteLimit`, ...) are built from that registry.
+Tune budgets and algorithms in the `SCOPES` dict in `app/dependencies/rate_limit.py`. Each `ScopeSpec` takes `window: timedelta` (default `timedelta(minutes=1)`). `RateLimitAlgorithm.hit` converts that to whole milliseconds for Lua. Aliases (`AuthLoginLimit`, `DomainWriteLimit`, ...) are built from that registry.
 
 ### Call sites
 

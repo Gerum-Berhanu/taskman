@@ -1,6 +1,7 @@
 """Per-route Redis rate-limit dependencies and scope presets."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 import logging
 import math
 from typing import Any, Literal
@@ -32,7 +33,7 @@ class ScopeSpec:
     identity: IdentityMode
     limit: int
     algorithm: LuaScriptName
-    window_seconds: int = 60
+    window: timedelta = timedelta(minutes=1)
 
 
 # Single place to tune budgets. Same scope name => shared Redis counter.
@@ -54,7 +55,7 @@ class _RequireLimit:
         spec = SCOPES[scope]
         self.scope = scope
         self.limit = spec.limit
-        self.window_seconds = spec.window_seconds
+        self.window = spec.window
         self.algorithm: LuaScriptName = spec.algorithm
 
     async def _enforce_limit(self, identifier: str, log_kwargs: dict) -> None:
@@ -67,7 +68,7 @@ class _RequireLimit:
                 scope=self.scope,
                 identity=identifier,
                 limit=self.limit,
-                window_seconds=self.window_seconds,
+                window=self.window,
             )
         except _BACKEND_ERRORS:
             log_event(
