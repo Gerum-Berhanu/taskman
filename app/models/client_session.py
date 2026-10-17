@@ -24,4 +24,5 @@ class ClientSession(BaseTable, table=True):
     expires_at: datetime = Field(
         default_factory=_default_session_expiry,
         sa_type=UTCDateTime,
+        index=True,
     )
