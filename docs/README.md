@@ -4,6 +4,7 @@
 |------|---------|
 | [caching.md](caching.md) | Task summary Redis cache (TTL, keys, fail-open, invalidation) |
 | [commit-messages.md](commit-messages.md) | How we write git commits |
+| [services.md](services.md) | Public vs private service methods (API DTOs vs `_` helpers) |
 | [email.md](email.md) | SMTP + Jinja HTML (welcome email, task CSV export) |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
 | [log-events.md](log-events.md) | Log event tags, text/JSON shapes (`http_access`, domain events, …) |
@@ -27,5 +28,5 @@
 | `app/dto/api/` | HTTP request/response DTOs (public contract) |
 | `app/dto/repository/` | Persistence DTOs (`*Record` / `*CreateData` / `*UpdateData`) |
 | `app/repositories/` | Persistence repos + `UnitOfWork`; shared `create` / `get` on `BaseRepository` |
-| `app/services/` | Application services (public: `dto.api`; persistence: `dto.repository`) |
+| `app/services/` | Application services (see [services.md](services.md)) |
 | `app/api/`, `app/models/` | Routes (`dto.api` only), ORM models |

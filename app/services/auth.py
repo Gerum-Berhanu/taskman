@@ -42,7 +42,7 @@ class AuthService:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
-    async def authenticate(self, email: EmailStr, password: str) -> UserRecord:
+    async def _authenticate(self, email: EmailStr, password: str) -> UserRecord:
         """Verify email/password and return the user record (with credentials)."""
         user = await self._uow.users.get_by_email(email)
         if not user:
@@ -57,7 +57,7 @@ class AuthService:
 
     async def login(self, email: EmailStr, password: str) -> Token:
         """Authenticate and issue a new access + refresh token pair."""
-        user = await self.authenticate(email, password)
+        user = await self._authenticate(email, password)
         raw_token = generate_refresh_token()
         token_hash = hash_refresh_token(raw_token)
 
@@ -74,7 +74,7 @@ class AuthService:
             token_id=refresh_token.id
         )
 
-        access_token = self.create_access_token(data={"sub": str(user.id)})
+        access_token = self._create_access_token(data={"sub": str(user.id)})
 
         user_id = user.id
         self._uow.after_commit(
@@ -148,8 +148,8 @@ class AuthService:
         if updated_session is None:
             raise InvalidTokenError
 
-        new_access_token = self.create_access_token({"sub": str(client_session.user_id)})
-        
+        new_access_token = self._create_access_token({"sub": str(client_session.user_id)})
+
         return Token(
             access_token=new_access_token,
             refresh_token=new_raw_token,
@@ -207,7 +207,7 @@ class AuthService:
             )
         )
 
-    def create_access_token(
+    def _create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:
         """Encode a JWT access token with the configured expiry."""
