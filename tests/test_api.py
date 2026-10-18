@@ -383,3 +383,42 @@ def test_reject_empty_workspace_name_and_task_title(client: TestClient) -> None:
         headers=headers,
     )
     assert empty_update.status_code == 422
+
+
+def test_reject_oversized_email_and_task_description(client: TestClient) -> None:
+    # Valid-looking shape but over the 254-char cap (and EmailStr length rules).
+    oversized_email = f"{'a' * 64}@{'b' * 200}.com"
+    assert len(oversized_email) > 254
+
+    rejected_register = client.post(
+        "/auth/register",
+        json={"email": oversized_email, "password": PASSWORD},
+    )
+    assert rejected_register.status_code == 422
+
+    register(client)
+    headers = login(client)
+    workspace = create_workspace(client, headers)
+    workspace_id = workspace["id"]
+
+    rejected_create = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Ok", "description": "x" * 5001},
+        headers=headers,
+    )
+    assert rejected_create.status_code == 422
+
+    created = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Ok", "description": "x" * 5000},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    task_id = created.json()["id"]
+
+    rejected_update = client.patch(
+        tasks_url(workspace_id, task_id),
+        json={"description": "y" * 5001},
+        headers=headers,
+    )
+    assert rejected_update.status_code == 422

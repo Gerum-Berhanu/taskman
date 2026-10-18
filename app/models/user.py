@@ -6,6 +6,6 @@ from app.models.base import BaseTable
 class User(BaseTable, table=True):
     __tablename__: str = "users"
     
-    email: str = Field(unique=True)
+    email: str = Field(unique=True, max_length=254)
     hashed_password: str
     is_active: bool = Field(default=True)

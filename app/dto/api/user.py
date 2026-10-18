@@ -6,7 +6,7 @@ from pydantic import UUID4, BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(max_length=254)
 
 
 class UserCreate(UserBase):

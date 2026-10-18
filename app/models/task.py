@@ -11,7 +11,7 @@ class Task(BaseTable, table=True):
     __tablename__: str = "tasks"
 
     title: str = Field(max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
     status: str = Field(default="pending")
     due_date: datetime | None = Field(default=None, sa_type=UTCDateTime)
     workspace_id: UUID = Field(foreign_key="workspaces.id", ondelete="CASCADE", index=True)

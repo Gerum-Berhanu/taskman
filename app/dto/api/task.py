@@ -14,7 +14,7 @@ class TaskStatus(str, Enum):
 
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
     due_date: datetime | None = None
     assigned_user_id: UUID4 | None = None
 
@@ -33,7 +33,7 @@ class TaskRead(BaseModel):
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
     status: TaskStatus | None = None
     due_date: datetime | None = None
     assigned_user_id: UUID4 | None = None
