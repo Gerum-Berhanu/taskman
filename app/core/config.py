@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 5
     refresh_token_expire_minutes: int = 10_080  # 7 days
     refresh_token_cookie_name: str = "refresh_token"
+    device_id_cookie_name: str = "device_id"
+    device_id_cookie_max_age_seconds: int = 34_560_000 # ~400 days
     database_url: str = "sqlite+aiosqlite:///./database.db"
     redis_url: str = "redis://127.0.0.1:6379/0"
     log_level: str = "INFO"

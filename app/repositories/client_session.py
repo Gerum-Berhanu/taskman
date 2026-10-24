@@ -3,7 +3,7 @@
 from datetime import timedelta
 from uuid import UUID
 
-from sqlmodel import col, delete, select
+from sqlmodel import col, delete
 
 from app.core.config import settings
 from app.core.timeutils import utcnow
@@ -40,30 +40,24 @@ class ClientSessionRepository(
         await self._flush_refresh(client_session)
         return self._to_record(client_session)
 
-    async def revoke(self, client_id: UUID) -> bool:
-        """Revoke one session; False if it did not exist."""
-        client_session = await self._session.get(ClientSession, client_id)
-        if client_session is None:
-            return False
-        client_session.active_token_id = None
-        client_session.revoked_at = utcnow()
-        await self._flush_refresh(client_session)
-        return True
+    async def delete(self, session_id: UUID) -> int:
+        result = await self._session.exec(
+            delete(ClientSession).where(col(ClientSession.id) == session_id)
+        )
+        return result.rowcount or 0
 
-    async def revoke_all_user_sessions(self, user_id: UUID) -> int:
-        """Revoke every session for a user; return how many were updated."""
-        statement = select(ClientSession).where(ClientSession.user_id == user_id)
-        result = await self._session.exec(statement)
-        client_sessions = result.all()
+    async def delete_all_user_sessions(self, user_id: UUID) -> int:
+        """Delete every session for a user; return how many were deleted."""
+        result = await self._session.exec(
+            delete(ClientSession).where(col(ClientSession.user_id) == user_id)
+        )
+        return result.rowcount or 0
 
-        for session in client_sessions:
-            session.active_token_id = None
-            session.revoked_at = utcnow()
-
-        if client_sessions:
-            await self._session.flush(client_sessions)
-
-        return len(client_sessions)
+    async def delete_by_device(self, device_id: UUID) -> int:
+        result = await self._session.exec(
+            delete(ClientSession).where(col(ClientSession.device_id) == device_id)
+        )
+        return result.rowcount or 0
 
     async def delete_expired(self) -> int:
         result = await self._session.exec(

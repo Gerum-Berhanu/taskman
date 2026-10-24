@@ -8,10 +8,6 @@ from app.core.timeutils import UTCDateTime, utcnow
 from app.models.base import BaseTable
 
 
-def _default_session_expiry() -> datetime:
-    return utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
-
-
 class ClientSession(BaseTable, table=True):
     __tablename__: str = "client_sessions"
 
@@ -19,10 +15,12 @@ class ClientSession(BaseTable, table=True):
     active_token_id: UUID | None = Field(
         default=None, foreign_key="refresh_tokens.id", ondelete="SET NULL", unique=True
     )
-    revoked_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
+    device_id: UUID = Field(unique=True)
     rotated_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
     expires_at: datetime = Field(
-        default_factory=_default_session_expiry,
+        default_factory=lambda: (
+            utcnow() + timedelta(minutes=settings.refresh_token_expire_minutes)
+        ),
         sa_type=UTCDateTime,
         index=True,
     )

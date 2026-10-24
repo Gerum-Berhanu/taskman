@@ -54,16 +54,21 @@ class AuthService:
             raise InvalidCredentialsError
         return user
 
-    async def login(self, email: EmailStr, password: str) -> tuple[str, str]:
+    async def login(
+        self, email: EmailStr, password: str, device_id: UUID | None = None
+    ) -> tuple[str, str, UUID]:
         """Authenticate and issue access + raw refresh (route sets the refresh cookie)."""
         user = await self._authenticate(email, password)
+        user_id = user.id
         raw_token = generate_refresh_token()
         token_hash = hash_refresh_token(raw_token)
 
-        client_session = await self._uow.client_sessions.create(
-            ClientSessionCreateData(user_id=user.id)
-        )
-
+        session_data = ClientSessionCreateData(user_id=user_id)
+        if device_id is not None:
+            await self._uow.client_sessions.delete_by_device(device_id)
+            session_data.device_id = device_id
+        client_session = await self._uow.client_sessions.create(session_data)
+        
         refresh_token = await self._uow.refresh_tokens.create(RefreshTokenCreateData(
             client_session_id=client_session.id, token_hash=token_hash
         ))
@@ -73,9 +78,8 @@ class AuthService:
             token_id=refresh_token.id
         )
 
-        access_token = self._create_access_token(data={"sub": str(user.id)})
+        access_token = self._create_access_token(data={"sub": str(user_id)})
 
-        user_id = user.id
         self._uow.after_commit(
             lambda: log_event(
                 logger,
@@ -84,7 +88,7 @@ class AuthService:
                 user_id=user_id,
             )
         )
-        return access_token, raw_token
+        return access_token, raw_token, client_session.device_id
     
     async def _get_token_and_session_rows(
         self, token: str
@@ -100,29 +104,26 @@ class AuthService:
 
         return row, session
 
-    async def _revoke_and_reject(self, session_id: UUID) -> None:
-        """Persist revocation, then fail the request (UoW would otherwise roll back)."""
-        await self._uow.client_sessions.revoke(session_id)
+    async def _delete_and_reject(self, session_id: UUID) -> None:
+        """Delete the session, commit, then fail (UoW would otherwise roll back)."""
+        await self._uow.client_sessions.delete(session_id)
         await self._uow.commit()
         raise InvalidTokenError
 
     async def _require_active_refresh(self, token: str) -> ClientSessionRecord:
-        """Validate a refresh token; revoke the session on reuse, expiry, or inactive user."""
+        """Validate a refresh token; delete the session on reuse, expiry, or inactive user."""
         row, session = await self._get_token_and_session_rows(token)
-
-        if session.revoked_at is not None:
-            raise InvalidTokenError
 
         # Presented token belongs to a live session but is not the active one → reuse/theft.
         if row.id != session.active_token_id:
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
         if ensure_utc(session.expires_at) <= utcnow():
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
         user = await self._uow.users.get(session.user_id)
         if user is None or not user.is_active:
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
         return session
 
@@ -149,18 +150,15 @@ class AuthService:
         return new_access_token, new_raw_token
 
     async def logout(self, token: str) -> None:
-        """Revoke the client session for this refresh token; reuse revokes then rejects."""
+        """Delete the client session for this refresh token; reuse deletes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
-
-        if session.revoked_at is not None:
-            raise InvalidTokenError
 
         # Non-active refresh on a live session → same reuse/theft response as refresh.
         if token_row.id != session.active_token_id:
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
-        revoked = await self._uow.client_sessions.revoke(client_id=session.id)
-        if not revoked:
+        deleted = await self._uow.client_sessions.delete(session.id)
+        if not deleted:
             raise InvalidTokenError
 
         user_id, session_id = session.user_id, session.id
@@ -175,20 +173,17 @@ class AuthService:
         )
 
     async def logout_all_user_sessions(self, token: str) -> None:
-        """Revoke every client session for the user; reuse revokes then rejects."""
+        """Delete every client session for the user; reuse deletes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
-
-        if session.revoked_at is not None:
-            raise InvalidTokenError
 
         # Non-active refresh on a live session → same reuse/theft response as refresh/logout.
         if token_row.id != session.active_token_id:
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
         if ensure_utc(session.expires_at) <= utcnow():
-            await self._revoke_and_reject(session.id)
+            await self._delete_and_reject(session.id)
 
-        await self._uow.client_sessions.revoke_all_user_sessions(session.user_id)
+        await self._uow.client_sessions.delete_all_user_sessions(session.user_id)
         user_id, session_id = session.user_id, session.id
         self._uow.after_commit(
             lambda: log_event(

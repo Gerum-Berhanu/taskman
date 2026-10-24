@@ -1,13 +1,19 @@
 """HttpOnly auth cookie helpers for routes (services stay cookie-agnostic)."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Cookie, Response
 
 from app.core.config import AppEnv, settings
 
+
 RefreshTokenCookie = Annotated[
     str | None, Cookie(alias=settings.refresh_token_cookie_name)
+]
+
+DeviceIdCookie = Annotated[
+    UUID | None, Cookie(alias=settings.device_id_cookie_name)
 ]
 
 
@@ -32,5 +38,14 @@ def set_refresh_cookie(response: Response, raw_token: str) -> None:
 def clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
         key=settings.refresh_token_cookie_name,
+        **_cookie_common(),
+    )
+
+
+def set_device_cookie(response: Response, device_id: UUID) -> None:
+    response.set_cookie(
+        key=settings.device_id_cookie_name,
+        value=str(device_id),
+        max_age=settings.device_id_cookie_max_age_seconds,
         **_cookie_common(),
     )

@@ -8,8 +8,10 @@ from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.api.helpers.auth_cookies import (
+    DeviceIdCookie,
     RefreshTokenCookie,
     clear_refresh_cookie,
+    set_device_cookie,
     set_refresh_cookie,
 )
 from app.exceptions import InvalidCredentialsError, InvalidTokenError
@@ -51,6 +53,7 @@ async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
     response: Response,
+    device_id: DeviceIdCookie = None,
 ) -> AccessTokenResponse:
     try:
         valid_form = LoginCredentials(
@@ -61,8 +64,11 @@ async def login_user(
         raise InvalidCredentialsError from exc
         # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
-    access, refresh = await auth_service.login(valid_form.email, valid_form.password)
+    access, refresh, device = await auth_service.login(
+        valid_form.email, valid_form.password, device_id
+    )
     set_refresh_cookie(response, refresh)
+    set_device_cookie(response, device)
     return AccessTokenResponse(access_token=access)
 
 
