@@ -1,4 +1,4 @@
-"""Refresh-token auth flow tests.
+"""Refresh-token auth flow tests (HttpOnly cookie).
 
 Run with: uv run pytest -q tests/test_auth_refresh.py
 """
@@ -13,6 +13,7 @@ from tests.conftest import activate_user, deactivate_user, expire_session_for_re
 
 PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
+_REFRESH_COOKIE = settings.refresh_token_cookie_name
 
 
 def register(client: TestClient, email: str = "alice@example.com") -> dict:
@@ -24,6 +25,19 @@ def register(client: TestClient, email: str = "alice@example.com") -> dict:
     return response.json()
 
 
+def assert_httponly_refresh_cookie(response) -> str:
+    """Assert refresh Set-Cookie is present and HttpOnly; return its value."""
+    prefix = f"{_REFRESH_COOKIE}="
+    headers = response.headers.get_list("set-cookie")
+    matches = [h for h in headers if h.startswith(prefix)]
+    assert matches, f"missing Set-Cookie for {_REFRESH_COOKIE}: {headers}"
+    header = matches[0]
+    assert "HttpOnly" in header or "httponly" in header.lower(), header
+    value = header.split(";", 1)[0].removeprefix(prefix)
+    assert value, header
+    return value
+
+
 def login_tokens(client: TestClient, email: str = "alice@example.com") -> dict:
     response = client.post(
         "/auth/login",
@@ -33,20 +47,34 @@ def login_tokens(client: TestClient, email: str = "alice@example.com") -> dict:
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["access_token"]
-    assert body["refresh_token"]
-    return body
+    assert "refresh_token" not in body
+    refresh_token = assert_httponly_refresh_cookie(response)
+    return {
+        "access_token": body["access_token"],
+        "token_type": body["token_type"],
+        "refresh_token": refresh_token,
+    }
 
 
-def refresh(client: TestClient, refresh_token: str):
-    return client.post("/auth/refresh", json={"refresh_token": refresh_token})
+def _use_refresh_cookie(client: TestClient, refresh_token: str | None) -> None:
+    """Point the client jar at a specific refresh cookie (or leave jar as-is)."""
+    if refresh_token is not None:
+        client.cookies.set(_REFRESH_COOKIE, refresh_token)
 
 
-def logout(client: TestClient, refresh_token: str):
-    return client.post("/auth/logout", json={"refresh_token": refresh_token})
+def refresh(client: TestClient, refresh_token: str | None = None):
+    _use_refresh_cookie(client, refresh_token)
+    return client.post("/auth/refresh")
 
 
-def logout_all(client: TestClient, refresh_token: str):
-    return client.post("/auth/logout-all", json={"refresh_token": refresh_token})
+def logout(client: TestClient, refresh_token: str | None = None):
+    _use_refresh_cookie(client, refresh_token)
+    return client.post("/auth/logout")
+
+
+def logout_all(client: TestClient, refresh_token: str | None = None):
+    _use_refresh_cookie(client, refresh_token)
+    return client.post("/auth/logout-all")
 
 
 def auth_header(access_token: str) -> dict[str, str]:
@@ -59,6 +87,20 @@ def assert_unauthorized(response) -> None:
     assert response.headers.get("www-authenticate") == "Bearer"
 
 
+def test_login_sets_httponly_refresh_cookie_only(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+    assert tokens["refresh_token"]
+    assert tokens["access_token"]
+
+
+def test_refresh_without_cookie_is_unauthorized(client: TestClient) -> None:
+    register(client)
+    login_tokens(client)
+    client.cookies.clear()
+    assert_unauthorized(refresh(client))
+
+
 def test_refresh_rotates_tokens(client: TestClient) -> None:
     register(client)
     tokens = login_tokens(client)
@@ -66,14 +108,15 @@ def test_refresh_rotates_tokens(client: TestClient) -> None:
 
     rotated = refresh(client, old_refresh)
     assert rotated.status_code == 200, rotated.text
-    new_tokens = rotated.json()
-    assert new_tokens["access_token"]
-    assert new_tokens["refresh_token"]
-    assert new_tokens["refresh_token"] != old_refresh
-    assert new_tokens["token_type"] == "bearer"
+    new_body = rotated.json()
+    assert new_body["access_token"]
+    assert "refresh_token" not in new_body
+    assert new_body["token_type"] == "bearer"
+    new_refresh = assert_httponly_refresh_cookie(rotated)
+    assert new_refresh != old_refresh
 
     # New access token works
-    me = client.get("/auth/me", headers=auth_header(new_tokens["access_token"]))
+    me = client.get("/auth/me", headers=auth_header(new_body["access_token"]))
     assert me.status_code == 200
     assert me.json()["email"] == "alice@example.com"
 
@@ -88,7 +131,7 @@ def test_refresh_reuse_revokes_session(client: TestClient) -> None:
 
     rotated = refresh(client, old_refresh)
     assert rotated.status_code == 200, rotated.text
-    new_refresh = rotated.json()["refresh_token"]
+    new_refresh = assert_httponly_refresh_cookie(rotated)
 
     # Presenting the old token after rotation = reuse → kill this session
     assert_unauthorized(refresh(client, old_refresh))
@@ -115,7 +158,7 @@ def test_logout_reuse_revokes_session(client: TestClient) -> None:
 
     rotated = refresh(client, old_refresh)
     assert rotated.status_code == 200, rotated.text
-    new_refresh = rotated.json()["refresh_token"]
+    new_refresh = assert_httponly_refresh_cookie(rotated)
 
     # Logout with the retired token = reuse → kill this session
     assert_unauthorized(logout(client, old_refresh))
@@ -146,7 +189,7 @@ def test_logout_all_reuse_revokes_session(client: TestClient) -> None:
 
     rotated = refresh(client, old_refresh)
     assert rotated.status_code == 200, rotated.text
-    new_refresh = rotated.json()["refresh_token"]
+    new_refresh = assert_httponly_refresh_cookie(rotated)
 
     other_session = login_tokens(client)
 

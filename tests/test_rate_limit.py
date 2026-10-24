@@ -110,6 +110,7 @@ def test_auth_register_and_refresh_do_not_share_login_counter(
     )
     refreshed = refresh(client, tokens["refresh_token"])
     assert refreshed.status_code == 200, refreshed.text
+    assert "refresh_token" not in refreshed.json()
 
 
 def test_auth_logout_shared_by_logout_and_logout_all(
