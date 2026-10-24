@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
     refresh_token_expire_minutes: int = 10_080  # 7 days
+    refresh_token_cookie_name: str = "refresh_token"
     database_url: str = "sqlite+aiosqlite:///./database.db"
     redis_url: str = "redis://127.0.0.1:6379/0"
     log_level: str = "INFO"

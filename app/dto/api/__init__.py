@@ -1,9 +1,8 @@
 """HTTP-boundary DTOs (request/response contracts)."""
 
 from app.dto.api.auth import (
+    AccessTokenResponse,
     LoginCredentials,
-    RefreshTokenPayload,
-    Token,
     UserCreateResponse,
 )
 from app.dto.api.task import (
@@ -22,14 +21,13 @@ from app.dto.api.workspace_member import (
 )
 
 __all__ = [
+    "AccessTokenResponse",
     "LoginCredentials",
-    "RefreshTokenPayload",
     "TaskCreate",
     "TaskRead",
     "TaskStatus",
     "TaskSummaryRead",
     "TaskUpdate",
-    "Token",
     "UserCreate",
     "UserCreateResponse",
     "UserRead",

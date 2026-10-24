@@ -13,7 +13,7 @@ If a method is only used to support other methods on the same class, prefix it w
 
 ## Examples
 
-- `AuthService.login` → public, returns `Token`
+- `AuthService.login` / `refresh` → public, return `(access_token, raw_refresh)`; routes map access to `AccessTokenResponse` and set the refresh HttpOnly cookie
 - `AuthService._authenticate` → private, returns `UserRecord` for `login` only
 - `AuthService._create_access_token` → private JWT helper
 - `AuthService.get_user_from_token` → public (used by `CurrentUserDep`), returns `UserRead`

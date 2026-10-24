@@ -25,7 +25,6 @@ from app.dto.repository import (
     RefreshTokenRecord,
     UserRecord,
 )
-from app.dto.api.auth import Token
 from app.dto.api.user import UserRead
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
@@ -55,8 +54,8 @@ class AuthService:
             raise InvalidCredentialsError
         return user
 
-    async def login(self, email: EmailStr, password: str) -> Token:
-        """Authenticate and issue a new access + refresh token pair."""
+    async def login(self, email: EmailStr, password: str) -> tuple[str, str]:
+        """Authenticate and issue access + raw refresh (route sets the refresh cookie)."""
         user = await self._authenticate(email, password)
         raw_token = generate_refresh_token()
         token_hash = hash_refresh_token(raw_token)
@@ -85,10 +84,7 @@ class AuthService:
                 user_id=user_id,
             )
         )
-        return Token(
-            access_token=access_token,
-            refresh_token=raw_token,
-        )
+        return access_token, raw_token
     
     async def _get_token_and_session_rows(
         self, token: str
@@ -130,8 +126,8 @@ class AuthService:
 
         return session
 
-    async def refresh(self, token: str) -> Token:
-        """Rotate refresh token and issue a new access token."""
+    async def refresh(self, token: str) -> tuple[str, str]:
+        """Rotate refresh and issue a new access token (route sets the refresh cookie)."""
         client_session = await self._require_active_refresh(token)
         
         new_raw_token = generate_refresh_token()
@@ -150,10 +146,7 @@ class AuthService:
 
         new_access_token = self._create_access_token({"sub": str(client_session.user_id)})
 
-        return Token(
-            access_token=new_access_token,
-            refresh_token=new_raw_token,
-        )
+        return new_access_token, new_raw_token
 
     async def logout(self, token: str) -> None:
         """Revoke the client session for this refresh token; reuse revokes then rejects."""

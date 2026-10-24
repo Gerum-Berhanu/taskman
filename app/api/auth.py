@@ -2,12 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
-from app.exceptions import InvalidCredentialsError
+from app.api.helpers.auth_cookies import (
+    RefreshTokenCookie,
+    clear_refresh_cookie,
+    set_refresh_cookie,
+)
+from app.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,
@@ -18,7 +23,7 @@ from app.dependencies import (
     DomainReadLimit,
     UserServiceDep,
 )
-from app.dto.api.auth import LoginCredentials, RefreshTokenPayload, Token, UserCreateResponse
+from app.dto.api.auth import AccessTokenResponse, LoginCredentials, UserCreateResponse
 from app.dto.api.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,13 +44,14 @@ async def register_user(
 
 @router.post(
     "/login",
-    response_model=Token,
+    response_model=AccessTokenResponse,
     dependencies=[AuthLoginLimit],
 )
 async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
-) -> Token:
+    response: Response,
+) -> AccessTokenResponse:
     try:
         valid_form = LoginCredentials(
             email=form_data.username,
@@ -55,20 +61,26 @@ async def login_user(
         raise InvalidCredentialsError from exc
         # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
-    return await auth_service.login(valid_form.email, valid_form.password)
+    access, refresh = await auth_service.login(valid_form.email, valid_form.password)
+    set_refresh_cookie(response, refresh)
+    return AccessTokenResponse(access_token=access)
 
 
 @router.post(
     "/refresh",
-    response_model=Token,
+    response_model=AccessTokenResponse,
     dependencies=[AuthRefreshLimit],
 )
 async def refresh_token(
-    payload: RefreshTokenPayload,
+    response: Response,
     auth_service: AuthServiceDep,
-) -> Token:
-    token = payload.refresh_token
-    return await auth_service.refresh(token)
+    refresh_token: RefreshTokenCookie = None,
+) -> AccessTokenResponse:
+    if not refresh_token:
+        raise InvalidTokenError
+    access, new_refresh = await auth_service.refresh(refresh_token)
+    set_refresh_cookie(response, new_refresh)
+    return AccessTokenResponse(access_token=access)
 
 
 @router.post(
@@ -77,11 +89,14 @@ async def refresh_token(
     dependencies=[AuthLogoutLimit],
 )
 async def logout_user(
-    payload: RefreshTokenPayload,
+    response: Response,
     auth_service: AuthServiceDep,
+    refresh_token: RefreshTokenCookie = None,
 ) -> None:
-    token = payload.refresh_token
-    await auth_service.logout(token)
+    if not refresh_token:
+        raise InvalidTokenError
+    await auth_service.logout(refresh_token)
+    clear_refresh_cookie(response)
 
 
 @router.post(
@@ -90,11 +105,14 @@ async def logout_user(
     dependencies=[AuthLogoutLimit],
 )
 async def logout_all_sessions(
-    payload: RefreshTokenPayload,
+    response: Response,
     auth_service: AuthServiceDep,
+    refresh_token: RefreshTokenCookie = None,
 ) -> None:
-    token = payload.refresh_token
-    await auth_service.logout_all_user_sessions(token)
+    if not refresh_token:
+        raise InvalidTokenError
+    await auth_service.logout_all_user_sessions(refresh_token)
+    clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UserRead, dependencies=[DomainReadLimit])

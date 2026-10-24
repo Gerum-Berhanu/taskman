@@ -12,11 +12,8 @@ class UserCreateResponse(UserBase):
     message: str = "User registered successfully"
 
 
-class Token(BaseModel):
+class AccessTokenResponse(BaseModel):
+    """Access token in the JSON body; refresh is delivered via HttpOnly cookie."""
+
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
-
-
-class RefreshTokenPayload(BaseModel):
-    refresh_token: str
