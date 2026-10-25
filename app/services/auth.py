@@ -9,6 +9,7 @@ import jwt
 from pydantic import EmailStr
 
 from app.core.config import settings
+from app.dto.api.auth import ClientSessionRead
 from app.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.core.security import (
     generate_refresh_token,
@@ -53,7 +54,7 @@ class AuthService:
         if not user.is_active:
             raise InvalidCredentialsError
         return user
-
+    
     async def login(
         self,
         email: EmailStr,
@@ -104,6 +105,15 @@ class AuthService:
         if value is None or not value.strip():
             return None
         return value[:max_len]
+
+    async def list_sessions(self, user_id: UUID, current_device_id: UUID | None) -> list[ClientSessionRead]:
+        sessions = await self._uow.client_sessions.list_by_user(user_id)
+        return [
+            ClientSessionRead.model_validate(
+                {**session.model_dump(), "is_current": current_device_id == session.device_id}
+            )
+            for session in sessions
+        ]
     
     async def _get_token_and_session_rows(
         self, token: str

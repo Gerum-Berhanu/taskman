@@ -25,7 +25,7 @@ from app.dependencies import (
     DomainReadLimit,
     UserServiceDep,
 )
-from app.dto.api.auth import AccessTokenResponse, LoginCredentials, UserCreateResponse
+from app.dto.api.auth import AccessTokenResponse, ClientSessionRead, LoginCredentials, UserCreateResponse
 from app.dto.api.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -124,6 +124,13 @@ async def logout_all_sessions(
         raise InvalidTokenError
     await auth_service.logout_all_user_sessions(refresh_token)
     clear_refresh_cookie(response)
+
+
+@router.get("/sessions", response_model=list[ClientSessionRead], dependencies=[DomainReadLimit])
+async def list_sessions(
+    current_user: CurrentUserDep, auth_service: AuthServiceDep, device_id: DeviceIdCookie = None,
+) -> list[ClientSessionRead]:
+    return await auth_service.list_sessions(current_user.id, device_id)
 
 
 @router.get("/me", response_model=UserRead, dependencies=[DomainReadLimit])
