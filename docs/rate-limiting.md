@@ -21,7 +21,7 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 | `auth.register` | IP | Account spam | 3 / 1m | `leaky_bucket` |
 | `auth.login` | IP | Credential stuffing | 5 / 1m | `leaky_bucket` |
 | `auth.refresh` | IP | Refresh storms; keep separate from login | 30 / 1m | `token_bucket` |
-| `auth.logout` | IP | Logout + logout-all share one budget | 10 / 1m | `sliding_window_counter` |
+| `auth.logout` | IP | Logout + `DELETE /auth/sessions` (all) share one budget | 10 / 1m | `sliding_window_counter` |
 | `domain.read` | user id | Light reads (list/get/summary/`/me`) | 100 / 1m | `sliding_window_counter` |
 | `domain.write` | user id | CUD (create/update/delete, add member, ...) | 30 / 1m | `sliding_window_counter` |
 | `domain.export` | user id | Export job outlier | 5 / 1m | `leaky_bucket` |
@@ -38,7 +38,7 @@ dependencies=[DomainWriteLimit, Depends(RequireRole(EDITOR))]
 dependencies=[DomainExportLimit, Depends(RequireRole(VIEWER))]
 ```
 
-Auth: register / login / refresh / logout / logout-all use the auth aliases; `GET /auth/me` and `GET /auth/sessions` use `DomainReadLimit`. Domain routers attach read / write / export accordingly.
+Auth: register / login / refresh / logout / delete-all-sessions use the auth aliases; `GET /auth/me` and `GET /auth/sessions` use `DomainReadLimit`; `DELETE /auth/sessions/{id}` uses `DomainWriteLimit`. Domain routers attach read / write / export accordingly.
 
 ## Redis key and 429 contract
 

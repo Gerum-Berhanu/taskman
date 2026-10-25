@@ -21,8 +21,10 @@ Login and refresh responses include only the access token in the body. Cookies a
 
 - `POST /auth/login` — access JSON + sets refresh cookie + sets/echoes `device_id` cookie. If `device_id` is present, any existing session for that device is deleted and replaced. Stores `user_agent` and client IP on the new session (not updated on refresh).
 - `POST /auth/refresh` — reads **refresh cookie only** (device cookie is ignored); rotates refresh; returns new access JSON
-- `POST /auth/logout` / `POST /auth/logout-all` — read refresh cookie; on success clear refresh only (204); keep `device_id`
+- `POST /auth/logout` — refresh cookie; delete this session; clear refresh (204); keep `device_id`
+- `DELETE /auth/sessions` — refresh cookie; delete **all** sessions for the user; clear refresh (204); keep `device_id`
 - `GET /auth/sessions` — Bearer access; list live sessions (`id`, `device_id`, `user_agent`, `ip_address`, timestamps, `is_current`). `is_current` is true when the `device_id` cookie matches that row.
+- `DELETE /auth/sessions/{id}` — Bearer access; delete one of the caller's sessions (404 if missing/other user). Clears refresh when the deleted row is the current device cookie.
 
 Missing or invalid refresh cookie on cookie-auth routes → `401` (`Could not validate credentials`).
 
@@ -35,8 +37,9 @@ Missing or invalid refresh cookie on cookie-auth routes → `401` (`Could not va
 ## Session lifecycle
 
 - A `client_sessions` row exists only while the session is live (`UNIQUE(device_id)` — one row per install).
-- Logout, logout-all, refresh-token reuse, expiry, and inactive-user checks **delete** the session (CASCADE refresh tokens). There is no soft-revoke / `revoked_at`.
+- Logout, delete-all / delete-one, refresh-token reuse, expiry, and inactive-user checks **delete** the session (CASCADE refresh tokens). There is no soft-revoke / `revoked_at`.
 - Re-login with the same `device_id` deletes any existing row for that device, then creates a new session.
+- At most `max_client_sessions_per_user` live sessions per user (default 15). On login, after same-device replace, least-recently-refreshed sessions (`coalesce(rotated_at, created_at)`) are deleted to make room.
 - Idle sessions that never logout are removed by the expired-session purge (`expires_at`).
 - UA/IP are kept only while the session row exists (privacy: gone after logout/replace/purge).
 
