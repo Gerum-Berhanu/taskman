@@ -6,6 +6,7 @@ Run with: uv run pytest -q tests/test_auth_refresh.py
 from uuid import UUID
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
@@ -93,11 +94,17 @@ def logout(client: TestClient, refresh_token: str | None = None):
 
 def logout_all(client: TestClient, refresh_token: str | None = None):
     _use_refresh_cookie(client, refresh_token)
-    return client.post("/auth/logout-all")
+    return client.delete("/auth/sessions")
 
 
 def list_sessions(client: TestClient, access_token: str):
     return client.get("/auth/sessions", headers=auth_header(access_token))
+
+
+def delete_session(client: TestClient, access_token: str, session_id: str):
+    return client.delete(
+        f"/auth/sessions/{session_id}", headers=auth_header(access_token)
+    )
 
 
 def auth_header(access_token: str) -> dict[str, str]:
@@ -372,3 +379,66 @@ def test_list_sessions_marks_current_and_stores_metadata(client: TestClient) -> 
     for row in body:
         assert row["user_agent"] == "taskman-test-agent/1.0"
         assert row["ip_address"]
+
+
+def test_delete_session_revokes_other_device(client: TestClient) -> None:
+    register(client)
+    first = login_tokens(client)
+    clear_device_cookie(client)
+    second = login_tokens(client)
+
+    listed = list_sessions(client, second["access_token"])
+    other_id = next(
+        row["id"] for row in listed.json() if row["device_id"] == first["device_id"]
+    )
+
+    deleted = delete_session(client, second["access_token"], other_id)
+    assert deleted.status_code == 204
+    assert_unauthorized(refresh(client, first["refresh_token"]))
+    assert refresh(client, second["refresh_token"]).status_code == 200
+
+
+def test_delete_session_current_clears_refresh_cookie(client: TestClient) -> None:
+    register(client)
+    tokens = login_tokens(client)
+    listed = list_sessions(client, tokens["access_token"])
+    current_id = next(row["id"] for row in listed.json() if row["is_current"])
+
+    deleted = delete_session(client, tokens["access_token"], current_id)
+    assert deleted.status_code == 204
+    assert_unauthorized(refresh(client, tokens["refresh_token"]))
+
+
+def test_delete_session_other_users_is_not_found(client: TestClient) -> None:
+    register(client, email="alice@example.com")
+    alice = login_tokens(client, email="alice@example.com")
+    alice_sessions = list_sessions(client, alice["access_token"]).json()
+    alice_session_id = alice_sessions[0]["id"]
+
+    clear_device_cookie(client)
+    register(client, email="bob@example.com")
+    bob = login_tokens(client, email="bob@example.com")
+
+    response = delete_session(client, bob["access_token"], alice_session_id)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Session not found"
+
+
+def test_login_evicts_least_recently_refreshed_session(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "max_client_sessions_per_user", 2)
+    register(client)
+    idle = login_tokens(client)
+    clear_device_cookie(client)
+    active = login_tokens(client)
+    rotated = refresh(client, active["refresh_token"])
+    assert rotated.status_code == 200, rotated.text
+    active_refresh = assert_httponly_refresh_cookie(rotated)
+
+    clear_device_cookie(client)
+    newest = login_tokens(client)
+
+    assert_unauthorized(refresh(client, idle["refresh_token"]))
+    assert refresh(client, active_refresh).status_code == 200
+    assert refresh(client, newest["refresh_token"]).status_code == 200
