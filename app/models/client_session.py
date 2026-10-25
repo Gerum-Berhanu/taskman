@@ -24,3 +24,5 @@ class ClientSession(BaseTable, table=True):
         sa_type=UTCDateTime,
         index=True,
     )
+    user_agent: str | None = Field(default=None, max_length=512)
+    ip_address: str | None = Field(default=None, max_length=45)

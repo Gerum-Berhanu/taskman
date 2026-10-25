@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
@@ -52,6 +52,7 @@ async def register_user(
 async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     auth_service: AuthServiceDep,
+    request: Request,
     response: Response,
     device_id: DeviceIdCookie = None,
 ) -> AccessTokenResponse:
@@ -65,7 +66,11 @@ async def login_user(
         # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
 
     access, refresh, device = await auth_service.login(
-        valid_form.email, valid_form.password, device_id
+        valid_form.email,
+        valid_form.password,
+        device_id,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=request.client.host if request.client else None,
     )
     set_refresh_cookie(response, refresh)
     set_device_cookie(response, device)

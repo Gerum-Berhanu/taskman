@@ -55,7 +55,13 @@ class AuthService:
         return user
 
     async def login(
-        self, email: EmailStr, password: str, device_id: UUID | None = None
+        self,
+        email: EmailStr,
+        password: str,
+        device_id: UUID | None = None,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
     ) -> tuple[str, str, UUID]:
         """Authenticate and issue access + raw refresh (route sets the refresh cookie)."""
         user = await self._authenticate(email, password)
@@ -63,7 +69,11 @@ class AuthService:
         raw_token = generate_refresh_token()
         token_hash = hash_refresh_token(raw_token)
 
-        session_data = ClientSessionCreateData(user_id=user_id)
+        session_data = ClientSessionCreateData(
+            user_id=user_id,
+            user_agent=self._clip(user_agent, 512),
+            ip_address=self._clip(ip_address, 45),
+        )
         if device_id is not None:
             await self._uow.client_sessions.delete_by_device(device_id)
             session_data.device_id = device_id
@@ -89,6 +99,11 @@ class AuthService:
             )
         )
         return access_token, raw_token, client_session.device_id
+
+    def _clip(self, value: str | None, max_len: int) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return value[:max_len]
     
     async def _get_token_and_session_rows(
         self, token: str
