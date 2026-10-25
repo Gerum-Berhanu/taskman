@@ -1,6 +1,7 @@
 """Auth HTTP endpoints."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,6 +24,7 @@ from app.dependencies import (
     AuthServiceDep,
     CurrentUserDep,
     DomainReadLimit,
+    DomainWriteLimit,
     UserServiceDep,
 )
 from app.dto.api.auth import AccessTokenResponse, ClientSessionRead, LoginCredentials, UserCreateResponse
@@ -110,27 +112,54 @@ async def logout_user(
     clear_refresh_cookie(response)
 
 
-@router.post(
-    "/logout-all",
+@router.get(
+    "/sessions",
+    response_model=list[ClientSessionRead],
+    dependencies=[DomainReadLimit],
+)
+async def list_sessions(
+    current_user: CurrentUserDep,
+    auth_service: AuthServiceDep,
+    device_id: DeviceIdCookie = None,
+) -> list[ClientSessionRead]:
+    return await auth_service.list_sessions(current_user.id, device_id)
+
+
+@router.delete(
+    "/sessions",
     status_code=HTTP_204_NO_CONTENT,
     dependencies=[AuthLogoutLimit],
 )
-async def logout_all_sessions(
+async def delete_all_sessions(
     response: Response,
     auth_service: AuthServiceDep,
     refresh_token: RefreshTokenCookie = None,
 ) -> None:
+    """End every session for the user (refresh cookie); clear refresh on success."""
     if not refresh_token:
         raise InvalidTokenError
     await auth_service.logout_all_user_sessions(refresh_token)
     clear_refresh_cookie(response)
 
 
-@router.get("/sessions", response_model=list[ClientSessionRead], dependencies=[DomainReadLimit])
-async def list_sessions(
-    current_user: CurrentUserDep, auth_service: AuthServiceDep, device_id: DeviceIdCookie = None,
-) -> list[ClientSessionRead]:
-    return await auth_service.list_sessions(current_user.id, device_id)
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[DomainWriteLimit],
+)
+async def delete_session(
+    session_id: UUID,
+    response: Response,
+    current_user: CurrentUserDep,
+    auth_service: AuthServiceDep,
+    device_id: DeviceIdCookie = None,
+) -> None:
+    """Revoke one session by id (Bearer). Clears refresh if it was this device."""
+    was_current = await auth_service.delete_session(
+        current_user.id, session_id, current_device_id=device_id
+    )
+    if was_current:
+        clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UserRead, dependencies=[DomainReadLimit])

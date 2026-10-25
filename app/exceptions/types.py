@@ -46,6 +46,11 @@ class UserNotFoundError(AppError):
     detail = "User not found"
 
 
+class SessionNotFoundError(AppError):
+    status_code = HTTP_404_NOT_FOUND
+    detail = "Session not found"
+
+
 class WorkspaceForbiddenError(AppError):
     status_code = HTTP_403_FORBIDDEN
     detail = "Insufficient workspace permissions"

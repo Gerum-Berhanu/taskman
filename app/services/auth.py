@@ -10,7 +10,11 @@ from pydantic import EmailStr
 
 from app.core.config import settings
 from app.dto.api.auth import ClientSessionRead
-from app.exceptions import InvalidCredentialsError, InvalidTokenError
+from app.exceptions import (
+    InvalidCredentialsError,
+    InvalidTokenError,
+    SessionNotFoundError,
+)
 from app.core.security import (
     generate_refresh_token,
     get_password_hash,
@@ -106,15 +110,50 @@ class AuthService:
             return None
         return value[:max_len]
 
-    async def list_sessions(self, user_id: UUID, current_device_id: UUID | None) -> list[ClientSessionRead]:
+    async def list_sessions(
+        self, user_id: UUID, current_device_id: UUID | None
+    ) -> list[ClientSessionRead]:
         sessions = await self._uow.client_sessions.list_by_user(user_id)
         return [
             ClientSessionRead.model_validate(
-                {**session.model_dump(), "is_current": current_device_id == session.device_id}
+                {
+                    **session.model_dump(),
+                    "is_current": current_device_id == session.device_id,
+                }
             )
             for session in sessions
         ]
-    
+
+    async def delete_session(
+        self,
+        user_id: UUID,
+        session_id: UUID,
+        *,
+        current_device_id: UUID | None = None,
+    ) -> bool:
+        """Delete one of the user's sessions. True if it was the current device."""
+        session = await self._uow.client_sessions.get(session_id)
+        if session is None or session.user_id != user_id:
+            raise SessionNotFoundError
+
+        was_current = (
+            current_device_id is not None and session.device_id == current_device_id
+        )
+        deleted = await self._uow.client_sessions.delete(session_id)
+        if not deleted:
+            raise SessionNotFoundError
+
+        self._uow.after_commit(
+            lambda: log_event(
+                logger,
+                logging.INFO,
+                DomainLogEvent.USER_LOGOUT,
+                user_id=user_id,
+                session_id=session_id,
+            )
+        )
+        return was_current
+
     async def _get_token_and_session_rows(
         self, token: str
     ) -> tuple[RefreshTokenRecord, ClientSessionRecord]:
