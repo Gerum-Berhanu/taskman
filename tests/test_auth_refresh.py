@@ -96,6 +96,10 @@ def logout_all(client: TestClient, refresh_token: str | None = None):
     return client.post("/auth/logout-all")
 
 
+def list_sessions(client: TestClient, access_token: str):
+    return client.get("/auth/sessions", headers=auth_header(access_token))
+
+
 def auth_header(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
@@ -341,3 +345,30 @@ def test_logout_clears_refresh_but_keeps_device_cookie(client: TestClient) -> No
     again = login_tokens(client)
     assert again["device_id"] == device_before
     assert_unauthorized(refresh(client, tokens["refresh_token"]))
+
+
+def test_list_sessions_requires_auth(client: TestClient) -> None:
+    response = client.get("/auth/sessions")
+    assert response.status_code == 401
+    # HTTPBearer missing-credentials detail (not InvalidTokenError).
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_list_sessions_marks_current_and_stores_metadata(client: TestClient) -> None:
+    register(client)
+    client.headers["User-Agent"] = "taskman-test-agent/1.0"
+    first = login_tokens(client)
+    clear_device_cookie(client)
+    second = login_tokens(client)
+
+    listed = list_sessions(client, second["access_token"])
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    assert len(body) == 2
+
+    by_device = {row["device_id"]: row for row in body}
+    assert by_device[second["device_id"]]["is_current"] is True
+    assert by_device[first["device_id"]]["is_current"] is False
+    for row in body:
+        assert row["user_agent"] == "taskman-test-agent/1.0"
+        assert row["ip_address"]
