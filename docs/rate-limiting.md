@@ -38,7 +38,7 @@ dependencies=[DomainWriteLimit, Depends(RequireRole(EDITOR))]
 dependencies=[DomainExportLimit, Depends(RequireRole(VIEWER))]
 ```
 
-Auth: register / login / refresh / logout / logout-all use the auth aliases; `GET /auth/me` uses `DomainReadLimit`. Domain routers attach read / write / export accordingly.
+Auth: register / login / refresh / logout / logout-all use the auth aliases; `GET /auth/me` and `GET /auth/sessions` use `DomainReadLimit`. Domain routers attach read / write / export accordingly.
 
 ## Redis key and 429 contract
 

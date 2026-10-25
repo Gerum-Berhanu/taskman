@@ -19,11 +19,12 @@ Login and refresh responses include only the access token in the body. Cookies a
 
 ## Endpoints
 
-- `POST /auth/login` — access JSON + sets refresh cookie + sets/echoes `device_id` cookie. If `device_id` is present, any existing session for that device is deleted and replaced.
+- `POST /auth/login` — access JSON + sets refresh cookie + sets/echoes `device_id` cookie. If `device_id` is present, any existing session for that device is deleted and replaced. Stores `user_agent` and client IP on the new session (not updated on refresh).
 - `POST /auth/refresh` — reads **refresh cookie only** (device cookie is ignored); rotates refresh; returns new access JSON
 - `POST /auth/logout` / `POST /auth/logout-all` — read refresh cookie; on success clear refresh only (204); keep `device_id`
+- `GET /auth/sessions` — Bearer access; list live sessions (`id`, `device_id`, `user_agent`, `ip_address`, timestamps, `is_current`). `is_current` is true when the `device_id` cookie matches that row.
 
-Missing or invalid refresh cookie → `401` (`Could not validate credentials`).
+Missing or invalid refresh cookie on cookie-auth routes → `401` (`Could not validate credentials`).
 
 ## Role of `device_id`
 
@@ -37,6 +38,7 @@ Missing or invalid refresh cookie → `401` (`Could not validate credentials`).
 - Logout, logout-all, refresh-token reuse, expiry, and inactive-user checks **delete** the session (CASCADE refresh tokens). There is no soft-revoke / `revoked_at`.
 - Re-login with the same `device_id` deletes any existing row for that device, then creates a new session.
 - Idle sessions that never logout are removed by the expired-session purge (`expires_at`).
+- UA/IP are kept only while the session row exists (privacy: gone after logout/replace/purge).
 
 ## Browser / SPA notes
 

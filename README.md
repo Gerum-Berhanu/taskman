@@ -160,7 +160,7 @@ docker exec <container_name_or_id> <command> <args>
 
 | Area | Paths |
 |------|--------|
-| Auth | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/logout-all`; `GET /auth/me` |
+| Auth | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/logout-all`; `GET /auth/me`, `/sessions` |
 | Workspaces | `POST /workspaces`; `POST /workspaces/{id}/members` (owner) |
 | Tasks | CRUD under `/workspaces/{workspace_id}/tasks` (RBAC: viewer / editor / owner) |
 
