@@ -82,6 +82,9 @@ class AuthService:
         if device_id is not None:
             await self._uow.client_sessions.delete_by_device(device_id)
             session_data.device_id = device_id
+        await self._uow.client_sessions.make_room_for_login(
+            user_id, max_sessions=settings.max_client_sessions_per_user
+        )
         client_session = await self._uow.client_sessions.create(session_data)
         
         refresh_token = await self._uow.refresh_tokens.create(RefreshTokenCreateData(
