@@ -97,7 +97,7 @@ just purge-expired-sessions   # delete expired client_sessions (manual; + -stagi
 - Health: `GET /health`
 - Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-Authorize in `/docs` with a token from `POST /auth/login` (use email as username).
+Authorize in `/docs` with a token from `POST /auth/login` (use email as username). Access stays in the JSON body (`Bearer`); refresh and `device_id` are HttpOnly cookies — see [docs/auth-cookies.md](docs/auth-cookies.md).
 
 ### Port already in use
 
@@ -171,6 +171,7 @@ Full target spec (including not-yet-built pieces): [docs/project-requirements.md
 | Doc | Purpose |
 |-----|---------|
 | [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
+| [docs/auth-cookies.md](docs/auth-cookies.md) | Access Bearer + HttpOnly refresh and device_id cookies |
 | [docs/rate-limiting.md](docs/rate-limiting.md) | Redis rate limiting |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
 | [docs/pr-guide.md](docs/pr-guide.md) | Pull request description guide |

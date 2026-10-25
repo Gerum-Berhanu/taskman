@@ -2,6 +2,7 @@
 
 | File | Purpose |
 |------|---------|
+| [auth-cookies.md](auth-cookies.md) | Access Bearer + HttpOnly refresh and device_id cookies |
 | [caching.md](caching.md) | Task summary Redis cache (TTL, keys, fail-open, invalidation) |
 | [commit-messages.md](commit-messages.md) | How we write git commits |
 | [services.md](services.md) | Public vs private service methods (API DTOs vs `_` helpers) |

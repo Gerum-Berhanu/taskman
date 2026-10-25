@@ -96,8 +96,8 @@ Login/refresh failures surface as `app_error`, not service tags.
 |-----|-------|------|--------|
 | `user_registered` | `INFO` | User created | `user_id`, `email` |
 | `user_login_succeeded` | `INFO` | Login issued tokens | `user_id` |
-| `user_logout` | `INFO` | One session revoked | `user_id`, `session_id` |
-| `user_logout_all` | `INFO` | All sessions revoked | `user_id`, `session_id` |
+| `user_logout` | `INFO` | One session deleted | `user_id`, `session_id` |
+| `user_logout_all` | `INFO` | All sessions deleted | `user_id`, `session_id` |
 | `workspace_created` | `INFO` | Workspace created | `workspace_id`, `owner_id` |
 | `workspace_member_added` | `INFO` | Member row created | `workspace_id`, `member_id`, `role`, `actor_id` |
 | `task_created` | `INFO` | Task created | `workspace_id`, `task_id`, `actor_id` |
