@@ -5,9 +5,33 @@ Taskman sends HTML emails. Bodies are Jinja2 templates under `app/infrastructure
 Transport is chosen in `send_mail`:
 
 1. If `RESEND_API_KEY` is set → **Resend HTTPS** (official `resend` Python SDK)
-2. Otherwise → **SMTP** (`smtplib` + STARTTLS)
+2. Otherwise → **SMTP** (`smtplib`)
+   - If `SMTP_USER` and `SMTP_PASSWORD` are both set → STARTTLS + login (Gmail, etc.)
+   - If either is empty → plain SMTP (local catchers like **Mailpit**)
 
-Use Resend on hosts that block outbound SMTP (e.g. Render free web services). Keep SMTP for local development if you prefer.
+Use Resend on hosts that block outbound SMTP (e.g. Render free web services). For local development, prefer Mailpit over a real mailbox.
+
+## Local Mailpit
+
+[Mailpit](https://mailpit.axllent.org/) catches outbound SMTP and shows messages in a UI. No code changes beyond empty SMTP credentials.
+
+1. Install (Windows): `winget install axllent.mailpit` (or use the binary you already have).
+2. Run: `mailpit` — UI at http://localhost:8025, SMTP at `127.0.0.1:1025`.
+3. In `env/.env.development` (keep `RESEND_API_KEY` empty so SMTP is used):
+
+```env
+EMAIL_ENABLED=true
+RESEND_API_KEY=
+SMTP_HOST=127.0.0.1
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASSWORD=
+EMAIL_FROM=taskman@localhost
+```
+
+4. Restart the API, `POST /auth/register`, then open the UI — welcome mail should appear.
+
+A version-check timeout from `mailpit version` is harmless; the server still runs.
 
 ## Welcome email
 
@@ -71,13 +95,15 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `EMAIL_ENABLED` | Master switch for all sends (`false` in test). Enforced in `send_mail`. |
 | `RESEND_API_KEY` | When set, send via Resend HTTPS instead of SMTP |
 | `RESEND_FROM` | From address for Resend (default `onboarding@resend.dev`) |
-| `SMTP_HOST` | SMTP host (e.g. `smtp.gmail.com`); used when Resend key is empty |
-| `SMTP_PORT` | SMTP port (e.g. `587` for STARTTLS) |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASSWORD` | SMTP password / Gmail App Password |
-| `EMAIL_FROM` | From address for SMTP sends |
+| `SMTP_HOST` | SMTP host (e.g. `127.0.0.1` for Mailpit, `smtp.gmail.com` for Gmail); used when Resend key is empty |
+| `SMTP_PORT` | SMTP port (`1025` Mailpit, `587` typical STARTTLS) |
+| `SMTP_USER` | SMTP username; empty with password → skip STARTTLS/login (Mailpit) |
+| `SMTP_PASSWORD` | SMTP password / Gmail App Password; empty with user → skip STARTTLS/login |
+| `EMAIL_FROM` | From address for SMTP sends (required when `SMTP_USER` is empty) |
 
 On Render free: set `EMAIL_ENABLED=true` and `RESEND_API_KEY`. Resend uses `RESEND_FROM` (defaults to `onboarding@resend.dev`). SMTP vars can stay unset.
+
+Local Mailpit: leave `RESEND_API_KEY` empty and use the SMTP block in [Local Mailpit](#local-mailpit).
 
 Put real secrets only in local `env/.env.*` (gitignored) or the host’s secret store. `env-example/` keeps placeholders.
 
