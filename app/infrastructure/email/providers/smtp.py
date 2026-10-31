@@ -32,6 +32,9 @@ def send_via_smtp(
         )
 
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
-        smtp.starttls()
-        smtp.login(settings.smtp_user, settings.smtp_password)
+        # Authenticated providers (Gmail, etc.): STARTTLS + login.
+        # Local catchers (Mailpit): leave SMTP_USER/SMTP_PASSWORD empty → plain SMTP.
+        if settings.smtp_user and settings.smtp_password:
+            smtp.starttls()
+            smtp.login(settings.smtp_user, settings.smtp_password)
         smtp.send_message(msg)

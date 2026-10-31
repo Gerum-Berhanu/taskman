@@ -39,6 +39,39 @@ def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyP
     assert "<p>Body text</p>" in sent_msg.get_content()
 
 
+def test_send_mail_uses_plain_smtp_when_credentials_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mailpit-style: no STARTTLS/login when SMTP_USER/SMTP_PASSWORD are unset."""
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
+    monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_host", "127.0.0.1")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_port", 1025)
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_user", "")
+    monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_password", "")
+    monkeypatch.setattr(
+        "app.infrastructure.email.providers.smtp.settings.email_from",
+        "taskman@localhost",
+    )
+
+    smtp_instance = MagicMock()
+    smtp_cm = MagicMock()
+    smtp_cm.__enter__.return_value = smtp_instance
+    smtp_cm.__exit__.return_value = None
+
+    with patch(
+        "app.infrastructure.email.providers.smtp.smtplib.SMTP", return_value=smtp_cm
+    ) as smtp_cls:
+        send_mail(to="to@example.com", subject="Hello", html="<p>Body text</p>")
+
+    smtp_cls.assert_called_once_with("127.0.0.1", 1025, timeout=30)
+    smtp_instance.starttls.assert_not_called()
+    smtp_instance.login.assert_not_called()
+    smtp_instance.send_message.assert_called_once()
+    sent_msg = smtp_instance.send_message.call_args.args[0]
+    assert sent_msg["From"] == "taskman@localhost"
+
+
 def test_send_mail_uses_resend_when_api_key_set(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.infrastructure.email.mails.settings.email_enabled", True)
     monkeypatch.setattr("app.infrastructure.email.mails.settings.resend_api_key", "re_test_key")
