@@ -73,7 +73,10 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     email_from: str = ""
-    task_summary_cache_ttl_seconds: int = 300 # 5 minutes
+    task_summary_cache_ttl_seconds: int = 300  # 5 minutes
+    registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
+    registration_otp_length: int = Field(default=6, ge=4, le=10)
+    registration_otp_max_attempts: int = Field(default=5, ge=1)
 
     @field_validator("secret_key")
     @classmethod
