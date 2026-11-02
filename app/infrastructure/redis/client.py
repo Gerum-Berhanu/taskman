@@ -23,13 +23,14 @@ _INIT_ERRORS = (RedisError, TimeoutError, OSError)
 class RedisClient:
     """Process-wide Redis connection and registered Lua scripts."""
 
-    def __init__(self) -> None:
+    def __init__(self, redis_url: str) -> None:
         self._client: Redis | None = None
         self.scripts: dict[LuaScriptName, AsyncScript] = {}
+        self.redis_url: str = redis_url
 
-    async def init_redis(self, redis_url: str = settings.redis_url) -> Redis:
+    async def init_redis(self) -> Redis:
         """Connect, ping, and register Lua scripts; raise if Redis is unreachable."""
-        client = Redis.from_url(redis_url, decode_responses=True)
+        client = Redis.from_url(self.redis_url, decode_responses=True)
         try:
             await client.ping()
         except _INIT_ERRORS:
@@ -40,12 +41,10 @@ class RedisClient:
         self._register_scripts(LUA_SCRIPTS)
         return self._client
 
-    async def init_redis_fail_open(
-        self, redis_url: str = settings.redis_url
-    ) -> Redis | None:
+    async def init_redis_fail_open(self) -> Redis | None:
         """Like ``init_redis``, but log and return ``None`` on failure (app continues)."""
         try:
-            return await self.init_redis(redis_url)
+            return await self.init_redis()
         except _INIT_ERRORS:
             log_event(
                 logger,
@@ -77,4 +76,4 @@ class RedisClient:
         }
 
 
-redis_client = RedisClient()
+redis_client = RedisClient(settings.redis_url)
