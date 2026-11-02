@@ -71,6 +71,21 @@ class FailedDatabaseConnection(AppError):
     detail = "Database connection failed"
 
 
+class RegistrationStoreUnavailableError(AppError):
+    status_code = HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Registration temporarily unavailable"
+
+
+class RegistrationOtpInvalidError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Invalid or expired registration code"
+
+
+class RegistrationOtpAttemptsExceededError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Registration attempts exceeded"
+
+
 class UnknownClientError(AppError):
     status_code = HTTP_400_BAD_REQUEST
     detail = "Unknown client address"

@@ -18,8 +18,9 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 
 | Scope | Identity | Intent | Default budget | Default algorithm |
 |-------|----------|--------|----------------|-------------------|
-| `auth.register` | IP | Account spam | 3 / 1m | `leaky_bucket` |
-| `auth.login` | IP | Credential stuffing | 5 / 1m | `leaky_bucket` |
+| `auth.register` | IP | Account spam (start registration) | 3 / 1m | `token_bucket` |
+| `auth.register.verify` | IP | OTP verify guesses | 10 / 1m | `token_bucket` |
+| `auth.login` | IP | Credential stuffing | 5 / 1m | `token_bucket` |
 | `auth.refresh` | IP | Refresh storms; keep separate from login | 30 / 1m | `token_bucket` |
 | `auth.logout` | IP | Logout + `DELETE /auth/sessions` (all) share one budget | 10 / 1m | `sliding_window_counter` |
 | `domain.read` | user id | Light reads (list/get/summary/`/me`) | 100 / 1m | `sliding_window_counter` |

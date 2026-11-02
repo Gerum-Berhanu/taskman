@@ -1,6 +1,7 @@
 from datetime import datetime
-from pydantic import UUID4, BaseModel
+from pydantic import UUID4, BaseModel, Field
 
+from app.core.config import settings
 from app.dto.api.user import UserBase
 
 
@@ -11,6 +12,22 @@ class LoginCredentials(UserBase):
 class UserCreateResponse(UserBase):
     id: UUID4
     message: str = "User registered successfully"
+
+
+class RegisterPendingResponse(BaseModel):
+    """Returned after registration start; client must verify with OTP."""
+
+    registration_id: UUID4
+    message: str = "Check your email for a verification code"
+
+
+class RegisterVerify(BaseModel):
+    registration_id: UUID4
+    otp: str = Field(
+        min_length=settings.registration_otp_length,
+        max_length=settings.registration_otp_length,
+        pattern=rf"^\d{{{settings.registration_otp_length}}}$",
+    )
 
 
 class AccessTokenResponse(BaseModel):

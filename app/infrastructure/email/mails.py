@@ -109,3 +109,15 @@ def send_tasks_export_email(*, to: str, workspace_id: str, csv_text: str) -> str
         attachment_mime="text/csv",
     )
     return subject
+
+
+def send_registration_otp_email(to: str, otp: str) -> str:
+    """Build the registration OTP message and send it. Returns the subject."""
+    subject = "Your Taskman verification code"
+    expires_in_minutes = max(1, settings.registration_otp_ttl_seconds // 60)
+    html = _env.get_template("registration_otp.html").render(
+        otp=otp,
+        expires_in_minutes=expires_in_minutes,
+    )
+    send_mail(to=to, subject=subject, html=html)
+    return subject

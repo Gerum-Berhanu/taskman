@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Your Taskman verification code{% endblock %}
+{% block content %}
+  <h1>Verify your email</h1>
+  <p class="lede">Use this code to finish creating your Taskman account.</p>
+  <p>Enter the verification code below in the app. Do not share it with anyone.</p>
+  <div class="meta">
+    Verification code · <strong>{{ otp }}</strong>
+  </div>
+  <p class="muted">This code expires in <strong>{{ expires_in_minutes }}</strong> minutes.</p>
+  <hr class="divider" />
+  <p class="muted">If you did not start registration, you can ignore this email.</p>
+{% endblock %}

@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
-from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from app.api.helpers.auth_cookies import (
     DeviceIdCookie,
@@ -15,19 +15,21 @@ from app.api.helpers.auth_cookies import (
     set_device_cookie,
     set_refresh_cookie,
 )
+from app.dto.api import RegisterPendingResponse
 from app.exceptions import InvalidCredentialsError, InvalidTokenError
 from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,
     AuthRefreshLimit,
     AuthRegisterLimit,
+    AuthRegisterVerifyLimit,
     AuthServiceDep,
     CurrentUserDep,
     DomainReadLimit,
     DomainWriteLimit,
     UserServiceDep,
 )
-from app.dto.api.auth import AccessTokenResponse, ClientSessionRead, LoginCredentials, UserCreateResponse
+from app.dto.api.auth import AccessTokenResponse, ClientSessionRead, LoginCredentials, RegisterVerify, UserCreateResponse
 from app.dto.api.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -35,15 +37,27 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post(
     "/register",
-    response_model=UserCreateResponse,
-    status_code=HTTP_201_CREATED,
+    response_model=RegisterPendingResponse,
+    status_code=HTTP_202_ACCEPTED,
     dependencies=[AuthRegisterLimit],
 )
-async def register_user(
+async def start_registration(
     payload: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
+) -> RegisterPendingResponse:
+    ticket = await user_service.start_registration(payload, bg_tasks)
+    return RegisterPendingResponse(registration_id=ticket)
+
+
+@router.post(
+    "/register/verify",
+    response_model=UserCreateResponse,
+    status_code=HTTP_201_CREATED,
+    dependencies=[AuthRegisterVerifyLimit],
+)
+async def complete_registration(
+    payload: RegisterVerify, user_service: UserServiceDep, bg_tasks: BackgroundTasks
 ) -> UserCreateResponse:
-    user = await user_service.register(payload, bg_tasks)
-    return UserCreateResponse(id=user.id, email=user.email)
+    return await user_service.complete_registration(payload, bg_tasks)
 
 
 @router.post(
