@@ -1,21 +1,17 @@
 """Task summary cache: key shape and fail-open get/set/delete."""
 
-import json
 import logging
 from typing import Any
 from uuid import UUID
 
-from redis.exceptions import RedisError
-
 from app.core.config import settings
+from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
 from app.infrastructure.redis.json_ops import delete_keys, get_json, set_json
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
 
 
 logger = logging.getLogger(__name__)
-
-_CACHE_BACKEND_ERRORS = (RedisError, TimeoutError, json.JSONDecodeError)
 
 
 def summary_key(workspace_id: UUID) -> str:
@@ -27,7 +23,7 @@ async def get_cached_summary(workspace_id: UUID) -> dict[str, Any] | None:
     key = summary_key(workspace_id)
     try:
         return await get_json(key)
-    except _CACHE_BACKEND_ERRORS:
+    except REDIS_DATA_ERRORS:
         log_event(
             logger,
             logging.ERROR,
@@ -48,7 +44,7 @@ async def set_cached_summary(workspace_id: UUID, payload: dict[str, Any]) -> Non
             payload,
             ttl_seconds=settings.task_summary_cache_ttl_seconds,
         )
-    except _CACHE_BACKEND_ERRORS:
+    except REDIS_DATA_ERRORS:
         log_event(
             logger,
             logging.ERROR,
@@ -67,7 +63,7 @@ async def invalidate_summary_cache(workspace_id: UUID) -> None:
     key = summary_key(workspace_id)
     try:
         await delete_keys(key)
-    except _CACHE_BACKEND_ERRORS:
+    except REDIS_DATA_ERRORS:
         log_event(
             logger,
             logging.ERROR,
