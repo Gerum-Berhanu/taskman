@@ -20,7 +20,7 @@ async def set_json(
     key: str,
     value: dict[str, Any],
     *,
-    ttl_seconds: int = settings.task_summary_cache_ttl_seconds,
+    ttl_seconds: int,
 ) -> None:
     """Store JSON with a TTL (seconds)."""
     client = redis_client.get_redis_client
@@ -28,7 +28,7 @@ async def set_json(
 
 
 async def delete_keys(*keys: str) -> None:
-    """Delete one or more cache keys (no-op if empty)."""
+    """Delete one or more keys (no-op if empty)."""
     if not keys:
         return
     client = redis_client.get_redis_client

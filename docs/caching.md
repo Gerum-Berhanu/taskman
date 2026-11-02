@@ -6,7 +6,7 @@
 
 | Path | Role |
 |------|------|
-| `app/infrastructure/redis/cache/` | `json_ops.py` (get/set/delete); `__init__.py` re-exports |
+| `app/infrastructure/redis/json_ops.py` | Shared JSON get/set/delete helpers |
 | `app/services/task.py` | Cache key (`_summary_cache_key`), read/write on `summary`, invalidate on mutate |
 | `app/infrastructure/redis/client.py` | Shared async Redis client (also used by rate limiting) |
 
