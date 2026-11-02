@@ -7,7 +7,8 @@
 | Path | Role |
 |------|------|
 | `app/infrastructure/redis/json_ops.py` | Shared JSON get/set/delete helpers |
-| `app/services/task.py` | Cache key (`_summary_cache_key`), read/write on `summary`, invalidate on mutate |
+| `app/infrastructure/redis/cache/summary.py` | Summary key + fail-open get/set/invalidate |
+| `app/services/task.py` | Calls cache helpers on `summary` / mutate; no Redis key strings |
 | `app/infrastructure/redis/client.py` | Shared async Redis client (also used by rate limiting) |
 
 ## Key shape

@@ -1,12 +1,10 @@
 """Workspace-scoped task application services."""
 
-import json
 import logging
 from uuid import UUID
 
 from fastapi import BackgroundTasks
 from pydantic import UUID4, ValidationError
-from redis.exceptions import RedisError
 
 from app.exceptions import (
     AssigneeNotInWorkspaceError,
@@ -15,7 +13,11 @@ from app.exceptions import (
 )
 from app.core.request_context import current_user_id_ctx
 from app.jobs.export.task_export import run_tasks_export
-from app.infrastructure.redis.json_ops import delete_keys, get_json, set_json
+from app.infrastructure.redis.cache import (
+    get_cached_summary,
+    invalidate_summary_cache,
+    set_cached_summary,
+)
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events import DomainLogEvent
@@ -25,19 +27,12 @@ from app.repositories.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
-# Redis outages / timeouts, plus unreadable or invalid cache payloads.
-_CACHE_BACKEND_ERRORS = (RedisError, TimeoutError, json.JSONDecodeError)
-_CACHE_GET_ERRORS = (*_CACHE_BACKEND_ERRORS, ValidationError)
-
 
 class TaskService:
     """Create, read, update, and delete tasks within a workspace."""
 
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
-
-    def _summary_cache_key(self, workspace_id: UUID) -> str:
-        return f"cache:ws:{workspace_id}:tasks:summary"
 
     async def _validate_assignee(
         self, workspace_id: UUID, assigned_user_id: UUID4 | None
@@ -73,7 +68,7 @@ class TaskService:
                 actor_id=actor_id,
             )
         )
-        await self._invalidate_summary(workspace_id)
+        await invalidate_summary_cache(workspace_id)
         return self._to_read(task)
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRead:
@@ -118,7 +113,7 @@ class TaskService:
                 actor_id=actor_id,
             )
         )
-        await self._invalidate_summary(workspace_id)
+        await invalidate_summary_cache(workspace_id)
         return self._to_read(task)
 
     async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
@@ -136,24 +131,23 @@ class TaskService:
                 actor_id=actor_id,
             )
         )
-        await self._invalidate_summary(workspace_id)
+        await invalidate_summary_cache(workspace_id)
 
     async def summary(self, workspace_id: UUID) -> TaskSummaryRead:
-        key = self._summary_cache_key(workspace_id)
-
-        try:
-            cached = await get_json(key)
-            if cached is not None:
+        cached = await get_cached_summary(workspace_id)
+        if cached is not None:
+            try:
                 return TaskSummaryRead.model_validate(cached)
-        except _CACHE_GET_ERRORS:
-            log_event(
-                logger,
-                logging.ERROR,
-                DomainLogEvent.CACHE_BACKEND_ERROR,
-                exc_info=True,
-                op="get",
-                key=key,
-            )
+            except ValidationError:
+                log_event(
+                    logger,
+                    logging.ERROR,
+                    DomainLogEvent.CACHE_BACKEND_ERROR,
+                    exc_info=True,
+                    op="get",
+                    key="invalid_cached_summary",
+                    workspace_id=workspace_id,
+                )
 
         status_count = await self._uow.tasks.count_by_status(workspace_id)
         summary = TaskSummaryRead(
@@ -162,38 +156,11 @@ class TaskService:
             **status_count,
         )
 
-        try:
-            await set_json(
-                key,
-                {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
-            )
-        except _CACHE_BACKEND_ERRORS:
-            log_event(
-                logger,
-                logging.ERROR,
-                DomainLogEvent.CACHE_BACKEND_ERROR,
-                exc_info=True,
-                op="set",
-                key=key,
-            )
-
+        await set_cached_summary(
+            workspace_id,
+            {**summary.model_dump(mode="json"), "workspace_id": str(workspace_id)},
+        )
         return summary
-
-    async def _invalidate_summary(self, workspace_id: UUID) -> None:
-        """Early invalidate is fine (worst case: extra DB read if commit fails)."""
-        key = self._summary_cache_key(workspace_id)
-        try:
-            await delete_keys(key)
-        except _CACHE_BACKEND_ERRORS:
-            log_event(
-                logger,
-                logging.ERROR,
-                DomainLogEvent.CACHE_BACKEND_ERROR,
-                exc_info=True,
-                op="delete",
-                key=key,
-                workspace_id=workspace_id,
-            )
 
     async def export(
         self,

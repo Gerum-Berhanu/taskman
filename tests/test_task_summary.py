@@ -5,8 +5,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
-from redis.exceptions import ConnectionError as RedisConnectionError
-
 from tests.test_api import (
     FORBIDDEN_DETAIL,
     create_workspace,
@@ -187,11 +185,11 @@ def test_summary_cache_hit_skips_db(
         "completed": 0,
     }
     monkeypatch.setattr(
-        "app.services.task.get_json",
+        "app.services.task.get_cached_summary",
         AsyncMock(return_value=cached),
     )
     set_mock = AsyncMock()
-    monkeypatch.setattr("app.services.task.set_json", set_mock)
+    monkeypatch.setattr("app.services.task.set_cached_summary", set_mock)
 
     response = client.get(summary_url(workspace_id), headers=headers)
 
@@ -215,12 +213,12 @@ def test_summary_succeeds_when_cache_backend_errors(
     assert created.status_code == 201, created.text
 
     monkeypatch.setattr(
-        "app.services.task.get_json",
-        AsyncMock(side_effect=RedisConnectionError("redis down")),
+        "app.services.task.get_cached_summary",
+        AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
-        "app.services.task.set_json",
-        AsyncMock(side_effect=RedisConnectionError("redis down")),
+        "app.services.task.set_cached_summary",
+        AsyncMock(),
     )
 
     response = client.get(summary_url(workspace_id), headers=headers)
@@ -242,8 +240,10 @@ def test_mutation_calls_cache_invalidation(
     headers = login(client)
     workspace_id = create_workspace(client, headers)["id"]
 
-    delete_mock = AsyncMock()
-    monkeypatch.setattr("app.services.task.delete_keys", delete_mock)
+    invalidate_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.services.task.invalidate_summary_cache", invalidate_mock
+    )
 
     created = client.post(
         tasks_url(workspace_id),
@@ -253,20 +253,22 @@ def test_mutation_calls_cache_invalidation(
     assert created.status_code == 201, created.text
     task_id = created.json()["id"]
 
-    assert delete_mock.await_count >= 1
-    key = f"cache:ws:{workspace_id}:tasks:summary"
-    assert any(key in call.args for call in delete_mock.await_args_list)
+    assert invalidate_mock.await_count >= 1
+    assert any(
+        call.args and str(call.args[0]) == workspace_id
+        for call in invalidate_mock.await_args_list
+    )
 
-    delete_mock.reset_mock()
+    invalidate_mock.reset_mock()
     patched = client.patch(
         tasks_url(workspace_id, task_id),
         json={"status": "completed"},
         headers=headers,
     )
     assert patched.status_code == 200, patched.text
-    assert delete_mock.await_count >= 1
+    assert invalidate_mock.await_count >= 1
 
-    delete_mock.reset_mock()
+    invalidate_mock.reset_mock()
     deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
     assert deleted.status_code == 204
-    assert delete_mock.await_count >= 1
+    assert invalidate_mock.await_count >= 1
