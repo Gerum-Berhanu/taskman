@@ -38,8 +38,8 @@ class ScopeSpec:
 
 # Single place to tune budgets. Same scope name => shared Redis counter.
 SCOPES: dict[str, ScopeSpec] = {
-    "auth.register": ScopeSpec(identity="ip", limit=3, algorithm="leaky_bucket"),
-    "auth.login": ScopeSpec(identity="ip", limit=5, algorithm="leaky_bucket"),
+    "auth.register": ScopeSpec(identity="ip", limit=3, algorithm="token_bucket"),
+    "auth.login": ScopeSpec(identity="ip", limit=5, algorithm="token_bucket"),
     "auth.refresh": ScopeSpec(identity="ip", limit=30, algorithm="token_bucket"),
     "auth.logout": ScopeSpec(identity="ip", limit=10, algorithm="sliding_window_counter"),
     "domain.read": ScopeSpec(identity="user", limit=100, algorithm="sliding_window_counter"),
