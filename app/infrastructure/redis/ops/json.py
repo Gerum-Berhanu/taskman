@@ -1,5 +1,6 @@
-"""JSON get/set/delete helpers on the shared async Redis client."""
+"""JSON get/set helpers on the shared async Redis client."""
 
+from collections.abc import Mapping
 import json
 from typing import Any
 
@@ -17,18 +18,10 @@ async def get_json(key: str) -> dict[str, Any] | None:
 
 async def set_json(
     key: str,
-    value: dict[str, Any],
+    value: Mapping[str, Any],
     *,
     ttl_seconds: int,
 ) -> None:
     """Store JSON with a TTL (seconds)."""
     client = redis_client.get_redis_client
     await client.set(key, json.dumps(value), ex=ttl_seconds)
-
-
-async def delete_keys(*keys: str) -> None:
-    """Delete one or more keys (no-op if empty)."""
-    if not keys:
-        return
-    client = redis_client.get_redis_client
-    await client.delete(*keys)

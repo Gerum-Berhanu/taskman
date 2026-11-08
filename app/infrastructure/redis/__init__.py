@@ -1,1 +1,1 @@
-"""Redis client, JSON helpers, and rate-limit algorithms."""
+"""Redis client, ops helpers, and rate-limit algorithms."""

@@ -6,7 +6,8 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
-from app.infrastructure.redis.json_ops import delete_keys, get_json, set_json
+from app.infrastructure.redis.ops.json import get_json, set_json
+from app.infrastructure.redis.ops.keys import delete_keys
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
 
