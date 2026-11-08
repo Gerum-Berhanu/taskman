@@ -11,20 +11,11 @@ from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from tests.conftest import activate_user, deactivate_user, expire_session_for_refresh
+from tests.test_api import PASSWORD, register
 
-PASSWORD = "password123"
 INVALID_DETAIL = "Could not validate credentials"
 _REFRESH_COOKIE = settings.refresh_token_cookie_name
 _DEVICE_COOKIE = settings.device_id_cookie_name
-
-
-def register(client: TestClient, email: str = "alice@example.com") -> dict:
-    response = client.post(
-        "/auth/register",
-        json={"email": email, "password": PASSWORD},
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
 
 
 def _httponly_cookie_value(response, cookie_name: str) -> str:

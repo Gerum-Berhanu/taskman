@@ -61,12 +61,16 @@ def test_health_is_not_rate_limited(
 def test_auth_login_returns_429_with_retry_after(
     client: TestClient, enable_rate_limits: None
 ) -> None:
-    # leaky_bucket: first hit allowed, second within the gap is denied.
-    first = client.post(
-        "/auth/login",
-        data={"username": "nobody@example.com", "password": "wrong"},
-    )
-    assert first.status_code == 401
+    # token_bucket auth.login: burst of `limit`, then deny.
+    from app.dependencies.rate_limit import SCOPES
+
+    login_limit = SCOPES["auth.login"].limit
+    for _ in range(login_limit):
+        response = client.post(
+            "/auth/login",
+            data={"username": "nobody@example.com", "password": "wrong"},
+        )
+        assert response.status_code == 401, response.text
 
     blocked = client.post(
         "/auth/login",
@@ -79,13 +83,17 @@ def test_auth_register_and_refresh_do_not_share_login_counter(
     client: TestClient, enable_rate_limits: None
 ) -> None:
     # Burn auth.login; auth.register is a different Redis key.
-    assert (
-        client.post(
-            "/auth/login",
-            data={"username": "nobody@example.com", "password": "wrong"},
-        ).status_code
-        == 401
-    )
+    from app.dependencies.rate_limit import SCOPES
+
+    login_limit = SCOPES["auth.login"].limit
+    for _ in range(login_limit):
+        assert (
+            client.post(
+                "/auth/login",
+                data={"username": "nobody@example.com", "password": "wrong"},
+            ).status_code
+            == 401
+        )
     _assert_rate_limited(
         client.post(
             "/auth/login",
@@ -97,11 +105,21 @@ def test_auth_register_and_refresh_do_not_share_login_counter(
         "/auth/register",
         json={"email": "alice@example.com", "password": "password123"},
     )
-    assert registered.status_code == 201, registered.text
+    assert registered.status_code == 202, registered.text
 
-    # Fresh counters so login_tokens can succeed; then prove refresh != login.
+    # Fresh counters so full register + login_tokens can succeed; then prove refresh != login.
     _flush_rate_limit_keys()
+    register(client, email="alice@example.com")
     tokens = login_tokens(client, email="alice@example.com")
+    # login_tokens spent 1 token; burn the rest of the auth.login bucket.
+    for _ in range(login_limit - 1):
+        assert (
+            client.post(
+                "/auth/login",
+                data={"username": "alice@example.com", "password": "wrong"},
+            ).status_code
+            == 401
+        )
     _assert_rate_limited(
         client.post(
             "/auth/login",

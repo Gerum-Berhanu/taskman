@@ -2,21 +2,61 @@
 >> uv run pytest -q
 """
 
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
 
 PASSWORD = "password123"
+FIXED_OTP = "123456"
+
+
+def start_register(
+    client: TestClient,
+    email: str = "alice@example.com",
+    password: str = PASSWORD,
+) -> dict:
+    """POST /auth/register → 202 pending ticket (OTP generation patched)."""
+    with (
+        patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
+        patch(
+            "app.services.user.send_registration_otp_email",
+            return_value="Your Taskman verification code",
+        ),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={"email": email, "password": password},
+        )
+    assert response.status_code == 202, response.text
+    body = response.json()
+    assert "registration_id" in body
+    return body
+
+
+def verify_register(
+    client: TestClient,
+    registration_id: str,
+    otp: str = FIXED_OTP,
+) -> dict:
+    """POST /auth/register/verify → 201 user (welcome mail patched)."""
+    with patch(
+        "app.services.user.send_welcome_email",
+        return_value="Welcome to Taskman",
+    ):
+        response = client.post(
+            "/auth/register/verify",
+            json={"registration_id": registration_id, "otp": otp},
+        )
+    assert response.status_code == 201, response.text
+    return response.json()
 
 
 def register(client: TestClient, email: str = "alice@example.com") -> dict:
-    response = client.post(
-        "/auth/register",
-        json={"email": email, "password": PASSWORD},
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
+    """Full OTP registration for older tests that expect a created user."""
+    pending = start_register(client, email=email)
+    return verify_register(client, pending["registration_id"])
 
 
 def login(client: TestClient, email: str = "alice@example.com") -> dict[str, str]:

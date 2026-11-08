@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.email.mails import send_mail, send_welcome_email
+from tests.test_api import FIXED_OTP, start_register
 
 
 def test_send_mail_uses_smtp_starttls_login_and_send(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -160,9 +161,10 @@ def test_register_schedules_welcome_email(client: TestClient, monkeypatch: pytes
 
     monkeypatch.setattr("app.services.user.send_welcome_email", _fake_send_welcome)
 
+    pending = start_register(client, email="welcome@example.com")
     response = client.post(
-        "/auth/register",
-        json={"email": "welcome@example.com", "password": "password123"},
+        "/auth/register/verify",
+        json={"registration_id": pending["registration_id"], "otp": FIXED_OTP},
     )
 
     assert response.status_code == 201, response.text
@@ -180,13 +182,15 @@ def test_register_succeeds_when_smtp_fails(
     monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.smtp_password", "secret")
     monkeypatch.setattr("app.infrastructure.email.providers.smtp.settings.email_from", "from@example.com")
 
+    pending = start_register(client, email="still-created@example.com")
+
     with patch(
         "app.infrastructure.email.providers.smtp.smtplib.SMTP",
         side_effect=OSError("SMTP down"),
     ):
         response = client.post(
-            "/auth/register",
-            json={"email": "still-created@example.com", "password": "password123"},
+            "/auth/register/verify",
+            json={"registration_id": pending["registration_id"], "otp": FIXED_OTP},
         )
 
     assert response.status_code == 201, response.text
