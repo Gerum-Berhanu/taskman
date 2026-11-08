@@ -29,17 +29,21 @@ SMTP_PASSWORD=
 EMAIL_FROM=taskman@localhost
 ```
 
-4. Restart the API, `POST /auth/register`, then open the UI — welcome mail should appear.
+4. Restart the API, then exercise registration OTP (see [registration-otp.md](registration-otp.md#local-mailpit-walkthrough)): start → OTP in UI → verify → welcome mail after verify.
 
 A version-check timeout from `mailpit version` is harmless; the server still runs.
 
+## Registration OTP email
+
+`POST /auth/register` schedules `send_registration_otp_email` on `BackgroundTasks` after the Redis ticket is written (**202**). Full ticket flow, Redis key, and env knobs: [registration-otp.md](registration-otp.md).
+
 ## Welcome email
 
-After a successful `POST /auth/register` commit, Taskman sends a welcome email in a FastAPI `BackgroundTasks` job.
+After a successful `POST /auth/register/verify` commit, Taskman sends a welcome email in a FastAPI `BackgroundTasks` job.
 
 ### Flow
 
-1. `UserService.register` creates the user and queues work with `UnitOfWork.after_commit`.
+1. `UserService.complete_registration` creates the user and queues work with `UnitOfWork.after_commit`.
 2. One callback logs `user_registered`.
 3. Another schedules `bg_tasks.add_task(...)` to send the welcome email.
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent. That way `add_task` lands on `BackgroundTasks` in time.
@@ -81,6 +85,7 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/infrastructure/email/providers/resend.py` | Sync Resend SDK send |
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
 | `app/infrastructure/email/templates/welcome.html` | Welcome body (`{% extends "base.html" %}`) |
+| `app/infrastructure/email/templates/registration_otp.html` | Registration OTP body |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
 | `app/jobs/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
 | `app/jobs/export/task_export.py` | Background worker (`run_tasks_export`) |
