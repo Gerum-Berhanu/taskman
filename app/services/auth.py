@@ -1,7 +1,6 @@
 """Authentication, token issuance, and session lifecycle."""
 
 from datetime import timedelta
-import logging
 from typing import Any
 from uuid import UUID
 
@@ -22,7 +21,6 @@ from app.core.security import (
     verify_password,
 )
 from app.core.timeutils import ensure_utc, utcnow
-from app.repositories.unit_of_work import UnitOfWork
 from app.dto.repository import (
     ClientSessionCreateData,
     ClientSessionRecord,
@@ -32,19 +30,14 @@ from app.dto.repository import (
 )
 from app.dto.api.user import UserRead
 from app.observability.events import DomainLogEvent
-from app.observability.log_event import log_event
+from app.services.base import BaseService
 
-
-logger = logging.getLogger(__name__)
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
 
-class AuthService:
+class AuthService(BaseService):
     """Login, refresh, logout, and access-token validation."""
-
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
 
     async def _authenticate(self, email: EmailStr, password: str) -> UserRecord:
         """Verify email/password and return the user record (with credentials)."""
@@ -98,13 +91,9 @@ class AuthService:
 
         access_token = self._create_access_token(data={"sub": str(user_id)})
 
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.USER_LOGIN_SUCCEEDED,
-                user_id=user_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.USER_LOGIN_SUCCEEDED,
+            user_id=user_id,
         )
         return access_token, raw_token, client_session.device_id
 
@@ -146,14 +135,10 @@ class AuthService:
         if not deleted:
             raise SessionNotFoundError
 
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.USER_LOGOUT,
-                user_id=user_id,
-                session_id=session_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.USER_LOGOUT,
+            user_id=user_id,
+            session_id=session_id,
         )
         return was_current
 
@@ -228,15 +213,10 @@ class AuthService:
         if not deleted:
             raise InvalidTokenError
 
-        user_id, session_id = session.user_id, session.id
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.USER_LOGOUT,
-                user_id=user_id,
-                session_id=session_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.USER_LOGOUT,
+            user_id=session.user_id,
+            session_id=session.id,
         )
 
     async def logout_all_user_sessions(self, token: str) -> None:
@@ -251,15 +231,10 @@ class AuthService:
             await self._delete_and_reject(session.id)
 
         await self._uow.client_sessions.delete_all_user_sessions(session.user_id)
-        user_id, session_id = session.user_id, session.id
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.USER_LOGOUT_ALL,
-                user_id=user_id,
-                session_id=session_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.USER_LOGOUT_ALL,
+            user_id=session.user_id,
+            session_id=session.id,
         )
 
     def _create_access_token(

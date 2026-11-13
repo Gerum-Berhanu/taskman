@@ -1,6 +1,6 @@
 # Log event tags
 
-Stable event tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Emit catalog events only via `log_event` in `app/observability/log_event.py`. Domain write events emit only via `UnitOfWork.after_commit` after a successful commit.
+Stable event tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Emit catalog events only via `log_event` in `app/observability/log_event.py`. Domain write events from services go through `BaseService.log_after_commit` (queued on `UnitOfWork.after_commit`) so they run only after a successful commit.
 
 ## Format
 

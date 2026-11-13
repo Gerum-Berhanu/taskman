@@ -22,17 +22,14 @@ from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
-from app.repositories.unit_of_work import UnitOfWork
+from app.services.base import BaseService
 
 
 logger = logging.getLogger(__name__)
 
 
-class TaskService:
+class TaskService(BaseService):
     """Create, read, update, and delete tasks within a workspace."""
-
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
 
     async def _validate_assignee(
         self, workspace_id: UUID, assigned_user_id: UUID4 | None
@@ -56,17 +53,11 @@ class TaskService:
         await self._validate_assignee(workspace_id, payload.assigned_user_id)
         fields = TaskCreateData(**payload.model_dump(), workspace_id=workspace_id)
         task = await self._uow.tasks.create(fields)
-        task_id = task.id
-        actor_id = current_user_id_ctx.get()
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.TASK_CREATED,
-                workspace_id=workspace_id,
-                task_id=task_id,
-                actor_id=actor_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.TASK_CREATED,
+            workspace_id=workspace_id,
+            task_id=task.id,
+            actor_id=current_user_id_ctx.get(),
         )
         await invalidate_summary_cache(workspace_id)
         return self._to_read(task)
@@ -102,16 +93,11 @@ class TaskService:
         if task is None:
             raise TaskNotFoundError
 
-        actor_id = current_user_id_ctx.get()
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.TASK_UPDATED,
-                workspace_id=workspace_id,
-                task_id=task_id,
-                actor_id=actor_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.TASK_UPDATED,
+            workspace_id=workspace_id,
+            task_id=task_id,
+            actor_id=current_user_id_ctx.get(),
         )
         await invalidate_summary_cache(workspace_id)
         return self._to_read(task)
@@ -120,16 +106,11 @@ class TaskService:
         """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
-        actor_id = current_user_id_ctx.get()
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.TASK_DELETED,
-                workspace_id=workspace_id,
-                task_id=task_id,
-                actor_id=actor_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.TASK_DELETED,
+            workspace_id=workspace_id,
+            task_id=task_id,
+            actor_id=current_user_id_ctx.get(),
         )
         await invalidate_summary_cache(workspace_id)
 

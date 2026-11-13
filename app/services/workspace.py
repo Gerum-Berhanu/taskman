@@ -1,6 +1,5 @@
 """Workspace application services."""
 
-import logging
 from uuid import UUID
 
 from app.exceptions import WorkspaceForbiddenError
@@ -9,18 +8,15 @@ from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
 from app.dto.api.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 from app.observability.events import DomainLogEvent
-from app.observability.log_event import log_event
+from app.services.base import BaseService
 from app.services.workspace_member import WorkspaceMemberService
 
 
-logger = logging.getLogger(__name__)
-
-
-class WorkspaceService:
+class WorkspaceService(BaseService):
     """Create and fetch workspaces."""
 
     def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
+        super().__init__(uow)
         self._member_service = WorkspaceMemberService(uow)
 
     @staticmethod
@@ -39,15 +35,10 @@ class WorkspaceService:
                 role=WorkspaceMemberRole.OWNER,
             ),
         )
-        workspace_id = workspace.id
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.WORKSPACE_CREATED,
-                workspace_id=workspace_id,
-                owner_id=user_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.WORKSPACE_CREATED,
+            workspace_id=workspace.id,
+            owner_id=user_id,
         )
         return self._to_read(workspace)
 

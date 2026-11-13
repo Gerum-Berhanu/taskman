@@ -1,6 +1,5 @@
 """Workspace membership application services."""
 
-import logging
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -18,18 +17,11 @@ from app.dto.api.workspace_member import (
 )
 from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
 from app.observability.events import DomainLogEvent
-from app.observability.log_event import log_event
-from app.repositories.unit_of_work import UnitOfWork
+from app.services.base import BaseService
 
 
-logger = logging.getLogger(__name__)
-
-
-class WorkspaceMemberService:
+class WorkspaceMemberService(BaseService):
     """Add members and resolve roles within a workspace."""
-
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
 
     @staticmethod
     def _to_read(record: WorkspaceMemberRecord) -> WorkspaceMemberRead:
@@ -62,18 +54,12 @@ class WorkspaceMemberService:
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
 
-        member_id, role = created.user_id, created.role
-        actor_id = current_user_id_ctx.get()
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.WORKSPACE_MEMBER_ADDED,
-                workspace_id=workspace_id,
-                member_id=member_id,
-                role=role,
-                actor_id=actor_id,
-            )
+        self.log_after_commit(
+            DomainLogEvent.WORKSPACE_MEMBER_ADDED,
+            workspace_id=workspace_id,
+            member_id=created.user_id,
+            role=created.role,
+            actor_id=current_user_id_ctx.get(),
         )
         return self._to_read(created)
 

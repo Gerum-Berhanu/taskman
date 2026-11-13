@@ -1,6 +1,5 @@
 """User registration application services."""
 
-import logging
 from uuid import UUID
 
 from fastapi import BackgroundTasks
@@ -31,18 +30,11 @@ from app.infrastructure.redis.registration.pending import (
     incr_attempt,
 )
 from app.observability.events import DomainLogEvent
-from app.observability.log_event import log_event
-from app.repositories.unit_of_work import UnitOfWork
+from app.services.base import BaseService
 
 
-logger = logging.getLogger(__name__)
-
-
-class UserService:
+class UserService(BaseService):
     """Register new users."""
-
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
 
     async def start_registration(self, payload: UserCreate, bg_tasks: BackgroundTasks) -> UUID:
         """Check email, create & mail OTP, return registration id / ticket"""
@@ -128,17 +120,12 @@ class UserService:
 
         await self._clear_pending(registration_id)
 
-        user_id, user_email = user.id, user.email
-        self._uow.after_commit(
-            lambda: log_event(
-                logger,
-                logging.INFO,
-                DomainLogEvent.USER_REGISTERED,
-                user_id=user_id,
-                email=user_email,
-            )
+        user_email = user.email
+        self.log_after_commit(
+            DomainLogEvent.USER_REGISTERED,
+            user_id=user.id,
+            email=user_email,
         )
-
         self._uow.after_commit(
             lambda: bg_tasks.add_task(send_welcome_email, user_email)
         )
