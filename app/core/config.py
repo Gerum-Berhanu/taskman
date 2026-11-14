@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     max_client_sessions_per_user: int = Field(default=15, ge=1)
     database_url: str = "sqlite+aiosqlite:///./database.db"
     redis_url: str = "redis://127.0.0.1:6379/0"
+    rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
     log_level: str = "INFO"
     log_json: bool = False
     log_file: bool = True
