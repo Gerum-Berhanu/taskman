@@ -16,7 +16,11 @@ _LOG_DIR = _PROJECT_ROOT / "logs"
 
 _NOISY_LOGGERS = (
     "aiosqlite",
+    "amqp",
     "asyncio",
+    "celery.worker",
+    "celery.utils.functional",
+    "kombu",
     "redis.asyncio.connection",
     "sqlalchemy.engine",
     "uvicorn.access",

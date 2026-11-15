@@ -3,7 +3,6 @@
 import logging
 from uuid import UUID
 
-from fastapi import BackgroundTasks
 from pydantic import UUID4, ValidationError
 
 from app.exceptions import (
@@ -12,7 +11,6 @@ from app.exceptions import (
     UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
-from app.jobs.export.task_export import run_tasks_export
 from app.infrastructure.redis.cache import (
     get_cached_summary,
     invalidate_summary_cache,
@@ -23,6 +21,7 @@ from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
 from app.services.base import BaseService
+from app.workers.tasks import export_workspace_tasks
 
 
 logger = logging.getLogger(__name__)
@@ -143,17 +142,6 @@ class TaskService(BaseService):
         )
         return summary
 
-    async def export(
-        self,
-        workspace_id: UUID,
-        *,
-        to_email: str,
-        bg_tasks: BackgroundTasks,
-    ) -> None:
+    async def export(self, workspace_id: UUID,to_email: str) -> None:
         actor_id = current_user_id_ctx.get()
-        bg_tasks.add_task(
-            run_tasks_export,
-            workspace_id=workspace_id,
-            to_email=to_email,
-            actor_id=actor_id,
-        )
+        export_workspace_tasks.delay(str(workspace_id), to_email, actor_id)

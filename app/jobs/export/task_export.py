@@ -18,7 +18,7 @@ async def run_tasks_export(
     to_email: str,
     actor_id: str | None = None,
 ) -> None:
-    """Background job: load workspace tasks, build CSV, email it (own DB session)."""
+    """Load workspace tasks, build CSV, email it (own DB session)."""
     try:
         async with async_session_factory() as session:
             async with UnitOfWork(session) as uow:

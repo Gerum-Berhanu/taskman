@@ -1,6 +1,6 @@
 """Tasks HTTP endpoints."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi import APIRouter, Depends, Response
 from pydantic import UUID4
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
@@ -70,12 +70,10 @@ async def export_tasks(
     workspace_id: UUID4,
     task_service: TaskServiceDep,
     current_user: CurrentUserDep,
-    bg_tasks: BackgroundTasks,
 ) -> Response:
     await task_service.export(
         workspace_id,
         to_email=current_user.email,
-        bg_tasks=bg_tasks,
     )
     return Response(status_code=HTTP_202_ACCEPTED)
 
