@@ -47,7 +47,7 @@ def clear_device_cookie(client: TestClient) -> None:
 def login_tokens(client: TestClient, email: str = "alice@example.com") -> dict:
     response = client.post(
         "/auth/login",
-        data={"username": email, "password": PASSWORD},
+        json={"email": email, "password": PASSWORD},
     )
     assert response.status_code == 200, response.text
     body = response.json()
@@ -251,7 +251,7 @@ def test_inactive_user_cannot_login_refresh_or_use_access(
     # Login blocked (same message as bad credentials)
     login_response = client.post(
         "/auth/login",
-        data={"username": "alice@example.com", "password": PASSWORD},
+        json={"email": "alice@example.com", "password": PASSWORD},
     )
     assert login_response.status_code == 401
     assert login_response.json()["detail"] == "Incorrect email or password"

@@ -68,13 +68,13 @@ def test_auth_login_returns_429_with_retry_after(
     for _ in range(login_limit):
         response = client.post(
             "/auth/login",
-            data={"username": "nobody@example.com", "password": "wrong"},
+            json={"email": "nobody@example.com", "password": "wrong"},
         )
         assert response.status_code == 401, response.text
 
     blocked = client.post(
         "/auth/login",
-        data={"username": "nobody@example.com", "password": "wrong"},
+        json={"email": "nobody@example.com", "password": "wrong"},
     )
     _assert_rate_limited(blocked)
 
@@ -90,14 +90,14 @@ def test_auth_register_and_refresh_do_not_share_login_counter(
         assert (
             client.post(
                 "/auth/login",
-                data={"username": "nobody@example.com", "password": "wrong"},
+                json={"email": "nobody@example.com", "password": "wrong"},
             ).status_code
             == 401
         )
     _assert_rate_limited(
         client.post(
             "/auth/login",
-            data={"username": "nobody@example.com", "password": "wrong"},
+            json={"email": "nobody@example.com", "password": "wrong"},
         )
     )
 
@@ -116,14 +116,14 @@ def test_auth_register_and_refresh_do_not_share_login_counter(
         assert (
             client.post(
                 "/auth/login",
-                data={"username": "alice@example.com", "password": "wrong"},
+                json={"email": "alice@example.com", "password": "wrong"},
             ).status_code
             == 401
         )
     _assert_rate_limited(
         client.post(
             "/auth/login",
-            data={"username": "alice@example.com", "password": "wrong"},
+            json={"email": "alice@example.com", "password": "wrong"},
         )
     )
     refreshed = refresh(client, tokens["refresh_token"])
@@ -250,7 +250,7 @@ def test_kill_switch_disables_limits(
     for _ in range(5):
         response = client.post(
             "/auth/login",
-            data={"username": "nobody@example.com", "password": "wrong"},
+            json={"email": "nobody@example.com", "password": "wrong"},
         )
         assert response.status_code == 401
 
@@ -269,7 +269,7 @@ def test_fail_open_when_hit_raises(
 
     response = client.post(
         "/auth/login",
-        data={"username": "nobody@example.com", "password": "wrong"},
+        json={"email": "nobody@example.com", "password": "wrong"},
     )
     assert response.status_code == 401
 
@@ -289,5 +289,5 @@ def test_non_backend_errors_are_not_swallowed(
     with pytest.raises(ValueError, match="programmer error"):
         client.post(
             "/auth/login",
-            data={"username": "nobody@example.com", "password": "wrong"},
+            json={"email": "nobody@example.com", "password": "wrong"},
         )

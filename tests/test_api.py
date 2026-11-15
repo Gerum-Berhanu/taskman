@@ -62,7 +62,7 @@ def register(client: TestClient, email: str = "alice@example.com") -> dict:
 def login(client: TestClient, email: str = "alice@example.com") -> dict[str, str]:
     response = client.post(
         "/auth/login",
-        data={"username": email, "password": PASSWORD},
+        json={"email": email, "password": PASSWORD},
     )
     assert response.status_code == 200, response.text
     token = response.json()["access_token"]
@@ -132,7 +132,7 @@ def test_login_rejects_invalid_password(client: TestClient) -> None:
 
     response = client.post(
         "/auth/login",
-        data={"username": "alice@example.com", "password": "wrongpass"},
+        json={"email": "alice@example.com", "password": "wrongpass"},
     )
 
     assert response.status_code == 401
