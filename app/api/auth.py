@@ -1,11 +1,8 @@
 """Auth HTTP endpoints."""
 
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import ValidationError
+from fastapi import APIRouter, BackgroundTasks, Request, Response
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from app.api.helpers.auth_cookies import (
@@ -16,7 +13,7 @@ from app.api.helpers.auth_cookies import (
     set_refresh_cookie,
 )
 from app.dto.api import RegisterPendingResponse
-from app.exceptions import InvalidCredentialsError, InvalidTokenError
+from app.exceptions import InvalidTokenError
 from app.dependencies import (
     AuthLoginLimit,
     AuthLogoutLimit,
@@ -66,24 +63,15 @@ async def complete_registration(
     dependencies=[AuthLoginLimit],
 )
 async def login_user(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    payload: LoginCredentials,
     auth_service: AuthServiceDep,
     request: Request,
     response: Response,
     device_id: DeviceIdCookie = None,
 ) -> AccessTokenResponse:
-    try:
-        valid_form = LoginCredentials(
-            email=form_data.username,
-            password=form_data.password,
-        )
-    except ValidationError as exc:
-        raise InvalidCredentialsError from exc
-        # raise InvalidCredentialsError, but record the original ValidationError (exc) as its cause.
-
     access, refresh, device = await auth_service.login(
-        valid_form.email,
-        valid_form.password,
+        payload.email,
+        payload.password,
         device_id,
         user_agent=request.headers.get("user-agent"),
         ip_address=request.client.host if request.client else None,

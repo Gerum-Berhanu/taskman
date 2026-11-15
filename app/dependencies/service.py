@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.request_context import current_user_id_ctx
 from app.dependencies.infra import UowDep
@@ -15,7 +15,7 @@ from app.services.user import UserService
 from app.services.workspace import WorkspaceService
 from app.services.workspace_member import WorkspaceMemberService
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+bearer_scheme = HTTPBearer()
 
 
 def get_task_service(uow: UowDep) -> TaskService:
@@ -54,11 +54,11 @@ WorkspaceMemberServiceDep = Annotated[
 
 async def get_current_user(
     request: Request,
-    token: Annotated[str, Depends(oauth2_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     auth_service: AuthServiceDep,
 ) -> AsyncGenerator[UserRead, None]:
     """Resolve the bearer token to a user and set actor context for the request."""
-    user = await auth_service.get_user_from_token(token)
+    user = await auth_service.get_user_from_token(credentials.credentials)
     actor_id = str(user.id)
     request.state.actor_id = actor_id
     actor_ctx = current_user_id_ctx.set(actor_id)
