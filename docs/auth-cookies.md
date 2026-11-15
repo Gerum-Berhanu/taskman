@@ -19,7 +19,7 @@ Login and refresh responses include only the access token in the body. Cookies a
 
 ## Endpoints
 
-- `POST /auth/login` — access JSON + sets refresh cookie + sets/echoes `device_id` cookie. If `device_id` is present, any existing session for that device is deleted and replaced. Stores `user_agent` and client IP on the new session (not updated on refresh).
+- `POST /auth/login` — JSON body `{"email", "password"}`; access JSON + sets refresh cookie + sets/echoes `device_id` cookie. If `device_id` is present, any existing session for that device is deleted and replaced. Stores `user_agent` and client IP on the new session (not updated on refresh).
 - `POST /auth/refresh` — reads **refresh cookie only** (device cookie is ignored); rotates refresh; returns new access JSON
 - `POST /auth/logout` — refresh cookie; delete this session; clear refresh (204); keep `device_id`
 - `DELETE /auth/sessions` — refresh cookie; delete **all** sessions for the user; clear refresh (204); keep `device_id`

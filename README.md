@@ -97,7 +97,7 @@ just purge-expired-sessions   # delete expired client_sessions (manual; + -stagi
 - Health: `GET /health`
 - Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-Authorize in `/docs` with a token from `POST /auth/login` (use email as username). Access stays in the JSON body (`Bearer`); refresh and `device_id` are HttpOnly cookies — see [docs/auth-cookies.md](docs/auth-cookies.md).
+Authorize in `/docs` by pasting the `access_token` from `POST /auth/login` (`{"email", "password"}`). Access stays in the JSON body (`Bearer`); refresh and `device_id` are HttpOnly cookies - see [docs/auth-cookies.md](docs/auth-cookies.md).
 
 ### Port already in use
 

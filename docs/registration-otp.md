@@ -67,7 +67,7 @@ Also needs Redis (`REDIS_URL`) and email settings from [email.md](email.md).
 2. `POST /auth/register` with a new email → **202** + `registration_id`.
 3. Open http://localhost:8025 — subject like `Your Taskman verification code`; copy the digits.
 4. `POST /auth/register/verify` with that `registration_id` and OTP → **201**.
-5. `POST /auth/login` with the same email/password → **200**.
+5. `POST /auth/login` with JSON `{"email", "password"}` → **200**.
 6. Wrong OTP → **400** (`Invalid or expired registration code`); after the attempt cap, next verify → **400** (`Registration attempts exceeded`).
 
 ## Layout

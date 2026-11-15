@@ -88,8 +88,10 @@ The system utilizes a relational database architecture. Students must use Alembi
   * *Response (201):* {"id": 1, "email": "user@example.com", "message": "User registered successfully"}  
 
 > **POST /auth/login**  
-  * *Request:* OAuth2PasswordRequestForm or JSON with email/password.  
-  * *Action:* Verify credentials, generate JWT.
+  * *Request:* `{"email": "user@example.com", "password": "securepassword"}`  
+  * *Action:* Verify credentials, return access JWT; set HttpOnly refresh and device_id cookies.  
+  * *Response (200):* `{"access_token": "...", "token_type": "bearer"}`  
+  * *Auth on protected routes:* `Authorization: Bearer <access_token>` (HTTP Bearer; not OAuth2 password grant).
 
 ### **Workspace & Team Endpoints (New for RBAC)**
 
