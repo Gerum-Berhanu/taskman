@@ -159,7 +159,7 @@ def test_register_schedules_welcome_email(client: TestClient, monkeypatch: pytes
         calls.append(to)
         return "Welcome to Taskman"
 
-    monkeypatch.setattr("app.services.user.send_welcome_email", _fake_send_welcome)
+    monkeypatch.setattr("app.workers.tasks.send_welcome_email", _fake_send_welcome)
 
     pending = start_register(client, email="welcome@example.com")
     response = client.post(

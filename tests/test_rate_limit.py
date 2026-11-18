@@ -208,10 +208,10 @@ def test_domain_export_separate_from_domain_write(
     monkeypatch.setattr(_dep_instance(DomainWriteLimit), "limit", 1)
     monkeypatch.setattr(_dep_instance(DomainExportLimit), "limit", 1)
 
-    async def fake_run(*, workspace_id, to_email: str, actor_id: str | None = None) -> None:
-        return None
-
-    monkeypatch.setattr("app.services.task.run_tasks_export", fake_run)
+    monkeypatch.setattr(
+        "app.services.task.export_workspace_tasks.delay",
+        lambda *_args, **_kwargs: None,
+    )
 
     register(client)
     headers = login(client)

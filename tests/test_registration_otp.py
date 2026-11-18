@@ -30,7 +30,7 @@ def test_verify_rejects_bad_otp(client: TestClient) -> None:
     pending = start_register(client, email="otp-bad@example.com")
 
     with patch(
-        "app.services.user.send_welcome_email",
+        "app.workers.tasks.send_welcome_email",
         return_value="Welcome to Taskman",
     ):
         response = client.post(
@@ -47,7 +47,7 @@ def test_verify_rejects_bad_otp(client: TestClient) -> None:
 
 def test_verify_rejects_unknown_ticket(client: TestClient) -> None:
     with patch(
-        "app.services.user.send_welcome_email",
+        "app.workers.tasks.send_welcome_email",
         return_value="Welcome to Taskman",
     ):
         response = client.post(
@@ -65,7 +65,7 @@ def test_start_rejects_duplicate_email_after_verify(client: TestClient) -> None:
     with (
         patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
         patch(
-            "app.services.user.send_registration_otp_email",
+            "app.workers.tasks.send_registration_otp_email",
             return_value="Your Taskman verification code",
         ),
     ):
@@ -85,7 +85,7 @@ def test_attempts_exceeded_clears_ticket(client: TestClient) -> None:
 
     for _ in range(max_attempts):
         with patch(
-            "app.services.user.send_welcome_email",
+            "app.workers.tasks.send_welcome_email",
             return_value="Welcome to Taskman",
         ):
             bad = client.post(
@@ -96,7 +96,7 @@ def test_attempts_exceeded_clears_ticket(client: TestClient) -> None:
         assert bad.json()["detail"] == "Invalid or expired registration code"
 
     with patch(
-        "app.services.user.send_welcome_email",
+        "app.workers.tasks.send_welcome_email",
         return_value="Welcome to Taskman",
     ):
         exceeded = client.post(

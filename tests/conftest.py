@@ -12,13 +12,28 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-import app.models  # noqa: F401 — register models on metadata
+import app.models  # noqa: F401 - register models on metadata
 from app.core.security import hash_refresh_token
 from app.core.timeutils import utcnow
 from app.repositories.unit_of_work import UnitOfWork
 from app.dependencies import get_uow
 from app.main import app
 from app.models import ClientSession
+from app.workers.celery_app import celery_app
+
+
+@pytest.fixture(autouse=True)
+def _celery_eager() -> Generator[None, None, None]:
+    """Run Celery tasks in-process so API tests need no RabbitMQ broker."""
+    previous_eager = celery_app.conf.task_always_eager
+    previous_propagate = celery_app.conf.task_eager_propagates
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+    try:
+        yield
+    finally:
+        celery_app.conf.task_always_eager = previous_eager
+        celery_app.conf.task_eager_propagates = previous_propagate
 
 
 @pytest.fixture

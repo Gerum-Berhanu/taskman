@@ -21,7 +21,7 @@ def start_register(
     with (
         patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
         patch(
-            "app.services.user.send_registration_otp_email",
+            "app.workers.tasks.send_registration_otp_email",
             return_value="Your Taskman verification code",
         ),
     ):
@@ -42,7 +42,7 @@ def verify_register(
 ) -> dict:
     """POST /auth/register/verify → 201 user (welcome mail patched)."""
     with patch(
-        "app.services.user.send_welcome_email",
+        "app.workers.tasks.send_welcome_email",
         return_value="Welcome to Taskman",
     ):
         response = client.post(
