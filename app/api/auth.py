@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Request, Response
+from fastapi import APIRouter, Request, Response
 from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from app.api.helpers.auth_cookies import (
@@ -52,9 +52,9 @@ async def start_registration(
     dependencies=[AuthRegisterVerifyLimit],
 )
 async def complete_registration(
-    payload: RegisterVerify, user_service: UserServiceDep, bg_tasks: BackgroundTasks
+    payload: RegisterVerify, user_service: UserServiceDep
 ) -> UserCreateResponse:
-    return await user_service.complete_registration(payload, bg_tasks)
+    return await user_service.complete_registration(payload)
 
 
 @router.post(

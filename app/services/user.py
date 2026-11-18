@@ -2,7 +2,6 @@
 
 from uuid import UUID
 
-from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
@@ -19,7 +18,6 @@ from app.core.security import (
     hash_registration_otp,
     verify_registration_otp,
 )
-from app.infrastructure.email.mails import send_welcome_email
 from app.dto.api.user import UserCreate
 from app.dto.repository import UserCreateData
 from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
@@ -31,7 +29,7 @@ from app.infrastructure.redis.registration.pending import (
 )
 from app.observability.events import DomainLogEvent
 from app.services.base import BaseService
-from app.workers.tasks import send_registration_otp_email_task
+from app.workers.tasks import send_registration_otp_email_task, send_welcome_email_task
 
 
 class UserService(BaseService):
@@ -64,14 +62,13 @@ class UserService(BaseService):
         return registration_id
 
     async def complete_registration(
-        self, payload: RegisterVerify, bg_tasks: BackgroundTasks
+        self, payload: RegisterVerify
     ) -> UserCreateResponse:
         email, hashed_password, registration_id = await self._verify_registration(payload)
         return await self._register_user(
             email=email,
             hashed_password=hashed_password,
             registration_id=registration_id,
-            bg_tasks=bg_tasks,
         )
 
     async def _verify_registration(
@@ -106,8 +103,7 @@ class UserService(BaseService):
         *,
         email: str,
         hashed_password: str,
-        registration_id: UUID,
-        bg_tasks: BackgroundTasks,
+        registration_id: UUID
     ) -> UserCreateResponse:
         """Create a user; conflict on concurrent races."""
 
@@ -127,7 +123,8 @@ class UserService(BaseService):
             user_id=user.id,
             email=user_email,
         )
+
         self._uow.after_commit(
-            lambda: bg_tasks.add_task(send_welcome_email, user_email)
+            lambda: send_welcome_email_task.delay(user_email)
         )
         return UserCreateResponse(id=user.id, email=user.email)
