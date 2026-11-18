@@ -1,5 +1,6 @@
 import asyncio
 from uuid import UUID
+from app.infrastructure.email.mails import send_registration_otp_email
 from app.jobs.export.task_export import run_tasks_export
 from app.workers.celery_app import celery_app
 
@@ -15,3 +16,8 @@ def export_workspace_tasks(
             actor_id=actor_id,
         )
     )
+
+
+@celery_app.task(name="taskman.send_registration_otp_email_task")
+def send_registration_otp_email_task(email: str, otp: str) -> None:
+    send_registration_otp_email(email, otp)

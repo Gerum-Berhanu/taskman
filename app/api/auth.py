@@ -39,9 +39,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     dependencies=[AuthRegisterLimit],
 )
 async def start_registration(
-    payload: UserCreate, user_service: UserServiceDep, bg_tasks: BackgroundTasks
+    payload: UserCreate, user_service: UserServiceDep
 ) -> RegisterPendingResponse:
-    ticket = await user_service.start_registration(payload, bg_tasks)
+    ticket = await user_service.start_registration(payload)
     return RegisterPendingResponse(registration_id=ticket)
 
 

@@ -19,7 +19,7 @@ from app.core.security import (
     hash_registration_otp,
     verify_registration_otp,
 )
-from app.infrastructure.email.mails import send_registration_otp_email, send_welcome_email
+from app.infrastructure.email.mails import send_welcome_email
 from app.dto.api.user import UserCreate
 from app.dto.repository import UserCreateData
 from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
@@ -31,12 +31,13 @@ from app.infrastructure.redis.registration.pending import (
 )
 from app.observability.events import DomainLogEvent
 from app.services.base import BaseService
+from app.workers.tasks import send_registration_otp_email_task
 
 
 class UserService(BaseService):
     """Register new users."""
 
-    async def start_registration(self, payload: UserCreate, bg_tasks: BackgroundTasks) -> UUID:
+    async def start_registration(self, payload: UserCreate) -> UUID:
         """Check email, create & mail OTP, return registration id / ticket"""
         email = payload.email
         password = payload.password
@@ -58,7 +59,7 @@ class UserService(BaseService):
         except REDIS_DATA_ERRORS:
             raise RegistrationStoreUnavailableError
 
-        bg_tasks.add_task(send_registration_otp_email, email, plain_otp)
+        send_registration_otp_email_task.delay(email, plain_otp)
 
         return registration_id
 
