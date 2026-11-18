@@ -22,9 +22,21 @@ services:
     environment:
       TASKMAN_ENV: production
       # Overrides localhost from env/.env.production for the Compose network.
-      # POSTGRES_* / REDIS_* come from --env-file (see `just compose-prod`).
+      # POSTGRES_* / REDIS_* / RABBITMQ_* come from --env-file (see `just compose-prod`).
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
+
+  worker:
+    env_file: !override
+      - ./env/.env
+      - ./env/.env.production
+
+    environment:
+      TASKMAN_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
 
 volumes:
   pg_data_prod:

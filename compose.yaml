@@ -1,6 +1,53 @@
 name: taskman
 
 services:
+  api:
+    build: .
+
+    image: taskman-api:v1
+
+    ports:
+      # Only this machine.
+      - "127.0.0.1:8080:8000"
+
+    env_file:
+      - ./env/.env
+      - ./env/.env.staging
+
+    environment:
+      TASKMAN_ENV: staging
+      # Overrides localhost from env/.env.staging for the Compose network.
+      # POSTGRES_* / REDIS_* / RABBITMQ_* come from --env-file (see `just compose-staging`).
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
+
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
+      rabbitmq:
+        condition: service_healthy
+        restart: true
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    restart: unless-stopped
+
   db:
     image: postgres:18.6
 
@@ -23,12 +70,6 @@ services:
 
     restart: unless-stopped
 
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
-
   redis:
     image: redis:8.6
 
@@ -44,20 +85,29 @@ services:
 
     restart: unless-stopped
 
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
 
-  api:
+    # guest is localhost-only; user/pass from --env-file (env/env-compose).
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    restart: unless-stopped
+
+  worker:
     build: .
 
     image: taskman-api:v1
 
-    ports:
-      # Only this machine.
-      - "127.0.0.1:8080:8000"
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=INFO"]
 
     env_file:
       - ./env/.env
@@ -65,10 +115,9 @@ services:
 
     environment:
       TASKMAN_ENV: staging
-      # Overrides localhost from env/.env.staging for the Compose network.
-      # POSTGRES_* / REDIS_* come from --env-file (see `just compose-staging`).
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
 
     depends_on:
       db:
@@ -77,27 +126,22 @@ services:
       redis:
         condition: service_healthy
         restart: true
+      rabbitmq:
+        condition: service_healthy
+        restart: true
 
     healthcheck:
       test:
         [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+          "CMD-SHELL",
+          "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME"
         ]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
     restart: unless-stopped
-
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
 
 volumes:
   pg_data:
