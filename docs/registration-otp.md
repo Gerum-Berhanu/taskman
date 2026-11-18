@@ -13,7 +13,7 @@ Clients must call `/auth/register/verify` with `{ "registration_id", "otp" }` be
 
 ## HTTP contract
 
-### Start — `POST /auth/register`
+### Start - `POST /auth/register`
 
 Body: `{ "email", "password" }` (same as before).
 
@@ -24,9 +24,9 @@ Body: `{ "email", "password" }` (same as before).
 | **503** | Redis unavailable (fail-closed) |
 | **429** | `auth.register` rate limit |
 
-No `users` row yet. OTP mail is scheduled on `BackgroundTasks` after the ticket is written.
+No `users` row yet. OTP mail is enqueued on Celery after the ticket is written (see [email.md](email.md#background-jobs-celery--rabbitmq)).
 
-### Verify — `POST /auth/register/verify`
+### Verify - `POST /auth/register/verify`
 
 Body: `{ "registration_id": "<uuid>", "otp": "<digits>" }` (`otp` length = `REGISTRATION_OTP_LENGTH`).
 
@@ -65,7 +65,7 @@ Also needs Redis (`REDIS_URL`) and email settings from [email.md](email.md).
 
 1. Start Mailpit and Redis; set SMTP as in [email.md](email.md#local-mailpit) (`EMAIL_ENABLED=true`, empty Resend key).
 2. `POST /auth/register` with a new email → **202** + `registration_id`.
-3. Open http://localhost:8025 — subject like `Your Taskman verification code`; copy the digits.
+3. Open http://localhost:8025 - subject like `Your Taskman verification code`; copy the digits.
 4. `POST /auth/register/verify` with that `registration_id` and OTP → **201**.
 5. `POST /auth/login` with JSON `{"email", "password"}` → **200**.
 6. Wrong OTP → **400** (`Invalid or expired registration code`); after the attempt cap, next verify → **400** (`Registration attempts exceeded`).

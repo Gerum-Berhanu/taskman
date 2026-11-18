@@ -47,12 +47,12 @@ uv run alembic upgrade head
 | `.env.staging` | Staging overlay (host runs + Compose base) |
 | `.env.test` | Test overlay (`just pytest` / `just test`) |
 | `.env.production` | Production overlay |
-| `env-compose/.env.staging` | Compose-only Postgres/Redis vars for staging |
-| `env-compose/.env.production` | Compose-only Postgres/Redis vars for production |
+| `env-compose/.env.staging` | Compose-only Postgres/Redis/RabbitMQ vars for staging |
+| `env-compose/.env.production` | Compose-only Postgres/Redis/RabbitMQ vars for production |
 
 `config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile and defaults to `development` when unset.
 
-Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` can be interpolated into `DATABASE_URL` / `REDIS_URL` for the API container (host overlays keep `localhost` for Windows Postgres/Redis).
+Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` / `${RABBITMQ_*}` can be interpolated into `DATABASE_URL` / `REDIS_URL` / `RABBITMQ_URL` for the `api` and `worker` containers (host overlays keep `localhost` for Windows Postgres/Redis/RabbitMQ).
 
 | Profile | Typical local `DATABASE_URL` | Typical local `REDIS_URL` |
 |---------|------------------------------|---------------------------|
@@ -70,6 +70,19 @@ docker start redis_development   # or: docker run -d --name redis_development -p
 ```
 
 Use a separate container/port per environment if you isolate Redis that way. Compose staging/prod start their own `redis` service; no manual container needed for those stacks.
+
+## RabbitMQ + Celery worker (host)
+
+OTP mail, welcome mail, and task export enqueue onto RabbitMQ. For `just dev` you need a broker and a worker process (Compose stacks already include `rabbitmq` + `worker`).
+
+```powershell
+docker start rabbitmq_development
+# or: docker run -d --name rabbitmq_development -p 5672:5672 -p 15672:15672 rabbitmq:4-management-alpine
+
+uv run celery -A app.workers.celery_app worker --loglevel=INFO --pool=solo
+```
+
+Point `RABBITMQ_URL` in private `env/.env.development` at that broker. Details: [docs/email.md](docs/email.md#background-jobs-celery--rabbitmq).
 
 ## Run (host)
 
@@ -119,7 +132,7 @@ kill -9 <pid>
 
 ## Run (Docker Compose)
 
-Staging is the base stack (`compose.yaml`: `api` + Postgres + Redis). Production is the same file plus `compose.prod.yaml` overrides (no published API port by default, separate volumes, production env).
+Staging is the base stack (`compose.yaml`: `api` + Postgres + Redis + RabbitMQ + Celery `worker`). Production is the same file plus `compose.prod.yaml` overrides (no published API port by default, separate volumes, production env).
 
 ```bash
 just compose-staging       # build + up

@@ -16,7 +16,7 @@ Use Resend on hosts that block outbound SMTP (e.g. Render free web services). Fo
 [Mailpit](https://mailpit.axllent.org/) catches outbound SMTP and shows messages in a UI. No code changes beyond empty SMTP credentials.
 
 1. Install (Windows): `winget install axllent.mailpit` (or use the binary you already have).
-2. Run: `mailpit` — UI at http://localhost:8025, SMTP at `127.0.0.1:1025`.
+2. Run: `mailpit` - UI at http://localhost:8025, SMTP at `127.0.0.1:1025`.
 3. In `env/.env.development` (keep `RESEND_API_KEY` empty so SMTP is used):
 
 ```env
@@ -33,36 +33,48 @@ EMAIL_FROM=taskman@localhost
 
 A version-check timeout from `mailpit version` is harmless; the server still runs.
 
+## Background jobs (Celery + RabbitMQ)
+
+OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) onto RabbitMQ. A separate **Celery worker** process runs the job and calls the existing mail/export helpers. The API does not wait for the worker to finish (`task_ignore_result` / fire-and-forget).
+
+| Job | Enqueued from | Celery task | Worker runs |
+|-----|---------------|-------------|-------------|
+| Registration OTP | `UserService.start_registration` after Redis ticket | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
+| Welcome | `UserService` `after_commit` after verify | `taskman.send_welcome_email_task` | `send_welcome_email` |
+| Task export | `TaskService.export` | `taskman.export_workspace_tasks` | `asyncio.run(run_tasks_export(...))` |
+
+Local host: run RabbitMQ and `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`). Compose staging/prod include `rabbitmq` + `worker` services (see README).
+
 ## Registration OTP email
 
-`POST /auth/register` schedules `send_registration_otp_email` on `BackgroundTasks` after the Redis ticket is written (**202**). Full ticket flow, Redis key, and env knobs: [registration-otp.md](registration-otp.md).
+`POST /auth/register` enqueues OTP mail after the Redis ticket is written (**202**). Full ticket flow, Redis key, and env knobs: [registration-otp.md](registration-otp.md).
 
 ## Welcome email
 
-After a successful `POST /auth/register/verify` commit, Taskman sends a welcome email in a FastAPI `BackgroundTasks` job.
+After a successful `POST /auth/register/verify` commit, Taskman enqueues a welcome email (still only inside `UnitOfWork.after_commit`).
 
 ### Flow
 
 1. `UserService.complete_registration` creates the user and queues work with `UnitOfWork.after_commit`.
-2. One callback logs `user_registered`.
-3. Another schedules `bg_tasks.add_task(...)` to send the welcome email.
-4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent. That way `add_task` lands on `BackgroundTasks` in time.
-5. After the 201 is sent, Starlette runs the background task → `send_welcome_email` → `send_mail`.
+2. One callback logs `user_registered` in-process (`log_after_commit`; not on the broker).
+3. Another calls `send_welcome_email_task.delay(...)` so Celery publishes to RabbitMQ after a successful commit.
+4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent.
+5. A Celery worker later runs `send_welcome_email` → `send_mail`. Job outcome does not climb back on the HTTP response.
 
 `send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on transport failure (`smtplib.SMTPException`, `OSError`, `TimeoutError`, `resend.exceptions.ResendError`) it logs `email_send_failed` and returns without raising so registration stays 201. Non-transport errors are not swallowed.
 
 ## Task export email
 
-A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/export`. The API responds immediately with **202 Accepted** and **no response body**. Heavy work runs afterward in a FastAPI `BackgroundTasks` job.
+A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/export`. The API responds immediately with **202 Accepted** and **no response body**. Heavy work runs on a Celery worker.
 
 ### Flow
 
-1. `TaskService.export` schedules `run_tasks_export` on `BackgroundTasks` with the requester’s email and `actor_id` from request context.
-2. The HTTP response is sent (202) before the background job runs.
-3. `run_tasks_export` opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so the sync mailer stays off the event loop.
+1. `TaskService.export` calls `export_workspace_tasks.delay(...)` with the requester's email and `actor_id` from request context (stringify `workspace_id` for the broker).
+2. The HTTP response is sent (**202**) after publish ack; the worker has not necessarily finished.
+3. The worker runs `run_tasks_export`, which opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so the sync mailer stays off the event loop.
 4. On success the worker logs `task_export_sent`. Any load/CSV/worker failure logs `task_export_failed` with traceback; the client already got 202 (fail-soft).
 
-Unlike registration, export does not use `after_commit` — the request path does not persist export state.
+Unlike welcome mail, export does not use `after_commit` - the request path does not persist export state.
 
 ### Message shape
 
@@ -88,9 +100,11 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/infrastructure/email/templates/registration_otp.html` | Registration OTP body |
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
 | `app/jobs/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
-| `app/jobs/export/task_export.py` | Background worker (`run_tasks_export`) |
-| `app/services/user.py` | `after_commit` + background welcome send |
-| `app/services/task.py` | Schedules export background job |
+| `app/jobs/export/task_export.py` | Export job body (`run_tasks_export`) |
+| `app/workers/celery_app.py` | Celery app (`broker=settings.rabbitmq_url`) |
+| `app/workers/tasks.py` | Thin Celery task wrappers (`.delay` targets) |
+| `app/services/user.py` | OTP `.delay`; welcome `.delay` in `after_commit` |
+| `app/services/task.py` | Export `.delay` |
 | `app/api/tasks.py` | `POST …/tasks/export` → 202 |
 
 ## Env
