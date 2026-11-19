@@ -94,15 +94,12 @@ def test_export_viewer_accepted_and_schedules_worker(
 
     scheduled: list[tuple[str, str, str | None]] = []
 
-    def fake_delay(
-        workspace_id: str, to_email: str, actor_id: str | None = None
+    async def fake_run(
+        *, workspace_id, to_email: str, actor_id: str | None = None
     ) -> None:
-        # Patch .delay: eager Celery would asyncio.run inside TestClient's loop.
-        scheduled.append((workspace_id, to_email, actor_id))
+        scheduled.append((str(workspace_id), to_email, actor_id))
 
-    monkeypatch.setattr(
-        "app.services.task.export_workspace_tasks.delay", fake_delay
-    )
+    monkeypatch.setattr("app.workers.tasks.run_tasks_export", fake_run)
 
     response = client.post(export_url(workspace_id), headers=viewer_headers)
 

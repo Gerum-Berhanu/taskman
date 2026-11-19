@@ -41,7 +41,7 @@ OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) 
 |-----|---------------|-------------|-------------|
 | Registration OTP | `UserService.start_registration` after Redis ticket | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
 | Welcome | `UserService` `after_commit` after verify | `taskman.send_welcome_email_task` | `send_welcome_email` |
-| Task export | `TaskService.export` | `taskman.export_workspace_tasks` | `asyncio.run(run_tasks_export(...))` |
+| Task export | `TaskService.export` | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync→async bridge) |
 
 Local host: run RabbitMQ and `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`). Compose staging/prod include `rabbitmq` + `worker` services (see README).
 
