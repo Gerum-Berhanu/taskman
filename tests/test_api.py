@@ -100,7 +100,7 @@ def test_register_and_reject_duplicate_email(client: TestClient) -> None:
 
     assert UUID(user["id"])
     assert user["email"] == "alice@example.com"
-    assert user["message"] == "User registered successfully"
+    assert user["detail"] == "User registered successfully"
 
     duplicate = client.post(
         "/auth/register",

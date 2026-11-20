@@ -11,14 +11,14 @@ class LoginCredentials(UserBase):
 
 class UserCreateResponse(UserBase):
     id: UUID4
-    message: str = "User registered successfully"
+    detail: str = "User registered successfully"
 
 
 class RegisterPendingResponse(BaseModel):
     """Returned after registration start; client must verify with OTP."""
 
     registration_id: UUID4
-    message: str = "Check your email for a verification code"
+    detail: str = "Check your email for a verification code"
 
 
 class RegisterVerify(BaseModel):

@@ -14,7 +14,7 @@ from tests.test_api import FIXED_OTP, PASSWORD, login, register, start_register
 def test_start_registration_returns_202_ticket(client: TestClient) -> None:
     body = start_register(client, email="otp-start@example.com")
 
-    assert body["message"] == "Check your email for a verification code"
+    assert body["detail"] == "Check your email for a verification code"
     assert body["registration_id"]
 
 
@@ -22,7 +22,7 @@ def test_verify_registration_creates_user_and_allows_login(client: TestClient) -
     user = register(client, email="otp-ok@example.com")
 
     assert user["email"] == "otp-ok@example.com"
-    assert user["message"] == "User registered successfully"
+    assert user["detail"] == "User registered successfully"
     assert login(client, email="otp-ok@example.com")
 
 
