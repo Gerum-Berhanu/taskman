@@ -19,7 +19,7 @@ Body: `{ "email", "password" }` (same as before).
 
 | Status | When |
 |--------|------|
-| **202** | Ticket created; body `RegisterPendingResponse` (`registration_id`, message) |
+| **202** | Ticket created; body `RegisterPendingResponse` (`registration_id`, detail) |
 | **409** | Email already registered |
 | **503** | Redis unavailable (fail-closed) |
 | **429** | `auth.register` rate limit |

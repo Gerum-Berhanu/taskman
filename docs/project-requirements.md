@@ -85,7 +85,7 @@ The system utilizes a relational database architecture. Students must use Alembi
 > **POST /auth/register**  
   * *Request:* {"email": "user@example.com", "password": "securepassword"}  
   * *Action:* Hash password, save user, trigger background welcome email.  
-  * *Response (201):* {"id": 1, "email": "user@example.com", "message": "User registered successfully"}  
+  * *Response (201):* {"id": 1, "email": "user@example.com", "detail": "User registered successfully"}  
 
 > **POST /auth/login**  
   * *Request:* `{"email": "user@example.com", "password": "securepassword"}`  
