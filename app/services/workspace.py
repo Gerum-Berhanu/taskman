@@ -53,7 +53,7 @@ class WorkspaceService(BaseService):
         """Return a list of workspaces that the provided user is a member of."""
         memberships = await self._uow.workspace_members.list_user_memberships(user_id)
         if not memberships:
-            raise WorkspaceForbiddenError
+            return []
 
         workspace_ids = {membership.workspace_id for membership in memberships}
         workspaces = await self._uow.workspaces.list_all(workspace_ids)

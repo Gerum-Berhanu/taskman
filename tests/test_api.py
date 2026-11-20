@@ -157,6 +157,15 @@ def test_protected_tasks_require_authentication(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_list_workspaces_empty_when_none(client: TestClient) -> None:
+    register(client)
+    headers = login(client)
+
+    response = client.get("/workspaces", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_workspace_task_crud(client: TestClient) -> None:
     register(client)
     headers = login(client)
