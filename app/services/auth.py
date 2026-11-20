@@ -220,7 +220,7 @@ class AuthService(BaseService):
         )
 
     async def logout_all_user_sessions(self, token: str) -> None:
-        """Delete every client session for the user; reuse deletes then rejects."""
+        """Delete every other client session for the user; reuse deletes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
 
         # Non-active refresh on a live session → same reuse/theft response as refresh/logout.
@@ -230,7 +230,9 @@ class AuthService(BaseService):
         if ensure_utc(session.expires_at) <= utcnow():
             await self._delete_and_reject(session.id)
 
-        await self._uow.client_sessions.delete_all_user_sessions(session.user_id)
+        await self._uow.client_sessions.delete_all_user_sessions(
+            session.user_id, except_session_id=session.id
+        )
         self.log_after_commit(
             DomainLogEvent.USER_LOGOUT_ALL,
             user_id=session.user_id,

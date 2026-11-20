@@ -25,11 +25,14 @@ class ClientSessionRepository(
         )
         return result.rowcount or 0
 
-    async def delete_all_user_sessions(self, user_id: UUID) -> int:
-        """Delete every session for a user; return how many were deleted."""
-        result = await self._session.exec(
-            delete(ClientSession).where(col(ClientSession.user_id) == user_id)
-        )
+    async def delete_all_user_sessions(
+        self, user_id: UUID, *, except_session_id: UUID | None = None
+    ) -> int:
+        """Delete sessions for a user (optionally keep one); return how many were deleted."""
+        statement = delete(ClientSession).where(col(ClientSession.user_id) == user_id)
+        if except_session_id is not None:
+            statement = statement.where(col(ClientSession.id) != except_session_id)
+        result = await self._session.exec(statement)
         return result.rowcount or 0
 
     async def delete_by_device(self, device_id: UUID) -> int:

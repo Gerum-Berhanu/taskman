@@ -88,6 +88,20 @@ def logout_all(client: TestClient, refresh_token: str | None = None):
     return client.delete("/auth/sessions")
 
 
+def _refresh_with_only(client: TestClient, refresh_token: str):
+    """Refresh using exactly one cookie value (no jar duplicates)."""
+    client.cookies.clear()
+    client.cookies.set(_REFRESH_COOKIE, refresh_token)
+    return client.post("/auth/refresh")
+
+
+def _logout_all_with_only(client: TestClient, refresh_token: str):
+    """Logout-all using exactly one cookie value (no jar duplicates)."""
+    client.cookies.clear()
+    client.cookies.set(_REFRESH_COOKIE, refresh_token)
+    return client.delete("/auth/sessions")
+
+
 def list_sessions(client: TestClient, access_token: str):
     return client.get("/auth/sessions", headers=auth_header(access_token))
 
@@ -189,7 +203,7 @@ def test_logout_reuse_deletes_session(client: TestClient) -> None:
     assert_unauthorized(refresh(client, new_refresh))
 
 
-def test_logout_all_deletes_every_session(client: TestClient) -> None:
+def test_logout_all_keeps_current_session(client: TestClient) -> None:
     register(client)
     session_a = login_tokens(client)
     clear_device_cookie(client)
@@ -198,12 +212,24 @@ def test_logout_all_deletes_every_session(client: TestClient) -> None:
     assert session_a["refresh_token"] != session_b["refresh_token"]
     assert session_a["device_id"] != session_b["device_id"]
 
-    response = logout_all(client, session_a["refresh_token"])
+    response = _logout_all_with_only(client, session_a["refresh_token"])
     assert response.status_code == 204
     assert response.content == b""
+    # Current refresh cookie must not be cleared.
+    assert not any(
+        f"{_REFRESH_COOKIE}=" in value and "Max-Age=0" in value
+        for value in response.headers.get_list("set-cookie")
+    )
 
-    assert_unauthorized(refresh(client, session_a["refresh_token"]))
-    assert_unauthorized(refresh(client, session_b["refresh_token"]))
+    listed = list_sessions(client, session_a["access_token"])
+    assert listed.status_code == 200, listed.text
+    rows = listed.json()
+    assert len(rows) == 1
+    assert rows[0]["device_id"] == session_a["device_id"]
+
+    still_ok = _refresh_with_only(client, session_a["refresh_token"])
+    assert still_ok.status_code == 200, still_ok.text
+    assert_unauthorized(_refresh_with_only(client, session_b["refresh_token"]))
 
 
 def test_logout_all_reuse_deletes_session(client: TestClient) -> None:
@@ -219,11 +245,11 @@ def test_logout_all_reuse_deletes_session(client: TestClient) -> None:
     other_session = login_tokens(client)
 
     # Logout-all with the retired token = reuse → kill this session only
-    assert_unauthorized(logout_all(client, old_refresh))
-    assert_unauthorized(refresh(client, new_refresh))
+    assert_unauthorized(_logout_all_with_only(client, old_refresh))
+    assert_unauthorized(_refresh_with_only(client, new_refresh))
 
     # Other live sessions are untouched (parity with single-session reuse)
-    still_ok = refresh(client, other_session["refresh_token"])
+    still_ok = _refresh_with_only(client, other_session["refresh_token"])
     assert still_ok.status_code == 200, still_ok.text
 
 

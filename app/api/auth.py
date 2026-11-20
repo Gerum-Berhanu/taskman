@@ -133,15 +133,13 @@ async def list_sessions(
     dependencies=[AuthLogoutLimit],
 )
 async def delete_all_sessions(
-    response: Response,
     auth_service: AuthServiceDep,
     refresh_token: RefreshTokenCookie = None,
 ) -> None:
-    """End every session for the user (refresh cookie); clear refresh on success."""
+    """End every session for the user (refresh cookie) except for the requesting session."""
     if not refresh_token:
         raise InvalidTokenError
     await auth_service.logout_all_user_sessions(refresh_token)
-    clear_refresh_cookie(response)
 
 
 @router.delete(
