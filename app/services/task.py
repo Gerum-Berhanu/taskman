@@ -3,10 +3,12 @@
 import logging
 from uuid import UUID
 
+from celery.exceptions import OperationalError
 from pydantic import UUID4, ValidationError
 
 from app.exceptions import (
     AssigneeNotInWorkspaceError,
+    ServiceUnavailableError,
     TaskNotFoundError,
     UserNotFoundError,
 )
@@ -142,6 +144,9 @@ class TaskService(BaseService):
         )
         return summary
 
-    async def export(self, workspace_id: UUID,to_email: str) -> None:
+    async def export(self, workspace_id: UUID, to_email: str) -> None:
         actor_id = current_user_id_ctx.get()
-        export_workspace_tasks.delay(str(workspace_id), to_email, actor_id)
+        try:
+            export_workspace_tasks.delay(str(workspace_id), to_email, actor_id)
+        except OperationalError:
+            raise ServiceUnavailableError

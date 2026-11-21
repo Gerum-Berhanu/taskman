@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
+from celery.exceptions import OperationalError
 from fastapi.testclient import TestClient
 
 from app.jobs.export.tasks_csv import CSV_COLUMNS, tasks_to_csv
@@ -109,3 +110,34 @@ def test_export_viewer_accepted_and_schedules_worker(
     assert scheduled[0][0] == workspace_id
     assert scheduled[0][1] == "viewer@example.com"
     assert scheduled[0][2] is not None
+
+
+def test_export_broker_publish_failure_is_503(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    register(client, email="owner@example.com")
+    owner_headers = login(client, email="owner@example.com")
+    workspace_id = create_workspace(client, owner_headers)["id"]
+
+    viewer = register(client, email="viewer@example.com")
+    viewer_headers = login(client, email="viewer@example.com")
+
+    added = client.post(
+        f"/workspaces/{workspace_id}/members",
+        json={"user_id": viewer["id"], "role": "viewer"},
+        headers=owner_headers,
+    )
+    assert added.status_code == 201, added.text
+
+    def boom(*_args, **_kwargs):
+        raise OperationalError("broker down")
+
+    monkeypatch.setattr(
+        "app.services.task.export_workspace_tasks.delay",
+        boom,
+    )
+
+    response = client.post(export_url(workspace_id), headers=viewer_headers)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Service temporarily unavailable"}
