@@ -19,14 +19,10 @@ class AppError(Exception):
     headers: dict[str, str] | None = None
 
 
+# Auth / session
 class EmailAlreadyRegisteredError(AppError):
     status_code = HTTP_409_CONFLICT
     detail = "Account with this email already exists"
-
-
-class TaskNotFoundError(AppError):
-    status_code = HTTP_404_NOT_FOUND
-    detail = "Task not found"
 
 
 class InvalidCredentialsError(AppError):
@@ -41,19 +37,20 @@ class InvalidTokenError(AppError):
     headers = {"WWW-Authenticate": "Bearer"}
 
 
-class UserNotFoundError(AppError):
-    status_code = HTTP_404_NOT_FOUND
-    detail = "User not found"
-
-
 class SessionNotFoundError(AppError):
     status_code = HTTP_404_NOT_FOUND
     detail = "Session not found"
 
 
-class WorkspaceForbiddenError(AppError):
-    status_code = HTTP_403_FORBIDDEN
-    detail = "Insufficient workspace permissions"
+class UserNotFoundError(AppError):
+    status_code = HTTP_404_NOT_FOUND
+    detail = "User not found"
+
+
+# Workspace / tasks
+class AssigneeNotInWorkspaceError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Assignee is not a member of the workspace"
 
 
 class MembershipAlreadyExistsError(AppError):
@@ -61,24 +58,20 @@ class MembershipAlreadyExistsError(AppError):
     detail = "Member is already in the workspace"
 
 
-class AssigneeNotInWorkspaceError(AppError):
+class TaskNotFoundError(AppError):
+    status_code = HTTP_404_NOT_FOUND
+    detail = "Task not found"
+
+
+class WorkspaceForbiddenError(AppError):
+    status_code = HTTP_403_FORBIDDEN
+    detail = "Insufficient workspace permissions"
+
+
+# Registration OTP
+class RegistrationOtpAttemptsExceededError(AppError):
     status_code = HTTP_400_BAD_REQUEST
-    detail = "Assignee is not a member of the workspace"
-
-
-class ServiceUnavailableError(AppError):
-    status_code = HTTP_503_SERVICE_UNAVAILABLE
-    detail = "Service temporarily unavailable"
-
-
-class FailedDatabaseConnection(AppError):
-    status_code = HTTP_503_SERVICE_UNAVAILABLE
-    detail = "Database connection failed"
-
-
-class RegistrationStoreUnavailableError(AppError):
-    status_code = HTTP_503_SERVICE_UNAVAILABLE
-    detail = "Registration temporarily unavailable"
+    detail = "Registration attempts exceeded"
 
 
 class RegistrationOtpInvalidError(AppError):
@@ -86,16 +79,13 @@ class RegistrationOtpInvalidError(AppError):
     detail = "Invalid or expired registration code"
 
 
-class RegistrationOtpAttemptsExceededError(AppError):
-    status_code = HTTP_400_BAD_REQUEST
-    detail = "Registration attempts exceeded"
+# Infra availability
+class ServiceUnavailableError(AppError):
+    status_code = HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Service temporarily unavailable"
 
 
-class UnknownClientError(AppError):
-    status_code = HTTP_400_BAD_REQUEST
-    detail = "Unknown client address"
-
-
+# Request gating
 class RateLimitExceededError(AppError):
     status_code = HTTP_429_TOO_MANY_REQUESTS
     detail = "Too many requests"
@@ -103,3 +93,8 @@ class RateLimitExceededError(AppError):
     def __init__(self, retry_after: int | float | None = None) -> None:
         if retry_after is not None:
             self.headers = {"Retry-After": str(round(retry_after, 2))}
+
+
+class UnknownClientError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Unknown client address"

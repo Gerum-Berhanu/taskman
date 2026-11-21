@@ -130,4 +130,4 @@ def test_verify_redis_failure_is_503(
     )
 
     assert response.status_code == 503, response.text
-    assert response.json()["detail"] == "Registration temporarily unavailable"
+    assert response.json()["detail"] == "Service temporarily unavailable"

@@ -9,7 +9,7 @@ from sqlmodel.sql.expression import select
 from app.api import auth, tasks, workspaces
 from app.core.config import settings
 from app.dependencies import SessionDep
-from app.exceptions import FailedDatabaseConnection, register_exception_handlers
+from app.exceptions import ServiceUnavailableError, register_exception_handlers
 from app.middleware.registry import register_middlewares
 from app.infrastructure.database.session import engine
 from app.infrastructure.redis.client import rc
@@ -46,5 +46,5 @@ async def health(session: SessionDep) -> dict[str, str]:
     try:
         await session.exec(select(1))
     except SQLAlchemyError as exc:
-        raise FailedDatabaseConnection from exc
+        raise ServiceUnavailableError from exc
     return {"status": "ok"}

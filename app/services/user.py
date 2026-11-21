@@ -10,7 +10,7 @@ from app.exceptions import (
     EmailAlreadyRegisteredError,
     RegistrationOtpAttemptsExceededError,
     RegistrationOtpInvalidError,
-    RegistrationStoreUnavailableError,
+    ServiceUnavailableError,
 )
 from app.core.security import (
     generate_registration_otp,
@@ -55,7 +55,7 @@ class UserService(BaseService):
                 otp_hash=hashed_otp,
             )
         except REDIS_DATA_ERRORS:
-            raise RegistrationStoreUnavailableError
+            raise ServiceUnavailableError
 
         send_registration_otp_email_task.delay(email, plain_otp)
 
@@ -90,13 +90,13 @@ class UserService(BaseService):
 
             return pending["email"], pending["hashed_password"], registration_id
         except REDIS_DATA_ERRORS:
-            raise RegistrationStoreUnavailableError
+            raise ServiceUnavailableError
 
     async def _clear_pending(self, registration_id: UUID) -> None:
         try:
             await clear_pending(registration_id)
         except REDIS_DATA_ERRORS:
-            raise RegistrationStoreUnavailableError
+            raise ServiceUnavailableError
 
     async def _register_user(
         self,
