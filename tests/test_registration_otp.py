@@ -1,5 +1,6 @@
 """Email OTP registration ticket flow (API-level)."""
 
+import logging
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -153,3 +154,33 @@ def test_start_broker_publish_failure_is_503(
 
     assert response.status_code == 503, response.text
     assert response.json()["detail"] == "Service temporarily unavailable"
+
+
+def test_verify_welcome_broker_failure_still_201(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Welcome .delay is after_commit; broker errors must not change HTTP."""
+    pending = start_register(client, email="otp-welcome-broker@example.com")
+
+    def boom(*_args, **_kwargs):
+        raise OperationalError("broker down")
+
+    monkeypatch.setattr(
+        "app.services.user.send_welcome_email_task.delay",
+        boom,
+    )
+
+    with caplog.at_level(logging.ERROR):
+        response = client.post(
+            "/auth/register/verify",
+            json={
+                "registration_id": pending["registration_id"],
+                "otp": FIXED_OTP,
+            },
+        )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["detail"] == "User registered successfully"
+    assert any("after_commit_failed" in record.message for record in caplog.records)
