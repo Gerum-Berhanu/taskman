@@ -66,6 +66,11 @@ class AssigneeNotInWorkspaceError(AppError):
     detail = "Assignee is not a member of the workspace"
 
 
+class ServiceUnavailableError(AppError):
+    status_code = HTTP_503_SERVICE_UNAVAILABLE
+    detail = "Service temporarily unavailable"
+
+
 class FailedDatabaseConnection(AppError):
     status_code = HTTP_503_SERVICE_UNAVAILABLE
     detail = "Database connection failed"

@@ -10,7 +10,11 @@ from fastapi import Depends, Request
 from redis.exceptions import RedisError
 
 from app.core.config import settings
-from app.exceptions import RateLimitExceededError, UnknownClientError
+from app.exceptions import (
+    RateLimitExceededError,
+    ServiceUnavailableError,
+    UnknownClientError,
+)
 from app.dependencies.service import CurrentUserDep
 from app.infrastructure.redis.lua_loader import LuaScriptName
 from app.infrastructure.redis.rate_limit import HITTERS
@@ -80,7 +84,7 @@ class _RequireLimit:
                 scope=self.scope,
                 **log_kwargs,
             )
-            return  # fail-open
+            raise ServiceUnavailableError
 
         if not result.allowed:
             log_event(

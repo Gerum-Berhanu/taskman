@@ -255,7 +255,7 @@ def test_kill_switch_disables_limits(
         assert response.status_code == 401
 
 
-def test_fail_open_when_hit_raises(
+def test_fail_closed_when_hit_raises(
     client: TestClient,
     enable_rate_limits: None,
     monkeypatch: pytest.MonkeyPatch,
@@ -271,7 +271,8 @@ def test_fail_open_when_hit_raises(
         "/auth/login",
         json={"email": "nobody@example.com", "password": "wrong"},
     )
-    assert response.status_code == 401
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Service temporarily unavailable"}
 
 
 def test_non_backend_errors_are_not_swallowed(
