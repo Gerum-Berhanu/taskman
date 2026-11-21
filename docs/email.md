@@ -37,11 +37,11 @@ A version-check timeout from `mailpit version` is harmless; the server still run
 
 OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) onto RabbitMQ. A separate **Celery worker** process runs the job and calls the existing mail/export helpers. The API does not wait for the worker to finish (`task_ignore_result` / fire-and-forget).
 
-| Job | Enqueued from | Celery task | Worker runs |
-|-----|---------------|-------------|-------------|
-| Registration OTP | `UserService.start_registration` after Redis ticket | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
-| Welcome | `UserService` `after_commit` after verify | `taskman.send_welcome_email_task` | `send_welcome_email` |
-| Task export | `TaskService.export` | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync→async bridge) |
+| Job | Enqueued from | Publish failure | Celery task | Worker runs |
+|-----|---------------|-----------------|-------------|-------------|
+| Registration OTP | `UserService.start_registration` after Redis ticket | **503** (`Service temporarily unavailable`); ticket left for TTL | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
+| Welcome | `UserService` `after_commit` after verify | Log `after_commit_failed`; verify stays **201** | `taskman.send_welcome_email_task` | `send_welcome_email` |
+| Task export | `TaskService.export` | **503** (not **202**) | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync→async bridge) |
 
 Local host: run RabbitMQ and `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`). Compose staging/prod include `rabbitmq` + `worker` services (see README).
 
@@ -60,19 +60,20 @@ After a successful `POST /auth/register/verify` commit, Taskman enqueues a welco
 3. Another calls `send_welcome_email_task.delay(...)` so Celery publishes to RabbitMQ after a successful commit.
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent.
 5. A Celery worker later runs `send_welcome_email` → `send_mail`. Job outcome does not climb back on the HTTP response.
+6. If welcome `.delay` raises (broker down), `UnitOfWork.commit` logs `after_commit_failed` and continues; verify still returns **201**.
 
 `send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on transport failure (`smtplib.SMTPException`, `OSError`, `TimeoutError`, `resend.exceptions.ResendError`) it logs `email_send_failed` and returns without raising so registration stays 201. Non-transport errors are not swallowed.
 
 ## Task export email
 
-A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/export`. The API responds immediately with **202 Accepted** and **no response body**. Heavy work runs on a Celery worker.
+A workspace **viewer** (or higher) calls `POST /workspaces/{workspace_id}/tasks/export`. On successful publish the API responds with **202 Accepted** and **no response body**. If `.delay` cannot publish (broker down), the API returns **503** (`Service temporarily unavailable`) instead of **202**. Heavy work runs on a Celery worker only after a successful enqueue.
 
 ### Flow
 
-1. `TaskService.export` calls `export_workspace_tasks.delay(...)` with the requester's email and `actor_id` from request context (stringify `workspace_id` for the broker).
-2. The HTTP response is sent (**202**) after publish ack; the worker has not necessarily finished.
+1. `TaskService.export` calls `export_workspace_tasks.delay(...)` with the requester's email and `actor_id` from request context (stringify `workspace_id` for the broker). Broker/publish errors map to `ServiceUnavailableError`.
+2. On publish ack, the HTTP response is **202**; the worker has not necessarily finished.
 3. The worker runs `run_tasks_export`, which opens its **own** async session + `UnitOfWork` (never the request-scoped UoW), loads all tasks in the workspace, builds CSV via `tasks_to_csv`, then calls `send_tasks_export_email` inside `asyncio.to_thread` so the sync mailer stays off the event loop.
-4. On success the worker logs `task_export_sent`. Any load/CSV/worker failure logs `task_export_failed` with traceback; the client already got 202 (fail-soft).
+4. On success the worker logs `task_export_sent`. Any load/CSV/worker failure after a successful publish logs `task_export_failed` with traceback; the client already got **202** (worker fail-soft).
 
 Unlike welcome mail, export does not use `after_commit` - the request path does not persist export state.
 

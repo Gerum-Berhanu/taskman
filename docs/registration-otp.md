@@ -21,10 +21,10 @@ Body: `{ "email", "password" }` (same as before).
 |--------|------|
 | **202** | Ticket created; body `RegisterPendingResponse` (`registration_id`, detail) |
 | **409** | Email already registered |
-| **503** | Redis unavailable (fail-closed) |
+| **503** | Registration Redis unavailable, or OTP `.delay` cannot publish (`Service temporarily unavailable`) |
 | **429** | `auth.register` rate limit |
 
-No `users` row yet. OTP mail is enqueued on Celery after the ticket is written (see [email.md](email.md#background-jobs-celery--rabbitmq)).
+No `users` row yet. OTP mail is enqueued on Celery after the ticket is written (see [email.md](email.md#background-jobs-celery--rabbitmq)). If publish fails, the ticket is **not** cleared; TTL expires the orphan.
 
 ### Verify - `POST /auth/register/verify`
 
@@ -32,15 +32,17 @@ Body: `{ "registration_id": "<uuid>", "otp": "<digits>" }` (`otp` length = `REGI
 
 | Status | When |
 |--------|------|
-| **201** | User created; body `UserCreateResponse` |
+| **201** | User created; body `UserCreateResponse` (welcome enqueue is best-effort; broker failure does not change status) |
 | **400** | Unknown/expired ticket, bad OTP, or attempts exhausted |
 | **409** | Email taken on create race (ticket cleared) |
-| **503** | Redis unavailable (fail-closed) |
+| **503** | Registration Redis unavailable (`Service temporarily unavailable`) |
 | **429** | `auth.register.verify` rate limit |
 
 Bad OTP increments `attempts`. When `attempts >= REGISTRATION_OTP_MAX_ATTEMPTS` on a later try, the ticket is deleted and the client must start registration again.
 
 ## Redis ticket
+
+Uses the registration Redis client (`REDIS_REGISTRATION_URL`, index `/2`).
 
 | Item | Value |
 |------|--------|
@@ -59,7 +61,7 @@ Passwords use the normal argon hash; OTPs are SHA-256 digests (same idea as refr
 | `REGISTRATION_OTP_LENGTH` | Digit count | `6` |
 | `REGISTRATION_OTP_MAX_ATTEMPTS` | Wrong-OTP budget before clear | `5` |
 
-Also needs Redis (`REDIS_URL`) and email settings from [email.md](email.md).
+Also needs `REDIS_REGISTRATION_URL` (and the other Redis URLs for limits/cache) plus email settings from [email.md](email.md).
 
 ## Local Mailpit walkthrough
 

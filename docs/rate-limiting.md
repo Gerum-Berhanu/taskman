@@ -1,6 +1,6 @@
 # Rate limiting
 
-Per-route Redis limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays; pytest keeps it off unless a test opts in). Routes attach a named dependency alias from `app/dependencies/rate_limit.py` (for example `dependencies=[DomainWriteLimit]`). Before the handler runs, `RequireIPLimit` or `RequireUserLimit` resolves identity, hits Redis through `HITTERS`, and either allows the request or raises `RateLimitExceededError` (**429**, detail `Too many requests`, `Retry-After` from the algorithm). Backend failures log `rate_limit_backend_error` and **fail open**.
+Per-route Redis limits apply when `RATE_LIMIT_ENABLED=true` (default in non-test overlays; pytest keeps it off unless a test opts in). Routes attach a named dependency alias from `app/dependencies/rate_limit.py` (for example `dependencies=[DomainWriteLimit]`). Before the handler runs, `RequireIPLimit` or `RequireUserLimit` resolves identity, hits Redis through `HITTERS`, and either allows the request or raises `RateLimitExceededError` (**429**, detail `Too many requests`, `Retry-After` from the algorithm). Backend failures log `rate_limit_backend_error` and **fail closed** with `ServiceUnavailableError` (**503**, detail `Service temporarily unavailable`).
 
 Scopes are shared **budget classes**, not one counter per URL. Same scope name => same Redis key family for that identity.
 
@@ -10,7 +10,7 @@ Scopes are shared **budget classes**, not one counter per URL. Same scope name =
 |------|------|
 | `app/dependencies/rate_limit.py` | `SCOPES` presets, `RequireIPLimit` / `RequireUserLimit`, module aliases |
 | `app/infrastructure/redis/rate_limit/` | `algorithm.py` (strategies + `HITTERS`); `__init__.py` re-exports only |
-| `app/infrastructure/redis/client.py` | Async Redis client + registered Lua scripts |
+| `app/infrastructure/redis/client.py` | Rate-limit client (`REDIS_RATE_LIMIT_URL`, index `/1`) + registered Lua scripts |
 | `app/infrastructure/redis/lua_loader.py` | Declared script names and packaged source loading |
 | `app/infrastructure/redis/scripts/*.lua` | One script per algorithm (see catalog below) |
 
@@ -74,16 +74,16 @@ Dispatch is only via `HITTERS` (name -> `RateLimitAlgorithm` instance). The HTTP
 
 Unknown client address on the IP path raises `UnknownClientError` (400).
 
-## Fail-open on backend errors
+## Fail-closed on backend errors
 
-Rate limiting is **not** on the critical path for API availability:
+Rate limiting is on the critical path for routes that declare a limit:
 
-- If Redis is down at startup, the app still boots (`redis_unavailable_at_startup`) and leaves the client uninitialized.
-- If a limit check hits a backend failure at request time (`redis.exceptions.RedisError`, `TimeoutError`, or `KeyError` when scripts were never registered after a failed init), `_enforce_limit` logs `rate_limit_backend_error` (fields: `scope` + `ip` or `user_id`) and **allows the request**. Other exceptions are not swallowed.
-- Real **429** responses only happen when Redis answered and the client is over the limit.
+- If Redis is down at startup, the app still boots (`redis_unavailable_at_startup` with `role=rate_limit`) and leaves that client uninitialized.
+- If a limit check hits a backend failure at request time (`redis.exceptions.RedisError`, `TimeoutError`, or `KeyError` when scripts were never registered after a failed init), `_enforce_limit` logs `rate_limit_backend_error` (fields: `scope` + `ip` or `user_id`) and raises **503** (`Service temporarily unavailable`). Other exceptions are not swallowed.
+- Real **429** responses only happen when Redis answered and the client is over the limit. Never fake **429** when the check could not run.
 
-During a Redis outage, limits are effectively off until Redis is healthy again and the process has a working client (today that means a successful init, typically after restart).
+Until Redis is healthy again and the process has a working rate-limit client (today that means a successful init, typically after restart), limited routes return **503**.
 
 Kill switch: `settings.rate_limit_enabled` / `RATE_LIMIT_ENABLED`.
 
-See also: [log-events.md](log-events.md) (`rate_limit_exceeded`, `rate_limit_backend_error`, `redis_unavailable_at_startup`).
+See also: [log-events.md](log-events.md) (`rate_limit_exceeded`, `rate_limit_backend_error`, `redis_unavailable_at_startup`), [caching.md](caching.md) (separate cache client / DB 0).

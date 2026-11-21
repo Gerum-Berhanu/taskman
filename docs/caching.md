@@ -10,7 +10,7 @@
 | `app/infrastructure/redis/ops/keys.py` | Shared key delete helpers |
 | `app/infrastructure/redis/cache/summary.py` | Summary key + fail-open get/set/invalidate |
 | `app/services/task.py` | Calls cache helpers on `summary` / mutate; no Redis key strings |
-| `app/infrastructure/redis/client.py` | Shared async Redis client (also used by rate limiting) |
+| `app/infrastructure/redis/client.py` | Cache client (`REDIS_CACHE_URL`, index `/0`) via `redis_clients.cache` |
 
 ## Key shape
 
@@ -22,15 +22,15 @@ Value is a JSON object matching the summary response (`workspace_id` stored as a
 
 ## Flow
 
-1. **GET summary** — try cache; on hit return the dict (FastAPI `response_model=TaskSummaryRead` coerces types).
-2. **Miss** — SQL `GROUP BY status` aggregate, return dict, then `SET` with TTL.
-3. **Mutate** (create / update / delete task) — `DELETE` the workspace summary key (fail-soft). Done in the async service (not `after_commit`; that hook is sync-only today).
+1. **GET summary** - try cache; on hit return the dict (FastAPI `response_model=TaskSummaryRead` coerces types).
+2. **Miss** - SQL `GROUP BY status` aggregate, return dict, then `SET` with TTL.
+3. **Mutate** (create / update / delete task) - `DELETE` the workspace summary key (fail-soft). Done in the async service (not `after_commit`; that hook is sync-only today).
 
 ## Fail-open on backend errors
 
 Caching is **not** on the critical path:
 
-- Redis down at startup → app still boots (`redis_unavailable_at_startup`).
+- Redis down at startup → app still boots (`redis_unavailable_at_startup` with `role=cache`).
 - Get/set/delete failures at request time (`redis.exceptions.RedisError`, `TimeoutError`, corrupt JSON, or invalid cached shape on get) → log `cache_backend_error` and continue (DB path for reads; mutation still succeeds). Other exceptions are not swallowed.
 
-See also: [log-events.md](log-events.md) (`cache_backend_error`), [rate-limiting.md](rate-limiting.md) (same Redis client, fail-open pattern).
+See also: [log-events.md](log-events.md) (`cache_backend_error`), [rate-limiting.md](rate-limiting.md) (separate rate-limit client / DB 1, fail-closed).

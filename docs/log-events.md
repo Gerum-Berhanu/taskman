@@ -64,7 +64,7 @@ Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). App/validati
 |-----|-------|------|--------|
 | `http_access` | `INFO` (`DEBUG` for `/health`, `/favicon.ico`) | After each request | `method`, `path`, `status`, `duration_ms` |
 | `rate_limit_exceeded` | `WARNING` | Redis limiter blocked (429) | `scope`, plus `ip` or `user_id` |
-| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; fail-open | `scope`, plus `ip` or `user_id` |
+| `rate_limit_backend_error` | `ERROR` + tb | Limiter backend failed; request gets **503** (fail-closed) | `scope`, plus `ip` or `user_id` |
 | `app_error` | `WARNING` if 4xx else `ERROR` | Handled `AppError` | `actor_id`, `detail` |
 | `validation_error` | `WARNING` | FastAPI/Pydantic `RequestValidationError` (422); client gets first error only as `"<msg> at <field>"` | `actor_id`, `detail` |
 | `unhandled_error` | `ERROR` + tb | Bare `Exception` (500 path) | `actor_id`, `detail` |
@@ -75,7 +75,7 @@ Login/refresh failures surface as `app_error`, not service tags.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
-| `redis_unavailable_at_startup` | `ERROR` + tb | Redis init failed at startup; app continues (`init_redis_fail_open`) | — |
+| `redis_unavailable_at_startup` | `ERROR` + tb | One Redis client failed init at startup; app continues (`init_fail_open`) | `role` (`cache`, `rate_limit`, or `registration`) |
 | `email_sent` | `INFO` | Mail accepted | `email`, `subject` |
 | `email_send_failed` | `ERROR` + tb | Send raised; caller still succeeds | `email`, `subject` |
 | `email_skipped` | `INFO` | `EMAIL_ENABLED=false` | `email`, `reason` (`email_disabled`), `subject` |
@@ -84,9 +84,9 @@ Login/refresh failures surface as `app_error`, not service tags.
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
-| `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit | — |
+| `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit (HTTP outcome unchanged; welcome enqueue included) | — |
 | `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
-| `task_export_failed` | `ERROR` + tb | Export failed after 202 | `workspace_id`, `email`, `actor_id` |
+| `task_export_failed` | `ERROR` + tb | Export job failed after a successful **202** publish | `workspace_id`, `email`, `actor_id` |
 | `client_sessions_purged` | `INFO` | Purge job deleted expired sessions | `deleted` |
 | `client_sessions_purge_failed` | `ERROR` + tb | Purge job raised; process exits non-zero | — |
 

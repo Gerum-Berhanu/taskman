@@ -20,7 +20,7 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL 18+ (local profiles and Compose)
-- Redis 7+ / 8.x (rate limiting; preferred at startup, fail-open if unavailable)
+- Redis 7+ / 8.x (cache / rate limit / registration indexes; preferred at startup, app still boots if a client fails init)
 - Optional: [Just](https://github.com/casey/just), [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ## Setup
@@ -28,8 +28,8 @@ REST API for workspace-scoped task management, built with FastAPI. JWT access to
 ```bash
 uv sync
 cp -r env-example env          # Windows: Copy-Item -Recurse env-example env
-# edit env/.env.development, REDIS_URL, DATABASE_URL, SECRET_KEY, etc.
-# start a local Redis that matches REDIS_URL (see below)
+# edit env/.env.development, REDIS_*_URL, DATABASE_URL, SECRET_KEY, etc.
+# start a local Redis that matches REDIS_CACHE_URL / REDIS_RATE_LIMIT_URL / REDIS_REGISTRATION_URL (see below)
 uv run alembic upgrade head
 ```
 
@@ -52,18 +52,18 @@ uv run alembic upgrade head
 
 `config.py` loads `env/.env`, then `env/.env.{TASKMAN_ENV}`. On key clashes, the profile wins. Process environment (Compose, CI, Just) always wins over files. `TASKMAN_ENV` selects the profile and defaults to `development` when unset.
 
-Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` / `${RABBITMQ_*}` can be interpolated into `DATABASE_URL` / `REDIS_URL` / `RABBITMQ_URL` for the `api` and `worker` containers (host overlays keep `localhost` for Windows Postgres/Redis/RabbitMQ).
+Compose stacks also pass `--env-file env/env-compose/.env.*` so `${POSTGRES_*}` / `${REDIS_*}` / `${RABBITMQ_*}` can be interpolated into `DATABASE_URL` / `REDIS_CACHE_URL` / `REDIS_RATE_LIMIT_URL` / `REDIS_REGISTRATION_URL` / `RABBITMQ_URL` for the `api` and `worker` containers (host overlays keep `localhost` for Windows Postgres/Redis/RabbitMQ). One Redis process is enough; the three URLs typically share host/port and use indexes `/0` (cache), `/1` (rate limit), `/2` (registration).
 
-| Profile | Typical local `DATABASE_URL` | Typical local `REDIS_URL` |
-|---------|------------------------------|---------------------------|
-| `development` | Postgres on the host | Host-published Redis (e.g. `:6379` or `:6380`) |
+| Profile | Typical local `DATABASE_URL` | Typical local Redis URLs |
+|---------|------------------------------|--------------------------|
+| `development` | Postgres on the host | Host-published Redis (e.g. `:6379` or `:6380`) with `/0` `/1` `/2` |
 | `staging` | Host Postgres **or** overridden in Compose | Same pattern |
 | `test` | Overridden to temp SQLite in `conftest` | Host Redis (pytest still needs Redis up) |
 | `production` | Host Postgres **or** overridden in Compose | Same pattern |
 
 ## Redis before local API runs
 
-The app **tries to connect to Redis during lifespan**. If that fails, the API still starts and rate limiting fails open (see [docs/rate-limiting.md](docs/rate-limiting.md)). For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches that profile's `REDIS_URL` first so limits actually apply (Docker example):
+The app **tries to connect each Redis client during lifespan** (`init_all_fail_open`). If a client fails, the API still starts and logs `redis_unavailable_at_startup` with that client's `role`. At request time, policies differ: **cache** stays fail-open (summary falls through to Postgres); **rate limit** and **registration** Redis fail closed with **503**; see [docs/rate-limiting.md](docs/rate-limiting.md), [docs/caching.md](docs/caching.md), and [docs/registration-otp.md](docs/registration-otp.md). For `just dev`, `just staging`, `just prod`, `just test`, or `just pytest`, start a Redis that matches those profile URLs first so limits and registration tickets actually work (Docker example):
 
 ```powershell
 docker start redis_development   # or: docker run -d --name redis_development -p 6379:6379 redis:8.6
@@ -167,7 +167,7 @@ docker exec <container_name_or_id> <command> <args>
 # example: docker exec redis_development redis-cli ping
 ```
 
-`exec` uses the **already-running** container environment (`DATABASE_URL`, `REDIS_URL`, etc.). You do not need `--env-file` on `exec` for that; `--env-file` matters for `up`/`build` interpolation in this project.
+`exec` uses the **already-running** container environment (`DATABASE_URL`, `REDIS_*_URL`, etc.). You do not need `--env-file` on `exec` for that; `--env-file` matters for `up`/`build` interpolation in this project.
 
 ## API (implemented)
 
@@ -185,7 +185,10 @@ Full target spec (including not-yet-built pieces): [docs/project-requirements.md
 |-----|---------|
 | [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
 | [docs/auth-cookies.md](docs/auth-cookies.md) | Access Bearer + HttpOnly refresh and device_id cookies |
-| [docs/rate-limiting.md](docs/rate-limiting.md) | Redis rate limiting |
+| [docs/rate-limiting.md](docs/rate-limiting.md) | Redis rate limiting (fail-closed **503**) |
+| [docs/caching.md](docs/caching.md) | Task summary Redis cache (fail-open) |
+| [docs/registration-otp.md](docs/registration-otp.md) | Email OTP registration (Redis DB 2; broker fail-closed) |
+| [docs/email.md](docs/email.md) | SMTP/Resend + Celery enqueue (OTP/export **503**; welcome best-effort) |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
 | [docs/pr-guide.md](docs/pr-guide.md) | Pull request description guide |
 | [docs/log-events.md](docs/log-events.md) | Stable log event tags |
