@@ -48,9 +48,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # App identity
     app_name: str = "Taskman"
     app_env: AppEnv = _APP_ENV
     debug: bool = False
+
+    # Auth / sessions
     secret_key: str = ""
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
@@ -59,21 +62,31 @@ class Settings(BaseSettings):
     device_id_cookie_name: str = "device_id"
     device_id_cookie_max_age_seconds: int = 34_560_000  # ~400 days
     max_client_sessions_per_user: int = Field(default=15, ge=1)
+
+    # Data stores / broker
     database_url: str = "sqlite+aiosqlite:///./database.db"
     redis_url: str = "redis://127.0.0.1:6379/0"
     rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
+
+    # Observability
     log_level: str = "INFO"
     log_json: bool = False
     log_file: bool = True
+
+    # Rate limiting
     rate_limit_enabled: bool = True
+
+    # Email
     email_enabled: bool = False
+    email_from: str = ""
     resend_api_key: str = ""
     resend_from: str = "onboarding@resend.dev"
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    email_from: str = ""
+
+    # Feature TTLs / OTP
     task_summary_cache_ttl_seconds: int = 300  # 5 minutes
     registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
     registration_otp_length: int = Field(default=6, ge=4, le=10)
