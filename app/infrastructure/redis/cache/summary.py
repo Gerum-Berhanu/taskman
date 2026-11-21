@@ -5,9 +5,8 @@ from typing import Any
 from uuid import UUID
 
 from app.core.config import settings
+from app.infrastructure.redis.client import redis_clients
 from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
-from app.infrastructure.redis.ops.json import get_json, set_json
-from app.infrastructure.redis.ops.keys import delete_keys
 from app.observability.events import DomainLogEvent
 from app.observability.log_event import log_event
 
@@ -23,7 +22,7 @@ async def get_cached_summary(workspace_id: UUID) -> dict[str, Any] | None:
     """Return cached summary JSON, or None on miss / Redis failure."""
     key = summary_key(workspace_id)
     try:
-        return await get_json(key)
+        return await redis_clients.cache.get_json(key)
     except REDIS_DATA_ERRORS:
         log_event(
             logger,
@@ -40,7 +39,7 @@ async def set_cached_summary(workspace_id: UUID, payload: dict[str, Any]) -> Non
     """Store summary JSON; no-op on Redis failure."""
     key = summary_key(workspace_id)
     try:
-        await set_json(
+        await redis_clients.cache.set_json(
             key,
             payload,
             ttl_seconds=settings.task_summary_cache_ttl_seconds,
@@ -63,7 +62,7 @@ async def invalidate_summary_cache(workspace_id: UUID) -> None:
     
     key = summary_key(workspace_id)
     try:
-        await delete_keys(key)
+        await redis_clients.cache.delete_keys(key)
     except REDIS_DATA_ERRORS:
         log_event(
             logger,

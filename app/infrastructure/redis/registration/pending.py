@@ -2,8 +2,7 @@ from typing import TypedDict
 from uuid import UUID, uuid4
 
 from app.core.config import settings
-from app.infrastructure.redis.ops.hash import get_hash, hincrby, set_hash
-from app.infrastructure.redis.ops.keys import delete_keys, key_exists
+from app.infrastructure.redis.client import redis_clients
 
 
 class PendingData(TypedDict):
@@ -27,7 +26,7 @@ async def create_pending(*, email: str, hashed_password: str, otp_hash: str) -> 
         "otp_hash": otp_hash,
         "attempts": "0",
     }
-    await set_hash(
+    await redis_clients.registration.set_hash(
         key,
         value,
         ttl_seconds=settings.registration_otp_ttl_seconds,
@@ -36,7 +35,7 @@ async def create_pending(*, email: str, hashed_password: str, otp_hash: str) -> 
 
 
 async def get_pending(registration_id: UUID) -> PendingData | None:
-    data = await get_hash(pending_key(registration_id))
+    data = await redis_clients.registration.get_hash(pending_key(registration_id))
     if data is None:
         return None
     return {
@@ -48,12 +47,12 @@ async def get_pending(registration_id: UUID) -> PendingData | None:
 
 
 async def clear_pending(registration_id: UUID) -> None:
-    await delete_keys(pending_key(registration_id))
+    await redis_clients.registration.delete_keys(pending_key(registration_id))
 
 
 async def incr_attempt(registration_id: UUID) -> int | None:
     """Bump attempts; return new count, or None if the ticket is gone."""
     key = pending_key(registration_id)
-    if not await key_exists(key):
+    if not await redis_clients.registration.key_exists(key):
         return None
-    return await hincrby(key, "attempts", 1)
+    return await redis_clients.registration.hincrby(key, "attempts", 1)

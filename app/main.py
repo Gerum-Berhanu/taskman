@@ -12,7 +12,7 @@ from app.dependencies import SessionDep
 from app.exceptions import FailedDatabaseConnection, register_exception_handlers
 from app.middleware.registry import register_middlewares
 from app.infrastructure.database.session import engine
-from app.infrastructure.redis.client import redis_client
+from app.infrastructure.redis.client import rc
 from app.observability.setup import setup_logging
 
 
@@ -21,9 +21,9 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await redis_client.init_redis_fail_open()
+    await rc.init_all_fail_open()
     yield
-    await redis_client.close_redis()  # already no-ops if _client is None
+    await rc.close_all()  # already no-ops if _client is None
     await engine.dispose()
 
 

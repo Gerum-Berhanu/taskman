@@ -24,7 +24,7 @@ def _dep_instance(dep: DependsParam):
 
 
 def _flush_rate_limit_keys() -> None:
-    client = Redis.from_url(settings.redis_url, decode_responses=True)
+    client = Redis.from_url(settings.redis_rate_limit_url, decode_responses=True)
     try:
         keys = list(client.scan_iter(match="rl:*"))
         if keys:

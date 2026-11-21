@@ -65,7 +65,9 @@ class Settings(BaseSettings):
 
     # Data stores / broker
     database_url: str = "sqlite+aiosqlite:///./database.db"
-    redis_url: str = "redis://127.0.0.1:6379/0"
+    redis_cache_url: str = "redis://127.0.0.1:6379/0"
+    redis_rate_limit_url: str = "redis://127.0.0.1:6379/1"
+    redis_registration_url: str = "redis://127.0.0.1:6379/2"
     rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
 
     # Observability

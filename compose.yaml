@@ -19,7 +19,9 @@ services:
       # Overrides localhost from env/.env.staging for the Compose network.
       # POSTGRES_* / REDIS_* / RABBITMQ_* come from --env-file (see `just compose-staging`).
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      REDIS_CACHE_URL: redis://${REDIS_HOST}:${REDIS_PORT}/0
+      REDIS_RATE_LIMIT_URL: redis://${REDIS_HOST}:${REDIS_PORT}/1
+      REDIS_REGISTRATION_URL: redis://${REDIS_HOST}:${REDIS_PORT}/2
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
 
     depends_on:
@@ -116,7 +118,9 @@ services:
     environment:
       TASKMAN_ENV: staging
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
+      REDIS_CACHE_URL: redis://${REDIS_HOST}:${REDIS_PORT}/0
+      REDIS_RATE_LIMIT_URL: redis://${REDIS_HOST}:${REDIS_PORT}/1
+      REDIS_REGISTRATION_URL: redis://${REDIS_HOST}:${REDIS_PORT}/2
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}//
 
     depends_on:

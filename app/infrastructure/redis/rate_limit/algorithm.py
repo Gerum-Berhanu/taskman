@@ -8,7 +8,7 @@ from uuid import uuid4
 from redis.typing import EncodableT
 
 from app.core.timeutils import utcnow
-from app.infrastructure.redis.client import redis_client
+from app.infrastructure.redis.client import redis_clients
 from app.infrastructure.redis.lua_loader import LuaScriptName
 
 
@@ -45,7 +45,9 @@ class RateLimitAlgorithm:
         now_ms = self._get_now_ms()
         extras = self.extra_argv(now_ms=now_ms)
 
-        allowed_flag, retry_after_ms = await redis_client.scripts[self.script_name](
+        allowed_flag, retry_after_ms = await redis_clients.rate_limit.scripts[
+            self.script_name
+        ](
             keys=[key],
             args=[now_ms, window_ms, kwargs["limit"], *extras],
         )
