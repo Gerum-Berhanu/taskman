@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from celery.exceptions import OperationalError
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
@@ -57,7 +58,10 @@ class UserService(BaseService):
         except REDIS_DATA_ERRORS:
             raise ServiceUnavailableError
 
-        send_registration_otp_email_task.delay(email, plain_otp)
+        try:
+            send_registration_otp_email_task.delay(email, plain_otp)
+        except OperationalError:
+            raise ServiceUnavailableError
 
         return registration_id
 

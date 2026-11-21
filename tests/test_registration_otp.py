@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from celery.exceptions import OperationalError
 from fastapi.testclient import TestClient
 from redis.exceptions import RedisError
 
@@ -128,6 +129,27 @@ def test_verify_redis_failure_is_503(
             "otp": FIXED_OTP,
         },
     )
+
+    assert response.status_code == 503, response.text
+    assert response.json()["detail"] == "Service temporarily unavailable"
+
+
+def test_start_broker_publish_failure_is_503(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*_args, **_kwargs):
+        raise OperationalError("broker down")
+
+    monkeypatch.setattr(
+        "app.services.user.send_registration_otp_email_task.delay",
+        boom,
+    )
+
+    with patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP):
+        response = client.post(
+            "/auth/register",
+            json={"email": "otp-broker@example.com", "password": PASSWORD},
+        )
 
     assert response.status_code == 503, response.text
     assert response.json()["detail"] == "Service temporarily unavailable"
