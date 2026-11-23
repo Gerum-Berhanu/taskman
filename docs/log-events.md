@@ -87,8 +87,8 @@ Login/refresh failures surface as `app_error`, not service tags.
 | `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit (HTTP outcome unchanged; welcome enqueue included) | — |
 | `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
 | `task_export_failed` | `ERROR` + tb | Export job failed after a successful **202** publish | `workspace_id`, `email`, `actor_id` |
-| `client_sessions_purged` | `INFO` | Purge job deleted expired sessions | `deleted` |
-| `client_sessions_purge_failed` | `ERROR` + tb | Purge job raised; process exits non-zero | — |
+| `client_sessions_purged` | `INFO` | Purge job deleted expired sessions (Beat-scheduled or manual CLI) | `deleted` |
+| `client_sessions_purge_failed` | `ERROR` + tb | Purge job raised; Celery worker fails the task / CLI exits non-zero | — |
 
 ### `domain` — `app.services.*`
 

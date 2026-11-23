@@ -103,8 +103,9 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/infrastructure/email/templates/tasks_export.html` | Export body (`{% extends "base.html" %}`) |
 | `app/jobs/export/tasks_csv.py` | Pure CSV builder (`tasks_to_csv`) |
 | `app/jobs/export/task_export.py` | Export job body (`run_tasks_export`) |
-| `app/workers/celery_app.py` | Celery app (`broker=settings.rabbitmq_url`) |
-| `app/workers/tasks.py` | Thin Celery task wrappers (`.delay` targets) |
+| `app/workers/celery_app.py` | Celery app (`broker=settings.rabbitmq_url`) + Beat schedule |
+| `app/workers/tasks.py` | Thin Celery task wrappers (`.delay` / Beat targets) |
+| `app/jobs/purge/expired_sessions.py` | Expired session purge job body |
 | `app/services/user.py` | OTP `.delay`; welcome `.delay` in `after_commit` |
 | `app/services/task.py` | Export `.delay` |
 | `app/api/tasks.py` | `POST …/tasks/export` → 202 |
@@ -121,6 +122,8 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `SMTP_USER` | SMTP username; empty with password → skip STARTTLS/login (Mailpit) |
 | `SMTP_PASSWORD` | SMTP password / Gmail App Password; empty with user → skip STARTTLS/login |
 | `EMAIL_FROM` | From address for SMTP sends (required when `SMTP_USER` is empty) |
+| `SESSION_PURGE_INTERVAL_SECONDS` | Celery Beat interval for expired session purge (default `3600`) |
+| `RABBITMQ_URL` | Celery broker for workers and Beat |
 
 On Render free: set `EMAIL_ENABLED=true` and `RESEND_API_KEY`. Resend uses `RESEND_FROM` (defaults to `onboarding@resend.dev`). SMTP vars can stay unset.
 

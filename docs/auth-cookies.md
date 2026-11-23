@@ -40,7 +40,7 @@ Missing or invalid refresh cookie on cookie-auth routes → `401` (`Could not va
 - Logout, delete-all / delete-one, refresh-token reuse, expiry, and inactive-user checks **delete** the session (CASCADE refresh tokens). There is no soft-revoke / `revoked_at`.
 - Re-login with the same `device_id` deletes any existing row for that device, then creates a new session.
 - At most `max_client_sessions_per_user` live sessions per user (default 15). On login, after same-device replace, least-recently-refreshed sessions (`coalesce(rotated_at, created_at)`) are deleted to make room.
-- Idle sessions that never logout are removed by the expired-session purge (`expires_at`).
+- Idle sessions that never logout are removed when `expires_at` has passed: Celery Beat publishes `taskman.purge_expired_client_sessions` on `SESSION_PURGE_INTERVAL_SECONDS`, and a worker runs the purge (or ops runs `just purge-expired-sessions` by hand).
 - UA/IP are kept only while the session row exists (privacy: gone after logout/replace/purge).
 
 ## Browser / SPA notes

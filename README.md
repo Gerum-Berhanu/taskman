@@ -185,11 +185,11 @@ Full target spec (including not-yet-built pieces): [docs/project-requirements.md
 | Doc | Purpose |
 |-----|---------|
 | [docs/project-requirements.md](docs/project-requirements.md) | Capstone spec (target features) |
-| [docs/auth-cookies.md](docs/auth-cookies.md) | Access Bearer + HttpOnly refresh and device_id cookies |
+| [docs/auth-cookies.md](docs/auth-cookies.md) | Access Bearer + HttpOnly refresh/device cookies; session purge via Beat |
 | [docs/rate-limiting.md](docs/rate-limiting.md) | Redis rate limiting (fail-closed **503**) |
 | [docs/caching.md](docs/caching.md) | Task summary Redis cache (fail-open) |
 | [docs/registration-otp.md](docs/registration-otp.md) | Email OTP registration (Redis DB 2; broker fail-closed) |
-| [docs/email.md](docs/email.md) | SMTP/Resend + Celery enqueue (OTP/export **503**; welcome best-effort) |
+| [docs/email.md](docs/email.md) | SMTP/Resend + Celery worker/Beat (OTP/export **503**; welcome best-effort; session purge) |
 | [docs/commit-messages.md](docs/commit-messages.md) | Commit message conventions |
 | [docs/pr-guide.md](docs/pr-guide.md) | Pull request description guide |
 | [docs/log-events.md](docs/log-events.md) | Stable log event tags |

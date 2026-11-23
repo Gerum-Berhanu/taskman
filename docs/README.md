@@ -2,11 +2,11 @@
 
 | File | Purpose |
 |------|---------|
-| [auth-cookies.md](auth-cookies.md) | Access Bearer + HttpOnly refresh and device_id cookies |
+| [auth-cookies.md](auth-cookies.md) | Access Bearer + HttpOnly refresh/device cookies; session purge via Beat |
 | [caching.md](caching.md) | Task summary Redis cache (TTL, keys, fail-open, invalidation) |
 | [commit-messages.md](commit-messages.md) | How we write git commits |
 | [services.md](services.md) | Public vs private service methods (API DTOs vs `_` helpers) |
-| [email.md](email.md) | SMTP + Jinja HTML (welcome email, OTP mail, task CSV export) |
+| [email.md](email.md) | SMTP + Jinja HTML; Celery worker + Beat (mail, export, session purge) |
 | [registration-otp.md](registration-otp.md) | Email OTP registration tickets (202 start / 201 verify) |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
 | [log-events.md](log-events.md) | Log event tags, text/JSON shapes (`http_access`, domain events, …) |
@@ -26,7 +26,7 @@
 | `app/infrastructure/database/` | Engine / session factory |
 | `app/infrastructure/email/` | Mail orchestration + providers + templates |
 | `app/infrastructure/redis/` | Redis client, cache helpers, rate-limit algorithms, Lua scripts |
-| `app/jobs/` | Out-of-request runners (`export/`, `purge/`, …) |
+| `app/jobs/` | Out-of-request runners (`export/`, `purge/`; purge also on Celery Beat) |
 | `app/dto/api/` | HTTP request/response DTOs (public contract) |
 | `app/dto/repository/` | Persistence DTOs (`*Record` / `*CreateData` / `*UpdateData`) |
 | `app/repositories/` | Persistence repos + `UnitOfWork`; shared `create` / `get` on `BaseRepository` |
