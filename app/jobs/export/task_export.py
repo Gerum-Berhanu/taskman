@@ -2,12 +2,11 @@ import asyncio
 import logging
 from uuid import UUID
 
-from app.infrastructure.database.session import async_session_factory
 from app.infrastructure.email.mails import send_tasks_export_email
 from app.jobs.export.tasks_csv import tasks_to_csv
 from app.observability.events import OpsLogEvent
 from app.observability.log_event import log_event
-from app.repositories.unit_of_work import UnitOfWork
+from app.repositories import unit_of_work
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +19,8 @@ async def run_tasks_export(
 ) -> None:
     """Load workspace tasks, build CSV, email it (own DB session)."""
     try:
-        async with async_session_factory() as session:
-            async with UnitOfWork(session) as uow:
-                rows = await uow.tasks.list_all(workspace_id)
+        async with unit_of_work() as uow:
+            rows = await uow.tasks.list_all(workspace_id)
         csv_text = tasks_to_csv(rows)
 
         subject = await asyncio.to_thread(

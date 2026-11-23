@@ -1,10 +1,12 @@
 """Unit of Work: one transaction boundary for all repositories."""
 
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.infrastructure.database.session import async_session_factory
 from app.observability.events import OpsLogEvent
 from app.observability.log_event import log_event
 from app.repositories.client_session import ClientSessionRepository
@@ -16,6 +18,14 @@ from app.repositories.workspace_member import WorkspaceMemberRepository
 
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def unit_of_work() -> AsyncIterator["UnitOfWork"]:
+    """Open a session + UnitOfWork for out-of-request jobs (not FastAPI Depends)."""
+    async with async_session_factory() as session:
+        async with UnitOfWork(session) as uow:
+            yield uow
 
 
 class UnitOfWork:

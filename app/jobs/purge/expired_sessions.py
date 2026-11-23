@@ -2,11 +2,10 @@ import asyncio
 import logging
 import sys
 
-from app.infrastructure.database.session import async_session_factory
 from app.observability.events import OpsLogEvent
 from app.observability.log_event import log_event
 from app.observability.setup import setup_logging
-from app.repositories import UnitOfWork
+from app.repositories import unit_of_work
 
 
 logger = logging.getLogger(__name__)
@@ -14,9 +13,8 @@ logger = logging.getLogger(__name__)
 
 async def run_purge_expired_sessions() -> None:
     try:
-        async with async_session_factory() as session:
-            async with UnitOfWork(session) as uow:
-                count = await uow.client_sessions.delete_expired()
+        async with unit_of_work() as uow:
+            count = await uow.client_sessions.delete_expired()
     except Exception:
         log_event(
             logger,

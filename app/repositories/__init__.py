@@ -18,7 +18,7 @@ from app.dto.repository import (
 from app.repositories.client_session import ClientSessionRepository
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.task import TaskRepository
-from app.repositories.unit_of_work import UnitOfWork
+from app.repositories.unit_of_work import UnitOfWork, unit_of_work
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.repositories.workspace_member import WorkspaceMemberRepository
@@ -35,6 +35,7 @@ __all__ = [
     "TaskRepository",
     "TaskUpdateData",
     "UnitOfWork",
+    "unit_of_work",
     "UserCreateData",
     "UserRecord",
     "UserRepository",
