@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     device_id_cookie_name: str = "device_id"
     device_id_cookie_max_age_seconds: int = 34_560_000  # ~400 days
     max_client_sessions_per_user: int = Field(default=15, ge=1)
+    session_purge_interval_seconds: int = Field(default=3600, ge=1)
 
     # Data stores / broker
     database_url: str = "sqlite+aiosqlite:///./database.db"

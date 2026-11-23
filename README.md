@@ -71,18 +71,19 @@ docker start redis_development   # or: docker run -d --name redis_development -p
 
 Use a separate container/port per environment if you isolate Redis that way. Compose staging/prod start their own `redis` service; no manual container needed for those stacks.
 
-## RabbitMQ + Celery worker (host)
+## RabbitMQ + Celery worker and Beat (host)
 
-OTP mail, welcome mail, and task export enqueue onto RabbitMQ. For `just dev` you need a broker and a worker process (Compose stacks already include `rabbitmq` + `worker`).
+OTP mail, welcome mail, and task export enqueue onto RabbitMQ. Expired client sessions are purged on a schedule (`SESSION_PURGE_INTERVAL_SECONDS`): **Celery Beat** publishes the purge task; a **worker** runs it. For `just dev` you need a broker, one worker, and one Beat process (Compose stacks already include `rabbitmq` + `worker` + `beat`). Run only **one** Beat per environment.
 
 ```powershell
 docker start rabbitmq_development
 # or: docker run -d --name rabbitmq_development -p 5672:5672 -p 15672:15672 rabbitmq:4-management-alpine
 
 uv run celery -A app.workers.celery_app worker --loglevel=INFO --pool=solo
+uv run celery -A app.workers.celery_app beat --loglevel=INFO
 ```
 
-Point `RABBITMQ_URL` in private `env/.env.development` at that broker. Details: [docs/email.md](docs/email.md#background-jobs-celery--rabbitmq).
+Point `RABBITMQ_URL` in private `env/.env.development` at that broker. Manual purge without Beat: `just purge-expired-sessions`. Details: [docs/email.md](docs/email.md#background-jobs-celery--rabbitmq).
 
 ## Run (host)
 
@@ -132,7 +133,7 @@ kill -9 <pid>
 
 ## Run (Docker Compose)
 
-Staging is the base stack (`compose.yaml`: `api` + Postgres + Redis + RabbitMQ + Celery `worker`). Production is the same file plus `compose.prod.yaml` overrides (no published API port by default, separate volumes, production env).
+Staging is the base stack (`compose.yaml`: `api` + Postgres + Redis + RabbitMQ + Celery `worker` + Celery `beat`). Production is the same file plus `compose.prod.yaml` overrides (no published API port by default, separate volumes, production env).
 
 ```bash
 just compose-staging       # build + up

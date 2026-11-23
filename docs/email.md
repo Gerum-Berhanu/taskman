@@ -35,15 +35,16 @@ A version-check timeout from `mailpit version` is harmless; the server still run
 
 ## Background jobs (Celery + RabbitMQ)
 
-OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) onto RabbitMQ. A separate **Celery worker** process runs the job and calls the existing mail/export helpers. The API does not wait for the worker to finish (`task_ignore_result` / fire-and-forget).
+OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) onto RabbitMQ. A separate **Celery worker** process runs the job and calls the existing mail/export helpers. The API does not wait for the worker to finish (`task_ignore_result` / fire-and-forget). **Celery Beat** is a separate process that only publishes scheduled tasks (expired session purge); workers consume them. Run exactly one Beat per environment.
 
 | Job | Enqueued from | Publish failure | Celery task | Worker runs |
 |-----|---------------|-----------------|-------------|-------------|
 | Registration OTP | `UserService.start_registration` after Redis ticket | **503** (`Service temporarily unavailable`); ticket left for TTL | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
 | Welcome | `UserService` `after_commit` after verify | Log `after_commit_failed`; verify stays **201** | `taskman.send_welcome_email_task` | `send_welcome_email` |
 | Task export | `TaskService.export` | **503** (not **202**) | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync→async bridge) |
+| Expired sessions | Celery Beat (`SESSION_PURGE_INTERVAL_SECONDS`) | N/A (scheduler); job logs `client_sessions_purge_failed` | `taskman.purge_expired_client_sessions` | `run_purge_expired_sessions` |
 
-Local host: run RabbitMQ and `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`). Compose staging/prod include `rabbitmq` + `worker` services (see README).
+Local host: run RabbitMQ, then `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`) and `celery -A app.workers.celery_app beat` in separate terminals. Compose staging/prod include `rabbitmq` + `worker` + `beat` (see README). Manual purge without waiting for Beat: `just purge-expired-sessions`.
 
 ## Registration OTP email
 

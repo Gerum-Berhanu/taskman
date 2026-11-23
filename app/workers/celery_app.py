@@ -15,3 +15,12 @@ celery_app = Celery(
     broker=settings.rabbitmq_url,
     include=["app.workers.tasks"],
 )
+celery_app.conf.update(
+    timezone="UTC",
+    beat_schedule={
+        "purge-expired-client-sessions": {
+            "task": "taskman.purge_expired_client_sessions",
+            "schedule": float(settings.session_purge_interval_seconds),
+        },
+    },
+)
