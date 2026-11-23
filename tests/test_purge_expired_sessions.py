@@ -4,9 +4,11 @@ import asyncio
 from datetime import timedelta
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import select
 
+from app.core.config import settings
 from app.core.timeutils import utcnow
 from app.dto.repository import (
     ClientSessionCreateData,
@@ -16,6 +18,8 @@ from app.dto.repository import (
 from app.main import app
 from app.models import ClientSession, RefreshToken
 from app.repositories.unit_of_work import UnitOfWork
+from app.workers.celery_app import celery_app
+from app.workers.tasks import purge_expired_sessions_task
 
 
 async def _seed_expired_and_live() -> tuple[object, object, object, object]:
@@ -104,3 +108,25 @@ def test_delete_expired_removes_expired_session_and_tokens_keeps_live(
 
     assert asyncio.run(_exists(ClientSession, live_session_id)) is True
     assert asyncio.run(_exists(RefreshToken, live_token_id)) is True
+
+
+def test_beat_schedule_registers_session_purge() -> None:
+    entry = celery_app.conf.beat_schedule["purge-expired-client-sessions"]
+    assert entry["task"] == "taskman.purge_expired_client_sessions"
+    assert entry["schedule"] == float(settings.session_purge_interval_seconds)
+
+
+def test_purge_celery_task_invokes_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: list[bool] = []
+
+    async def fake() -> None:
+        called.append(True)
+
+    monkeypatch.setattr(
+        "app.workers.tasks.run_purge_expired_sessions",
+        fake,
+    )
+    purge_expired_sessions_task.delay()
+    assert called == [True]
