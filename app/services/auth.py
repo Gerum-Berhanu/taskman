@@ -30,7 +30,11 @@ from app.dto.repository import (
     UserRecord,
 )
 from app.dto.api.user import UserRead
-from app.observability.events import DomainLogEvent
+from app.observability.events.domain import (
+    USER_LOGIN_SUCCEEDED,
+    USER_LOGOUT,
+    USER_LOGOUT_ALL,
+)
 from app.observability.log_event import log_event
 from app.services.base import BaseService
 
@@ -98,7 +102,7 @@ class AuthService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.USER_LOGIN_SUCCEEDED,
+            USER_LOGIN_SUCCEEDED,
             after_commit=self._uow,
             user_id=user_id,
         )
@@ -145,7 +149,7 @@ class AuthService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.USER_LOGOUT,
+            USER_LOGOUT,
             after_commit=self._uow,
             user_id=user_id,
             session_id=session_id,
@@ -226,7 +230,7 @@ class AuthService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.USER_LOGOUT,
+            USER_LOGOUT,
             after_commit=self._uow,
             user_id=session.user_id,
             session_id=session.id,
@@ -249,7 +253,7 @@ class AuthService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.USER_LOGOUT_ALL,
+            USER_LOGOUT_ALL,
             after_commit=self._uow,
             user_id=session.user_id,
             session_id=session.id,

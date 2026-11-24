@@ -18,7 +18,7 @@ from app.exceptions import (
 from app.dependencies.service import CurrentUserDep
 from app.infrastructure.redis.lua_loader import LuaScriptName
 from app.infrastructure.redis.rate_limit import HITTERS
-from app.observability.events import HttpLogEvent
+from app.observability.events.http import RATE_LIMIT_BACKEND_ERROR, RATE_LIMIT_EXCEEDED
 from app.observability.log_event import log_event
 
 # Redis outages, timeouts, and missing scripts when init failed at startup.
@@ -79,7 +79,7 @@ class _RequireLimit:
             log_event(
                 logger,
                 logging.ERROR,
-                HttpLogEvent.RATE_LIMIT_BACKEND_ERROR,
+                RATE_LIMIT_BACKEND_ERROR,
                 exc_info=True,
                 scope=self.scope,
                 **log_kwargs,
@@ -90,7 +90,7 @@ class _RequireLimit:
             log_event(
                 logger,
                 logging.WARNING,
-                HttpLogEvent.RATE_LIMIT_EXCEEDED,
+                RATE_LIMIT_EXCEEDED,
                 scope=self.scope,
                 **log_kwargs,
             )

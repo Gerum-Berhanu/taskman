@@ -20,7 +20,12 @@ from app.infrastructure.redis.cache import (
 )
 from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
-from app.observability.events import DomainLogEvent
+from app.observability.events.domain import (
+    CACHE_BACKEND_ERROR,
+    TASK_CREATED,
+    TASK_DELETED,
+    TASK_UPDATED,
+)
 from app.observability.log_event import log_event
 from app.services.base import BaseService
 from app.workers.tasks import export_workspace_tasks
@@ -57,7 +62,7 @@ class TaskService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.TASK_CREATED,
+            TASK_CREATED,
             after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task.id,
@@ -100,7 +105,7 @@ class TaskService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.TASK_UPDATED,
+            TASK_UPDATED,
             after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task_id,
@@ -116,7 +121,7 @@ class TaskService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.TASK_DELETED,
+            TASK_DELETED,
             after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task_id,
@@ -133,7 +138,7 @@ class TaskService(BaseService):
                 log_event(
                     logger,
                     ERROR,
-                    DomainLogEvent.CACHE_BACKEND_ERROR,
+                    CACHE_BACKEND_ERROR,
                     exc_info=True,
                     op="get",
                     key="invalid_cached_summary",

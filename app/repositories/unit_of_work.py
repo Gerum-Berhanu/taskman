@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.infrastructure.database.session import async_session_factory
-from app.observability.events import OpsLogEvent
+from app.observability.events.ops import AFTER_COMMIT_FAILED
 from app.observability.log_event import log_event
 from app.repositories.client_session import ClientSessionRepository
 from app.repositories.refresh_token import RefreshTokenRepository
@@ -68,7 +68,7 @@ class UnitOfWork:
                 log_event(
                     logger,
                     logging.ERROR,
-                    OpsLogEvent.AFTER_COMMIT_FAILED,
+                    AFTER_COMMIT_FAILED,
                     exc_info=True,
                 )
 

@@ -17,7 +17,7 @@ from app.dto.api.workspace_member import (
     WorkspaceMemberRole,
 )
 from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
-from app.observability.events import DomainLogEvent
+from app.observability.events.domain import WORKSPACE_MEMBER_ADDED
 from app.observability.log_event import log_event
 from app.services.base import BaseService
 
@@ -62,7 +62,7 @@ class WorkspaceMemberService(BaseService):
         log_event(
             logger,
             INFO,
-            DomainLogEvent.WORKSPACE_MEMBER_ADDED,
+            WORKSPACE_MEMBER_ADDED,
             after_commit=self._uow,
             workspace_id=workspace_id,
             member_id=created.user_id,

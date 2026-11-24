@@ -9,7 +9,7 @@ from resend.exceptions import ResendError
 from app.core.config import settings
 from app.infrastructure.email.providers.resend import send_via_resend
 from app.infrastructure.email.providers.smtp import send_via_smtp
-from app.observability.events import InfraLogEvent
+from app.observability.events.infra import EMAIL_SEND_FAILED, EMAIL_SENT, EMAIL_SKIPPED
 from app.observability.log_event import log_event
 
 
@@ -42,7 +42,7 @@ def send_mail(
         log_event(
             logger,
             logging.INFO,
-            InfraLogEvent.EMAIL_SKIPPED,
+            EMAIL_SKIPPED,
             email=to,
             reason="email_disabled",
             subject=subject,
@@ -72,7 +72,7 @@ def send_mail(
         log_event(
             logger,
             logging.ERROR,
-            InfraLogEvent.EMAIL_SEND_FAILED,
+            EMAIL_SEND_FAILED,
             exc_info=True,
             email=to,
             subject=subject,
@@ -82,7 +82,7 @@ def send_mail(
     log_event(
         logger,
         logging.INFO,
-        InfraLogEvent.EMAIL_SENT,
+        EMAIL_SENT,
         email=to,
         subject=subject,
     )

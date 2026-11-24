@@ -7,7 +7,7 @@ from uuid import UUID
 from app.core.config import settings
 from app.infrastructure.redis.client import redis_clients
 from app.infrastructure.redis.errors import REDIS_DATA_ERRORS
-from app.observability.events import DomainLogEvent
+from app.observability.events.domain import CACHE_BACKEND_ERROR
 from app.observability.log_event import log_event
 
 
@@ -27,7 +27,7 @@ async def get_cached_summary(workspace_id: UUID) -> dict[str, Any] | None:
         log_event(
             logger,
             logging.ERROR,
-            DomainLogEvent.CACHE_BACKEND_ERROR,
+            CACHE_BACKEND_ERROR,
             exc_info=True,
             op="get",
             key=key,
@@ -48,7 +48,7 @@ async def set_cached_summary(workspace_id: UUID, payload: dict[str, Any]) -> Non
         log_event(
             logger,
             logging.ERROR,
-            DomainLogEvent.CACHE_BACKEND_ERROR,
+            CACHE_BACKEND_ERROR,
             exc_info=True,
             op="set",
             key=key,
@@ -67,7 +67,7 @@ async def invalidate_summary_cache(workspace_id: UUID) -> None:
         log_event(
             logger,
             logging.ERROR,
-            DomainLogEvent.CACHE_BACKEND_ERROR,
+            CACHE_BACKEND_ERROR,
             exc_info=True,
             op="delete",
             key=key,

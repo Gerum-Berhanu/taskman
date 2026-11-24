@@ -1,0 +1,12 @@
+"""Domain log event tags (``app.services.*`` → envelope ``domain``)."""
+
+USER_REGISTERED = "user_registered"
+USER_LOGIN_SUCCEEDED = "user_login_succeeded"
+USER_LOGOUT = "user_logout"
+USER_LOGOUT_ALL = "user_logout_all"
+WORKSPACE_CREATED = "workspace_created"
+WORKSPACE_MEMBER_ADDED = "workspace_member_added"
+TASK_CREATED = "task_created"
+TASK_UPDATED = "task_updated"
+TASK_DELETED = "task_deleted"
+CACHE_BACKEND_ERROR = "cache_backend_error"

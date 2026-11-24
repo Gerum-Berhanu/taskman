@@ -12,7 +12,7 @@ from redis.exceptions import RedisError
 from app.core.config import settings
 from app.infrastructure.redis.lua_loader import LUA_SCRIPTS, LuaScriptName
 from app.infrastructure.redis.ops import RedisOps
-from app.observability.events import InfraLogEvent
+from app.observability.events.infra import REDIS_UNAVAILABLE_AT_STARTUP
 from app.observability.log_event import log_event
 
 
@@ -54,7 +54,7 @@ class RedisClient(RedisOps):
             log_event(
                 logger,
                 logging.ERROR,
-                InfraLogEvent.REDIS_UNAVAILABLE_AT_STARTUP,
+                REDIS_UNAVAILABLE_AT_STARTUP,
                 exc_info=True,
                 role=self.role,
             )

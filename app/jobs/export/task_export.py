@@ -4,7 +4,7 @@ from uuid import UUID
 
 from app.infrastructure.email.mails import send_tasks_export_email
 from app.jobs.export.tasks_csv import tasks_to_csv
-from app.observability.events import OpsLogEvent
+from app.observability.events.ops import TASK_EXPORT_FAILED, TASK_EXPORT_SENT
 from app.observability.log_event import log_event
 from app.repositories import unit_of_work
 
@@ -33,7 +33,7 @@ async def run_tasks_export(
         log_event(
             logger,
             logging.ERROR,
-            OpsLogEvent.TASK_EXPORT_FAILED,
+            TASK_EXPORT_FAILED,
             exc_info=True,
             workspace_id=workspace_id,
             email=to_email,
@@ -44,7 +44,7 @@ async def run_tasks_export(
     log_event(
         logger,
         logging.INFO,
-        OpsLogEvent.TASK_EXPORT_SENT,
+        TASK_EXPORT_SENT,
         workspace_id=workspace_id,
         email=to_email,
         actor_id=actor_id or "-",

@@ -6,7 +6,7 @@ import time
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from app.observability.events import HttpLogEvent
+from app.observability.events.http import HTTP_ACCESS
 from app.observability.log_event import log_event
 
 
@@ -27,7 +27,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         log_event(
             logger,
             level,
-            HttpLogEvent.HTTP_ACCESS,
+            HTTP_ACCESS,
             method=request.method,
             path=request.url.path,
             status=response.status_code,

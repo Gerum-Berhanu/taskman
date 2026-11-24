@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.request_context import request_id_ctx
 from app.exceptions.types import AppError
-from app.observability.events import HttpLogEvent
+from app.observability.events.http import APP_ERROR, UNHANDLED_ERROR, VALIDATION_ERROR
 from app.observability.log_event import log_event
 
 
@@ -24,7 +24,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         log_event(
             logger,
             level,
-            HttpLogEvent.APP_ERROR,
+            APP_ERROR,
             actor_id=getattr(request.state, "actor_id", "-"),
             detail=exc.detail,
         )
@@ -44,7 +44,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             log_event(
                 logger,
                 logging.ERROR,
-                HttpLogEvent.UNHANDLED_ERROR,
+                UNHANDLED_ERROR,
                 exc_info=True,
                 actor_id=getattr(request.state, "actor_id", "-"),
                 detail=detail,
@@ -70,7 +70,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         log_event(
             logger,
             logging.WARNING,
-            HttpLogEvent.VALIDATION_ERROR,
+            VALIDATION_ERROR,
             actor_id=getattr(request.state, "actor_id", "-"),
             detail=detail,
         )

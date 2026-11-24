@@ -2,7 +2,10 @@ import asyncio
 import logging
 import sys
 
-from app.observability.events import OpsLogEvent
+from app.observability.events.ops import (
+    CLIENT_SESSIONS_PURGE_FAILED,
+    CLIENT_SESSIONS_PURGED,
+)
 from app.observability.log_event import log_event
 from app.observability.setup import setup_logging
 from app.repositories import unit_of_work
@@ -19,7 +22,7 @@ async def run_purge_expired_sessions() -> None:
         log_event(
             logger,
             logging.ERROR,
-            OpsLogEvent.CLIENT_SESSIONS_PURGE_FAILED,
+            CLIENT_SESSIONS_PURGE_FAILED,
             exc_info=True,
         )
         raise
@@ -27,7 +30,7 @@ async def run_purge_expired_sessions() -> None:
     log_event(
         logger,
         logging.INFO,
-        OpsLogEvent.CLIENT_SESSIONS_PURGED,
+        CLIENT_SESSIONS_PURGED,
         deleted=count,
     )
 
