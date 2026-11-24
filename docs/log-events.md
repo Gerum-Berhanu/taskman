@@ -1,10 +1,42 @@
 # Log event tags
 
-Stable event tags for app logs. Tags are registered in code as category enums under `LogEvent` (`HttpLogEvent`, `InfraLogEvent`, `OpsLogEvent`, `DomainLogEvent` in `app/observability/events.py`); this doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`. Emit catalog events only via `log_event` in `app/observability/log_event.py`. Domain write events from services go through `BaseService.log_after_commit` (queued on `UnitOfWork.after_commit`) so they run only after a successful commit.
+Stable event tags for app logs. Tags are plain `str` constants in one module per scope under `app/observability/events/` (`http.py`, `infra.py`, `ops.py`, `domain.py`). This doc describes fields and when they fire. Envelope (`timestamp`, `level`, `category`, `logger`, `request_id`) comes from `app/observability/`.
+
+Emit catalog events only via `log_event` in `app/observability/log_event.py`. Import levels and tags selectively at call sites (no StrEnum hierarchy, no `BaseService.log_after_commit`):
+
+```python
+from logging import INFO, getLogger
+
+from app.observability.events.domain import TASK_CREATED
+from app.observability.log_event import log_event
+
+log_event(
+    getLogger(__name__),
+    INFO,
+    TASK_CREATED,
+    after_commit=self._uow,
+    workspace_id=workspace_id,
+    task_id=task.id,
+)
+```
+
+Domain write successes pass `after_commit=uow` so the emit is queued on `UnitOfWork.after_commit` and runs only after a successful commit (rollback clears the queue). Errors, infra, HTTP, rate-limit, and mail transport stay **immediate** (omit `after_commit`).
+
+Queryable admin audit history is **out of scope** until there is a real compliance or admin audit UI need (a future `audit_events` table, not app stdout logs). Do not add a Postgres `logs` table for app events.
+
+## Persistence
+
+| Sink | When |
+|------|------|
+| Stdout | Always |
+| Rotating file | When `LOG_FILE=true` |
+| JSON lines | When `LOG_JSON=true` (text otherwise) |
+
+JSON on stdout is the intended handoff for an external collector later. Taskman does **not** store app logs in Postgres. Settings: `LOG_LEVEL`, `LOG_JSON`, `LOG_FILE`.
 
 ## Format
 
-App events share one call shape: `log_event(logger, level, event, *, exc_info=False, **fields)`. Field keys come from the catalog below — no prose, no `category=` in the payload. On failure inside an `except`, pass `exc_info=True`.
+App events share one call shape: `log_event(logger, level, event, *, after_commit=None, exc_info=False, **fields)`. Prefer bare levels from `logging` (`INFO`, `WARNING`, `ERROR`). Field keys come from the catalog below: no prose, no `category=` in the payload. On failure inside an `except`, pass `exc_info=True`.
 
 **Text** (`LOG_JSON=false`): envelope then `event key=value …`. Values for `detail` / `subject` are `repr`'d (may contain spaces). Tag-only events are just the event string.
 
@@ -12,7 +44,7 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
 2026-01-01 12:00:00Z | WARNING | http | app.exceptions.handlers | req-1 | validation_error actor_id=- detail='Field required at email'
 ```
 
-**JSON** (`LOG_JSON=true`): same envelope keys as top-level fields, plus `event` (catalog tag) and `fields` (attr object; `{}` if tag-only). No top-level rendered `message` for app events — do not nest attrs under a `message` object. Third-party / non-catalog logs (no `event` on the record) keep a `message` string. When a traceback is attached, JSON also has `exception`.
+**JSON** (`LOG_JSON=true`): same envelope keys as top-level fields, plus `event` (catalog tag) and `fields` (attr object; `{}` if tag-only). No top-level rendered `message` for app events: do not nest attrs under a `message` object. Third-party / non-catalog logs (no `event` on the record) keep a `message` string. When a traceback is attached, JSON also has `exception`.
 
 ```json
 {
@@ -27,13 +59,13 @@ App events share one call shape: `log_event(logger, level, event, *, exc_info=Fa
 ```
 
 - Domain success tags: past tense (`task_created`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
-- Ids as strings; missing actor/session/user-like ids → `-`.
+- Ids as strings; missing actor/session/user-like ids -> `-`.
 - **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `scope`+`ip`/`user_id`). Join on envelope `request_id` when you need both.
 
 ## Category
 
 Closed set: `http` | `domain` | `infra` | `ops`.  
-`CategoryFilter` walks the logger name upward (`app.services.task` → `app.services` → …) until a prefix in the map matches; unknown → `ops`. More specific prefixes win (e.g. `app.dependencies.rate_limit` over a bare `app.dependencies` if both existed). No `extra=` at call sites — put the logger under the right prefix.
+`CategoryFilter` walks the logger name upward (`app.services.task` -> `app.services` -> ...) until a prefix in the map matches; unknown -> `ops`. More specific prefixes win (e.g. `app.dependencies.rate_limit` over a bare `app.dependencies` if both existed). No `extra=` at call sites: put the logger under the right prefix.
 
 | Logger-name prefix | category |
 |--------------------|----------|
@@ -46,7 +78,7 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 | `app.jobs` | `ops` |
 | `app.main` | `ops` |
 
-**Intentional mismatches** (tag name ≠ envelope category — package wins):
+**Intentional mismatches** (tag name != envelope category; package wins):
 
 | Tag | Logger package | Envelope |
 |-----|----------------|----------|
@@ -54,9 +86,9 @@ Closed set: `http` | `domain` | `infra` | `ops`.
 
 ## Catalog
 
-Inventory matches current `log_event` call sites. Section header = expected envelope category.
+Inventory matches current `log_event` call sites. Section header = expected envelope category. Import tags from `app.observability.events.<scope>` (e.g. `from app.observability.events.http import HTTP_ACCESS`).
 
-### `http` — `app.middleware.*`, `app.exceptions.handlers`, `app.dependencies.rate_limit`
+### `http` - `app.observability.events.http` (`app.middleware.*`, `app.exceptions.handlers`, `app.dependencies.rate_limit`)
 
 Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). App/validation errors: `app/exceptions/handlers.py`. Rate limits: `app/dependencies/rate_limit.py`.
 
@@ -71,7 +103,7 @@ Access log: `AccessLogMiddleware` (`app/middleware/access_log.py`). App/validati
 
 Login/refresh failures surface as `app_error`, not service tags.
 
-### `infra` — `app.infrastructure.*`
+### `infra` - `app.observability.events.infra` (`app.infrastructure.*`)
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
@@ -80,17 +112,17 @@ Login/refresh failures surface as `app_error`, not service tags.
 | `email_send_failed` | `ERROR` + tb | Send raised; caller still succeeds | `email`, `subject` |
 | `email_skipped` | `INFO` | `EMAIL_ENABLED=false` | `email`, `reason` (`email_disabled`), `subject` |
 
-### `ops` — `app.repositories.*`, `app.jobs.*`
+### `ops` - `app.observability.events.ops` (`app.repositories.*`, `app.jobs.*`)
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|
-| `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit (HTTP outcome unchanged; welcome enqueue included) | — |
+| `after_commit_failed` | `ERROR` + tb | `after_commit` callback raised after commit (HTTP outcome unchanged; welcome enqueue included) | - |
 | `task_export_sent` | `INFO` | Export finished (CSV + mailer) | `workspace_id`, `email`, `actor_id`, `subject` |
 | `task_export_failed` | `ERROR` + tb | Export job failed after a successful **202** publish | `workspace_id`, `email`, `actor_id` |
 | `client_sessions_purged` | `INFO` | Purge job deleted expired sessions (Beat-scheduled or manual CLI) | `deleted` |
-| `client_sessions_purge_failed` | `ERROR` + tb | Purge job raised; Celery worker fails the task / CLI exits non-zero | — |
+| `client_sessions_purge_failed` | `ERROR` + tb | Purge job raised; Celery worker fails the task / CLI exits non-zero | - |
 
-### `domain` — `app.services.*`
+### `domain` - `app.observability.events.domain` (`app.services.*`; success tags use `after_commit=`)
 
 | Tag | Level | When | Fields |
 |-----|-------|------|--------|

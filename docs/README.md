@@ -9,7 +9,7 @@
 | [email.md](email.md) | SMTP + Jinja HTML; Celery worker + Beat (mail, export, session purge) |
 | [registration-otp.md](registration-otp.md) | Email OTP registration tickets (202 start / 201 verify) |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
-| [log-events.md](log-events.md) | Log event tags, text/JSON shapes (`http_access`, domain events, …) |
+| [log-events.md](log-events.md) | Log event tags, `log_event` / `after_commit`, scope modules, sinks |
 | [project-requirements.md](project-requirements.md) | Capstone project spec (target system) |
 | [rate-limiting.md](rate-limiting.md) | Redis rate limiting (fail-closed **503**; **429** when over budget) |
 | [writing-readme.md](writing-readme.md) | Standards for the root README |
@@ -19,7 +19,7 @@
 | Path | Role |
 |------|------|
 | `app/core/` | Shared primitives (config, security, time, request context) |
-| `app/observability/` | Logging setup |
+| `app/observability/` | Logging setup, `log_event`, event tag modules (`events/`) |
 | `app/exceptions/` | Domain error types + FastAPI JSON error handlers |
 | `app/middleware/` | ASGI middleware (`AccessLogMiddleware`, request id) |
 | `app/dependencies/` | FastAPI DI (session/UoW, services, rate limits, RBAC) |

@@ -57,7 +57,7 @@ After a successful `POST /auth/register/verify` commit, Taskman enqueues a welco
 ### Flow
 
 1. `UserService.complete_registration` creates the user and queues work with `UnitOfWork.after_commit`.
-2. One callback logs `user_registered` in-process (`log_after_commit`; not on the broker).
+2. One callback logs `user_registered` in-process via `log_event(..., after_commit=uow)` (not on the broker).
 3. Another calls `send_welcome_email_task.delay(...)` so Celery publishes to RabbitMQ after a successful commit.
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent.
 5. A Celery worker later runs `send_welcome_email` → `send_mail`. Job outcome does not climb back on the HTTP response.
