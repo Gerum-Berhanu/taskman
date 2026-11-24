@@ -1,6 +1,6 @@
 """Workspace-scoped task application services."""
 
-import logging
+from logging import ERROR, INFO, getLogger
 from uuid import UUID
 
 from celery.exceptions import OperationalError
@@ -26,7 +26,7 @@ from app.services.base import BaseService
 from app.workers.tasks import export_workspace_tasks
 
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 class TaskService(BaseService):
@@ -54,8 +54,11 @@ class TaskService(BaseService):
         await self._validate_assignee(workspace_id, payload.assigned_user_id)
         fields = TaskCreateData(**payload.model_dump(), workspace_id=workspace_id)
         task = await self._uow.tasks.create(fields)
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.TASK_CREATED,
+            after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task.id,
             actor_id=current_user_id_ctx.get(),
@@ -94,8 +97,11 @@ class TaskService(BaseService):
         if task is None:
             raise TaskNotFoundError
 
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.TASK_UPDATED,
+            after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task_id,
             actor_id=current_user_id_ctx.get(),
@@ -107,8 +113,11 @@ class TaskService(BaseService):
         """Delete a task in the workspace or raise not-found."""
         if not await self._uow.tasks.delete(workspace_id, task_id):
             raise TaskNotFoundError
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.TASK_DELETED,
+            after_commit=self._uow,
             workspace_id=workspace_id,
             task_id=task_id,
             actor_id=current_user_id_ctx.get(),
@@ -123,7 +132,7 @@ class TaskService(BaseService):
             except ValidationError:
                 log_event(
                     logger,
-                    logging.ERROR,
+                    ERROR,
                     DomainLogEvent.CACHE_BACKEND_ERROR,
                     exc_info=True,
                     op="get",

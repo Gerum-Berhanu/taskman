@@ -1,5 +1,6 @@
 """Workspace application services."""
 
+from logging import INFO, getLogger
 from uuid import UUID
 
 from app.exceptions import WorkspaceForbiddenError
@@ -8,8 +9,12 @@ from app.repositories.unit_of_work import UnitOfWork
 from app.dto.api.workspace import WorkspaceCreate, WorkspaceRead
 from app.dto.api.workspace_member import WorkspaceMemberCreate, WorkspaceMemberRole
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.services.base import BaseService
 from app.services.workspace_member import WorkspaceMemberService
+
+
+logger = getLogger(__name__)
 
 
 class WorkspaceService(BaseService):
@@ -35,8 +40,11 @@ class WorkspaceService(BaseService):
                 role=WorkspaceMemberRole.OWNER,
             ),
         )
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.WORKSPACE_CREATED,
+            after_commit=self._uow,
             workspace_id=workspace.id,
             owner_id=user_id,
         )

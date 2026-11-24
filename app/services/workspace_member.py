@@ -1,5 +1,6 @@
 """Workspace membership application services."""
 
+from logging import INFO, getLogger
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +18,11 @@ from app.dto.api.workspace_member import (
 )
 from app.dto.repository import WorkspaceMemberCreateData, WorkspaceMemberRecord
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.services.base import BaseService
+
+
+logger = getLogger(__name__)
 
 
 class WorkspaceMemberService(BaseService):
@@ -54,8 +59,11 @@ class WorkspaceMemberService(BaseService):
         except IntegrityError:
             raise MembershipAlreadyExistsError from None
 
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.WORKSPACE_MEMBER_ADDED,
+            after_commit=self._uow,
             workspace_id=workspace_id,
             member_id=created.user_id,
             role=created.role,

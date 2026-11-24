@@ -1,5 +1,6 @@
 """User registration application services."""
 
+from logging import INFO, getLogger
 from uuid import UUID
 
 from celery.exceptions import OperationalError
@@ -29,8 +30,12 @@ from app.infrastructure.redis.registration.pending import (
     incr_attempt,
 )
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.services.base import BaseService
 from app.workers.tasks import send_registration_otp_email_task, send_welcome_email_task
+
+
+logger = getLogger(__name__)
 
 
 class UserService(BaseService):
@@ -122,8 +127,11 @@ class UserService(BaseService):
         await self._clear_pending(registration_id)
 
         user_email = user.email
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.USER_REGISTERED,
+            after_commit=self._uow,
             user_id=user.id,
             email=user_email,
         )

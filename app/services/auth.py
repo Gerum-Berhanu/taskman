@@ -1,6 +1,7 @@
 """Authentication, token issuance, and session lifecycle."""
 
 from datetime import timedelta
+from logging import INFO, getLogger
 from typing import Any
 from uuid import UUID
 
@@ -30,8 +31,11 @@ from app.dto.repository import (
 )
 from app.dto.api.user import UserRead
 from app.observability.events import DomainLogEvent
+from app.observability.log_event import log_event
 from app.services.base import BaseService
 
+
+logger = getLogger(__name__)
 
 _DUMMY_HASH = get_password_hash("__timing_guard__")
 
@@ -91,8 +95,11 @@ class AuthService(BaseService):
 
         access_token = self._create_access_token(data={"sub": str(user_id)})
 
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.USER_LOGIN_SUCCEEDED,
+            after_commit=self._uow,
             user_id=user_id,
         )
         return access_token, raw_token, client_session.device_id
@@ -135,8 +142,11 @@ class AuthService(BaseService):
         if not deleted:
             raise SessionNotFoundError
 
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.USER_LOGOUT,
+            after_commit=self._uow,
             user_id=user_id,
             session_id=session_id,
         )
@@ -213,8 +223,11 @@ class AuthService(BaseService):
         if not deleted:
             raise InvalidTokenError
 
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.USER_LOGOUT,
+            after_commit=self._uow,
             user_id=session.user_id,
             session_id=session.id,
         )
@@ -233,8 +246,11 @@ class AuthService(BaseService):
         await self._uow.client_sessions.delete_all_user_sessions(
             session.user_id, except_session_id=session.id
         )
-        self.log_after_commit(
+        log_event(
+            logger,
+            INFO,
             DomainLogEvent.USER_LOGOUT_ALL,
+            after_commit=self._uow,
             user_id=session.user_id,
             session_id=session.id,
         )
