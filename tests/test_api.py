@@ -88,6 +88,31 @@ def tasks_url(workspace_id: str, task_id: str | None = None) -> str:
     return f"{base}/{task_id}" if task_id else base
 
 
+def post_tasks(
+    client: TestClient,
+    workspace_id: str,
+    headers: dict[str, str],
+    items: list[dict],
+):
+    """POST collection create with a JSON array of task bodies."""
+    return client.post(tasks_url(workspace_id), json=items, headers=headers)
+
+
+def delete_tasks(
+    client: TestClient,
+    workspace_id: str,
+    headers: dict[str, str],
+    task_ids: list[str],
+):
+    """DELETE collection with a JSON array of task ids."""
+    return client.request(
+        "DELETE",
+        tasks_url(workspace_id),
+        json=task_ids,
+        headers=headers,
+    )
+
+
 def test_health(client: TestClient) -> None:
     response = client.get("/health")
 
@@ -172,14 +197,17 @@ def test_workspace_task_crud(client: TestClient) -> None:
     workspace = create_workspace(client, headers)
     workspace_id = workspace["id"]
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "First task", "description": "Test description"},
-        headers=headers,
+    created = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": "First task", "description": "Test description"}],
     )
 
     assert created.status_code == 201, created.text
-    task = created.json()
+    body = created.json()
+    assert isinstance(body, list) and len(body) == 1
+    task = body[0]
     task_id = task["id"]
     assert UUID(task_id)
     assert task["title"] == "First task"
@@ -209,7 +237,7 @@ def test_workspace_task_crud(client: TestClient) -> None:
         or updated.json()["updated_at"].endswith("+00:00")
     )
 
-    deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
+    deleted = delete_tasks(client, workspace_id, headers, [task_id])
     assert deleted.status_code == 204
     assert deleted.content == b""
 
@@ -218,7 +246,7 @@ def test_workspace_task_crud(client: TestClient) -> None:
     assert missing.json()["detail"] == "Task not found"
 
 
-def test_missing_task_update_and_delete_return_not_found(
+def test_missing_task_update_404_delete_ignores_unknown(
     client: TestClient,
 ) -> None:
     register(client)
@@ -232,15 +260,11 @@ def test_missing_task_update_and_delete_return_not_found(
         json={"title": "Does not exist"},
         headers=headers,
     )
-    deleted = client.delete(
-        tasks_url(workspace_id, missing_task_id),
-        headers=headers,
-    )
+    deleted = delete_tasks(client, workspace_id, headers, [missing_task_id])
 
     assert updated.status_code == 404
     assert updated.json()["detail"] == "Task not found"
-    assert deleted.status_code == 404
-    assert deleted.json()["detail"] == "Task not found"
+    assert deleted.status_code == 204
 
 
 def test_viewer_cannot_create_or_delete_task(client: TestClient) -> None:
@@ -259,28 +283,23 @@ def test_viewer_cannot_create_or_delete_task(client: TestClient) -> None:
     )
     assert added.status_code == 201, added.text
 
-    create_as_viewer = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Nope"},
-        headers=viewer_headers,
+    create_as_viewer = post_tasks(
+        client, workspace_id, viewer_headers, [{"title": "Nope"}]
     )
     assert create_as_viewer.status_code == 403
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Owner task"},
-        headers=owner_headers,
+    created = post_tasks(
+        client, workspace_id, owner_headers, [{"title": "Owner task"}]
     )
     assert created.status_code == 201, created.text
-    task_id = created.json()["id"]
+    task_id = created.json()[0]["id"]
 
     listed = client.get(tasks_url(workspace_id), headers=viewer_headers)
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
-    delete_as_viewer = client.delete(
-        tasks_url(workspace_id, task_id),
-        headers=viewer_headers,
+    delete_as_viewer = delete_tasks(
+        client, workspace_id, viewer_headers, [task_id]
     )
     assert delete_as_viewer.status_code == 403
 
@@ -301,30 +320,33 @@ def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
     )
     assert added.status_code == 201, added.text
 
-    missing_user = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Bad user", "assigned_user_id": str(uuid4())},
-        headers=owner_headers,
+    missing_user = post_tasks(
+        client,
+        workspace_id,
+        owner_headers,
+        [{"title": "Bad user", "assigned_user_id": str(uuid4())}],
     )
-    assert missing_user.status_code == 404
-    assert missing_user.json()["detail"] == "User not found"
+    assert missing_user.status_code == 400
+    assert missing_user.json()["detail"] == "Assignee is not a member of the workspace"
 
-    non_member = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Outsider", "assigned_user_id": outsider["id"]},
-        headers=owner_headers,
+    non_member = post_tasks(
+        client,
+        workspace_id,
+        owner_headers,
+        [{"title": "Outsider", "assigned_user_id": outsider["id"]}],
     )
     assert non_member.status_code == 400
     assert non_member.json()["detail"] == "Assignee is not a member of the workspace"
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Assigned", "assigned_user_id": member["id"]},
-        headers=owner_headers,
+    created = post_tasks(
+        client,
+        workspace_id,
+        owner_headers,
+        [{"title": "Assigned", "assigned_user_id": member["id"]}],
     )
     assert created.status_code == 201, created.text
-    assert created.json()["assigned_user_id"] == member["id"]
-    task_id = created.json()["id"]
+    assert created.json()[0]["assigned_user_id"] == member["id"]
+    task_id = created.json()[0]["id"]
 
     reassigned = client.patch(
         tasks_url(workspace_id, task_id),
@@ -411,20 +433,16 @@ def test_reject_empty_workspace_name_and_task_title(client: TestClient) -> None:
     workspace = create_workspace(client, headers)
     workspace_id = workspace["id"]
 
-    empty_create = client.post(
-        tasks_url(workspace_id),
-        json={"title": ""},
-        headers=headers,
+    empty_create = post_tasks(
+        client, workspace_id, headers, [{"title": ""}]
     )
     assert empty_create.status_code == 422
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Valid"},
-        headers=headers,
+    created = post_tasks(
+        client, workspace_id, headers, [{"title": "Valid"}]
     )
     assert created.status_code == 201, created.text
-    task_id = created.json()["id"]
+    task_id = created.json()[0]["id"]
 
     empty_update = client.patch(
         tasks_url(workspace_id, task_id),
@@ -450,20 +468,22 @@ def test_reject_oversized_email_and_task_description(client: TestClient) -> None
     workspace = create_workspace(client, headers)
     workspace_id = workspace["id"]
 
-    rejected_create = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Ok", "description": "x" * 5001},
-        headers=headers,
+    rejected_create = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": "Ok", "description": "x" * 5001}],
     )
     assert rejected_create.status_code == 422
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Ok", "description": "x" * 5000},
-        headers=headers,
+    created = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": "Ok", "description": "x" * 5000}],
     )
     assert created.status_code == 201, created.text
-    task_id = created.json()["id"]
+    task_id = created.json()[0]["id"]
 
     rejected_update = client.patch(
         tasks_url(workspace_id, task_id),
@@ -471,3 +491,136 @@ def test_reject_oversized_email_and_task_description(client: TestClient) -> None
         headers=headers,
     )
     assert rejected_update.status_code == 422
+
+
+def test_list_create_multi_and_rejects_empty_or_bare_object(
+    client: TestClient,
+) -> None:
+    register(client)
+    headers = login(client)
+    workspace_id = create_workspace(client, headers)["id"]
+
+    multi = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": "A"}, {"title": "B"}],
+    )
+    assert multi.status_code == 201, multi.text
+    assert len(multi.json()) == 2
+    assert [t["title"] for t in multi.json()] == ["A", "B"]
+
+    empty = post_tasks(client, workspace_id, headers, [])
+    assert empty.status_code == 422
+
+    bare = client.post(
+        tasks_url(workspace_id),
+        json={"title": "Bare"},
+        headers=headers,
+    )
+    assert bare.status_code == 422
+
+
+def test_list_create_over_max_rejected(client: TestClient) -> None:
+    register(client)
+    headers = login(client)
+    workspace_id = create_workspace(client, headers)["id"]
+
+    # TaskCreateBatch max_length uses settings.task_bulk_max_items (default 50).
+    over = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": f"T{i}"} for i in range(51)],
+    )
+    assert over.status_code == 422
+
+
+def test_list_create_bad_assignee_creates_none(client: TestClient) -> None:
+    register(client, email="owner@example.com")
+    headers = login(client, email="owner@example.com")
+    workspace_id = create_workspace(client, headers)["id"]
+    member = register(client, email="member@example.com")
+    added = client.post(
+        f"/workspaces/{workspace_id}/members",
+        json={"user_id": member["id"], "role": "editor"},
+        headers=headers,
+    )
+    assert added.status_code == 201, added.text
+
+    before = client.get(tasks_url(workspace_id), headers=headers)
+    assert before.status_code == 200
+    assert before.json() == []
+
+    rejected = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [
+            {"title": "Ok", "assigned_user_id": member["id"]},
+            {"title": "Bad", "assigned_user_id": str(uuid4())},
+        ],
+    )
+    assert rejected.status_code == 400
+    assert rejected.json()["detail"] == "Assignee is not a member of the workspace"
+
+    after = client.get(tasks_url(workspace_id), headers=headers)
+    assert after.status_code == 200
+    assert after.json() == []
+
+
+def test_list_delete_multi_and_ignores_unknown_ids(client: TestClient) -> None:
+    register(client)
+    headers = login(client)
+    workspace_id = create_workspace(client, headers)["id"]
+
+    created = post_tasks(
+        client,
+        workspace_id,
+        headers,
+        [{"title": "Keep-or-kill-1"}, {"title": "Keep-or-kill-2"}],
+    )
+    assert created.status_code == 201, created.text
+    ids = [t["id"] for t in created.json()]
+
+    deleted = delete_tasks(
+        client, workspace_id, headers, [ids[0], str(uuid4()), ids[1]]
+    )
+    assert deleted.status_code == 204
+
+    listed = client.get(tasks_url(workspace_id), headers=headers)
+    assert listed.status_code == 200
+    assert listed.json() == []
+
+    again = delete_tasks(client, workspace_id, headers, [str(uuid4())])
+    assert again.status_code == 204
+
+
+def test_list_delete_empty_rejected_editor_forbidden(client: TestClient) -> None:
+    register(client, email="owner@example.com")
+    owner_headers = login(client, email="owner@example.com")
+    workspace_id = create_workspace(client, owner_headers)["id"]
+
+    editor = register(client, email="editor@example.com")
+    editor_headers = login(client, email="editor@example.com")
+    added = client.post(
+        f"/workspaces/{workspace_id}/members",
+        json={"user_id": editor["id"], "role": "editor"},
+        headers=owner_headers,
+    )
+    assert added.status_code == 201, added.text
+
+    created = post_tasks(
+        client, workspace_id, owner_headers, [{"title": "Owned"}]
+    )
+    assert created.status_code == 201, created.text
+    task_id = created.json()[0]["id"]
+
+    empty = delete_tasks(client, workspace_id, owner_headers, [])
+    assert empty.status_code == 422
+
+    as_editor = delete_tasks(client, workspace_id, editor_headers, [task_id])
+    assert as_editor.status_code == 403
+
+    old_path = client.delete(tasks_url(workspace_id, task_id), headers=owner_headers)
+    assert old_path.status_code in (404, 405)

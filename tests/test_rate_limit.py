@@ -14,7 +14,7 @@ from app.dependencies import (
     DomainExportLimit,
     DomainWriteLimit,
 )
-from tests.test_api import create_workspace, login, register, tasks_url
+from tests.test_api import create_workspace, login, post_tasks, register, tasks_url
 from tests.test_auth_refresh import login_tokens, logout, logout_all, refresh
 
 
@@ -162,17 +162,13 @@ def test_domain_write_routes_share_budget(
     _flush_rate_limit_keys()
 
     workspace = create_workspace(client, headers)
-    created = client.post(
-        tasks_url(workspace["id"]),
-        json={"title": "One"},
-        headers=headers,
+    created = post_tasks(
+        client, workspace["id"], headers, [{"title": "One"}]
     )
     assert created.status_code == 201, created.text
 
-    blocked = client.post(
-        tasks_url(workspace["id"]),
-        json={"title": "Two"},
-        headers=headers,
+    blocked = post_tasks(
+        client, workspace["id"], headers, [{"title": "Two"}]
     )
     _assert_rate_limited(blocked)
 
@@ -189,10 +185,8 @@ def test_domain_read_separate_from_domain_write(
     _flush_rate_limit_keys()
 
     workspace = create_workspace(client, headers)
-    blocked_write = client.post(
-        tasks_url(workspace["id"]),
-        json={"title": "Blocked"},
-        headers=headers,
+    blocked_write = post_tasks(
+        client, workspace["id"], headers, [{"title": "Blocked"}]
     )
     _assert_rate_limited(blocked_write)
 
@@ -219,10 +213,8 @@ def test_domain_export_separate_from_domain_write(
 
     workspace = create_workspace(client, headers)
 
-    blocked_write = client.post(
-        tasks_url(workspace["id"]),
-        json={"title": "Blocked"},
-        headers=headers,
+    blocked_write = post_tasks(
+        client, workspace["id"], headers, [{"title": "Blocked"}]
     )
     _assert_rate_limited(blocked_write)
 

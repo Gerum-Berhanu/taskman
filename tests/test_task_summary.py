@@ -8,7 +8,9 @@ from fastapi.testclient import TestClient
 from tests.test_api import (
     FORBIDDEN_DETAIL,
     create_workspace,
+    delete_tasks,
     login,
+    post_tasks,
     register,
     tasks_url,
 )
@@ -40,41 +42,33 @@ def test_summary_counts_mixed_statuses(client: TestClient) -> None:
     headers = login(client)
     workspace_id = create_workspace(client, headers)["id"]
 
-    pending = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Pending one"},
-        headers=headers,
+    pending = post_tasks(
+        client, workspace_id, headers, [{"title": "Pending one"}]
     )
     assert pending.status_code == 201, pending.text
 
-    pending_two = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Pending two"},
-        headers=headers,
+    pending_two = post_tasks(
+        client, workspace_id, headers, [{"title": "Pending two"}]
     )
     assert pending_two.status_code == 201, pending_two.text
 
-    in_progress = client.post(
-        tasks_url(workspace_id),
-        json={"title": "In progress"},
-        headers=headers,
+    in_progress = post_tasks(
+        client, workspace_id, headers, [{"title": "In progress"}]
     )
     assert in_progress.status_code == 201, in_progress.text
     patched = client.patch(
-        tasks_url(workspace_id, in_progress.json()["id"]),
+        tasks_url(workspace_id, in_progress.json()[0]["id"]),
         json={"status": "in_progress"},
         headers=headers,
     )
     assert patched.status_code == 200, patched.text
 
-    completed = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Done"},
-        headers=headers,
+    completed = post_tasks(
+        client, workspace_id, headers, [{"title": "Done"}]
     )
     assert completed.status_code == 201, completed.text
     done = client.patch(
-        tasks_url(workspace_id, completed.json()["id"]),
+        tasks_url(workspace_id, completed.json()[0]["id"]),
         json={"status": "completed"},
         headers=headers,
     )
@@ -131,13 +125,11 @@ def test_summary_tracks_create_update_delete(client: TestClient) -> None:
     assert empty.status_code == 200
     assert empty.json()["total"] == 0
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Track me"},
-        headers=headers,
+    created = post_tasks(
+        client, workspace_id, headers, [{"title": "Track me"}]
     )
     assert created.status_code == 201, created.text
-    task_id = created.json()["id"]
+    task_id = created.json()[0]["id"]
 
     after_create = client.get(summary_url(workspace_id), headers=headers)
     assert after_create.status_code == 200
@@ -162,7 +154,7 @@ def test_summary_tracks_create_update_delete(client: TestClient) -> None:
     assert after_update.json()["pending"] == 0
     assert after_update.json()["total"] == 1
 
-    deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
+    deleted = delete_tasks(client, workspace_id, headers, [task_id])
     assert deleted.status_code == 204
 
     after_delete = client.get(summary_url(workspace_id), headers=headers)
@@ -205,10 +197,8 @@ def test_summary_succeeds_when_cache_backend_errors(
     headers = login(client)
     workspace_id = create_workspace(client, headers)["id"]
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Still counted"},
-        headers=headers,
+    created = post_tasks(
+        client, workspace_id, headers, [{"title": "Still counted"}]
     )
     assert created.status_code == 201, created.text
 
@@ -245,13 +235,11 @@ def test_mutation_calls_cache_invalidation(
         "app.services.task.invalidate_summary_cache", invalidate_mock
     )
 
-    created = client.post(
-        tasks_url(workspace_id),
-        json={"title": "Invalidate me"},
-        headers=headers,
+    created = post_tasks(
+        client, workspace_id, headers, [{"title": "Invalidate me"}]
     )
     assert created.status_code == 201, created.text
-    task_id = created.json()["id"]
+    task_id = created.json()[0]["id"]
 
     assert invalidate_mock.await_count >= 1
     assert any(
@@ -269,6 +257,6 @@ def test_mutation_calls_cache_invalidation(
     assert invalidate_mock.await_count >= 1
 
     invalidate_mock.reset_mock()
-    deleted = client.delete(tasks_url(workspace_id, task_id), headers=headers)
+    deleted = delete_tasks(client, workspace_id, headers, [task_id])
     assert deleted.status_code == 204
     assert invalidate_mock.await_count >= 1
