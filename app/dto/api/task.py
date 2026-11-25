@@ -28,6 +28,12 @@ TaskCreateBatch = Annotated[
 ]
 
 
+TaskDeleteBatch = Annotated[
+    list[UUID4],
+    Field(min_length=1, max_length=settings.task_bulk_max_items)
+]
+
+
 class TaskRead(BaseModel):
     id: UUID4
     title: str

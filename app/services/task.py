@@ -22,7 +22,7 @@ from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events.domain import (
     CACHE_BACKEND_ERROR,
     TASKS_CREATED,
-    TASK_DELETED,
+    TASKS_DELETED,
     TASK_UPDATED,
 )
 from app.observability.log_event import log_event
@@ -93,8 +93,8 @@ class TaskService(BaseService):
             raise TaskNotFoundError
 
         updates = payload.model_dump(exclude_unset=True)
-        uid = updates["assigned_user_id"]
         if "assigned_user_id" in updates:
+            uid = updates["assigned_user_id"]
             await self._assert_assignees_in_workspace(
                 workspace_id, {uid} if uid is not None else set()
             )
@@ -119,17 +119,18 @@ class TaskService(BaseService):
         await invalidate_summary_cache(workspace_id)
         return self._to_read(task)
 
-    async def delete(self, workspace_id: UUID, task_id: UUID) -> None:
-        """Delete a task in the workspace or raise not-found."""
-        if not await self._uow.tasks.delete(workspace_id, task_id):
-            raise TaskNotFoundError
+    async def delete(self, workspace_id: UUID, task_ids: list[UUID]) -> None:
+        """Delete a task in the workspace."""
+        requested = set(task_ids)
+        deleted = await self._uow.tasks.delete_many(workspace_id, requested)
         log_event(
             logger,
             INFO,
-            TASK_DELETED,
+            TASKS_DELETED,
             after_commit=self._uow,
+            count=deleted,
+            requested=len(requested),
             workspace_id=workspace_id,
-            task_id=task_id,
             actor_id=current_user_id_ctx.get(),
         )
         await invalidate_summary_cache(workspace_id)
