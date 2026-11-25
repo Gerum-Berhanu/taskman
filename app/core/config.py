@@ -88,9 +88,11 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    allowed_email_domains: frozenset[str] = Field(default_factory=frozenset)
 
     # Feature TTLs / OTP
     task_summary_cache_ttl_seconds: int = 300  # 5 minutes
+    task_bulk_max_items: int = Field(default=50, ge=1)
     registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
     registration_otp_length: int = Field(default=6, ge=4, le=10)
     registration_otp_max_attempts: int = Field(default=5, ge=1)
@@ -101,6 +103,17 @@ class Settings(BaseSettings):
         if not value:
             raise ValueError("SECRET_KEY must be set in environment or .env file")
         return value
+
+    @field_validator("allowed_email_domains", mode="before")
+    @classmethod
+    def normalize_allowed_email_domains(cls, value: object) -> frozenset[str]:
+        if value is None:
+            return frozenset()
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return frozenset(
+                str(part).strip().casefold() for part in value if str(part).strip()
+            )
+        raise TypeError("allowed_email_domains must be a JSON array of domains")
 
     @property
     def docs_kwargs(self) -> FastAPIDocsKwargs:
