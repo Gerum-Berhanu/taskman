@@ -1,7 +1,7 @@
 """Email OTP registration ticket flow (API-level)."""
 
 import logging
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -184,3 +184,71 @@ def test_verify_welcome_broker_failure_still_201(
     assert response.status_code == 201, response.text
     assert response.json()["detail"] == "User registered successfully"
     assert any("after_commit_failed" in record.message for record in caplog.records)
+
+
+def test_register_allows_any_domain_when_allowlist_empty(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "allowed_email_domains", frozenset())
+    registration_id = uuid4()
+
+    with (
+        patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
+        patch(
+            "app.services.user.create_pending",
+            new_callable=AsyncMock,
+            return_value=registration_id,
+        ) as create_pending,
+        patch("app.services.user.send_registration_otp_email_task.delay"),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={"email": "anyone@example.com", "password": PASSWORD},
+        )
+
+    assert response.status_code == 202, response.text
+    assert response.json()["registration_id"] == str(registration_id)
+    create_pending.assert_awaited_once()
+
+
+def test_register_allows_domain_on_allowlist(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "allowed_email_domains", frozenset({"gmail.com"}))
+    registration_id = uuid4()
+
+    with (
+        patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
+        patch(
+            "app.services.user.create_pending",
+            new_callable=AsyncMock,
+            return_value=registration_id,
+        ) as create_pending,
+        patch("app.services.user.send_registration_otp_email_task.delay"),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={"email": "user@gmail.com", "password": PASSWORD},
+        )
+
+    assert response.status_code == 202, response.text
+    assert response.json()["registration_id"] == str(registration_id)
+    create_pending.assert_awaited_once()
+
+
+def test_register_rejects_domain_outside_allowlist(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "allowed_email_domains", frozenset({"gmail.com"}))
+
+    with patch(
+        "app.services.user.create_pending", new_callable=AsyncMock
+    ) as create_pending:
+        response = client.post(
+            "/auth/register",
+            json={"email": "user@yahoo.com", "password": PASSWORD},
+        )
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "Email domain is not allowed"
+    create_pending.assert_not_awaited()
