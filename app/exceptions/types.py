@@ -69,6 +69,11 @@ class WorkspaceForbiddenError(AppError):
 
 
 # Registration OTP
+class InvalidEmailDomainError(AppError):
+    status_code = HTTP_400_BAD_REQUEST
+    detail = "Email domain is not allowed"
+
+
 class RegistrationOtpAttemptsExceededError(AppError):
     status_code = HTTP_400_BAD_REQUEST
     detail = "Registration attempts exceeded"

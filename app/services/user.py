@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.dto.api.auth import RegisterVerify, UserCreateResponse
 from app.exceptions import (
     EmailAlreadyRegisteredError,
+    InvalidEmailDomainError,
     RegistrationOtpAttemptsExceededError,
     RegistrationOtpInvalidError,
     ServiceUnavailableError,
@@ -41,10 +42,21 @@ logger = getLogger(__name__)
 class UserService(BaseService):
     """Register new users."""
 
+    @staticmethod
+    def _assert_email_domain_allowed(email: str) -> None:
+        allowed = settings.allowed_email_domains
+        if not allowed:
+            return
+        domain = email.rsplit("@", 1)[-1].casefold()
+        if domain not in allowed:
+            raise InvalidEmailDomainError
+
     async def start_registration(self, payload: UserCreate) -> UUID:
         """Check email, create & mail OTP, return registration id / ticket"""
         email = payload.email
         password = payload.password
+
+        self._assert_email_domain_allowed(email)
 
         if await self._uow.users.get_by_email(email) is not None:
             raise EmailAlreadyRegisteredError
