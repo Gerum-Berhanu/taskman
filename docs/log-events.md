@@ -7,16 +7,16 @@ Emit catalog events only via `log_event` in `app/observability/log_event.py`. Im
 ```python
 from logging import INFO, getLogger
 
-from app.observability.events.domain import TASK_CREATED
+from app.observability.events.domain import TASKS_CREATED
 from app.observability.log_event import log_event
 
 log_event(
     getLogger(__name__),
     INFO,
-    TASK_CREATED,
+    TASKS_CREATED,
     after_commit=self._uow,
     workspace_id=workspace_id,
-    task_id=task.id,
+    count=len(created),
 )
 ```
 
@@ -58,7 +58,7 @@ App events share one call shape: `log_event(logger, level, event, *, after_commi
 }
 ```
 
-- Domain success tags: past tense (`task_created`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
+- Domain success tags: past tense (`tasks_created`, `user_registered`). HTTP/infra/errors: noun or `*_error` / `*_failed`.
 - Ids as strings; missing actor/session/user-like ids -> `-`.
 - **HTTP split:** `http_access` owns request outcome (`method`, `path`, `status`, `duration_ms`). Handler / rate-limit tags carry only extra context (`actor_id`+`detail`, or `scope`+`ip`/`user_id`). Join on envelope `request_id` when you need both.
 
@@ -132,9 +132,9 @@ Login/refresh failures surface as `app_error`, not service tags.
 | `user_logout_all` | `INFO` | Other sessions deleted; `session_id` is the kept current session | `user_id`, `session_id` |
 | `workspace_created` | `INFO` | Workspace created | `workspace_id`, `owner_id` |
 | `workspace_member_added` | `INFO` | Member row created | `workspace_id`, `member_id`, `role`, `actor_id` |
-| `task_created` | `INFO` | Task created | `workspace_id`, `task_id`, `actor_id` |
+| `tasks_created` | `INFO` | Task collection create (batch; even when `count == 1`) | `workspace_id`, `count`, `actor_id` |
 | `task_updated` | `INFO` | Task updated | `workspace_id`, `task_id`, `actor_id` |
-| `task_deleted` | `INFO` | Task deleted | `workspace_id`, `task_id`, `actor_id` |
+| `tasks_deleted` | `INFO` | Task collection delete (batch; even when `count == 1`; `count` = rows deleted) | `workspace_id`, `count`, `actor_id` |
 | `cache_backend_error` | `ERROR` + tb | Task-summary Redis get/set/delete failed; fail-open | `op`, `key` (+ `workspace_id` on delete) |
 
 ### Not logged

@@ -7,7 +7,7 @@
 | [commit-messages.md](commit-messages.md) | How we write git commits |
 | [services.md](services.md) | Public vs private service methods (API DTOs vs `_` helpers) |
 | [email.md](email.md) | SMTP + Jinja HTML; Celery worker + Beat (mail, export, session purge) |
-| [registration-otp.md](registration-otp.md) | Email OTP registration tickets (202 start / 201 verify) |
+| [registration-otp.md](registration-otp.md) | Email OTP registration tickets (202 start / 201 verify); optional `ALLOWED_EMAIL_DOMAINS` |
 | [pr-guide.md](pr-guide.md) | How we write pull request descriptions |
 | [log-events.md](log-events.md) | Log event tags, `log_event` / `after_commit`, scope modules, sinks |
 | [project-requirements.md](project-requirements.md) | Capstone project spec (target system) |

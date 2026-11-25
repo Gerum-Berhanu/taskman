@@ -176,7 +176,9 @@ docker exec <container_name_or_id> <command> <args>
 |------|--------|
 | Auth | `POST /auth/register`, `/login`, `/refresh`, `/logout`; `GET /auth/me`, `/sessions`; `DELETE /auth/sessions`, `/sessions/{id}` |
 | Workspaces | `POST /workspaces`; `POST /workspaces/{id}/members` (owner) |
-| Tasks | CRUD under `/workspaces/{workspace_id}/tasks` (RBAC: viewer / editor / owner) |
+| Tasks | Collection under `/workspaces/{workspace_id}/tasks` (RBAC: viewer / editor / owner). **Breaking:** `POST` body/response are JSON **arrays** of tasks (atomic create); `DELETE` takes a JSON **array** of ids on the collection (idempotent delete-what-exists, **204**; missing ids ignored). No `DELETE .../tasks/{task_id}` and no `/tasks/bulk`. Clients need an HTTP stack that supports DELETE bodies. |
+
+Also: `ALLOWED_EMAIL_DOMAINS` (JSON array in env; `[]` = allow all) gates `POST /auth/register` only. See [docs/registration-otp.md](docs/registration-otp.md).
 
 Full target spec (including not-yet-built pieces): [docs/project-requirements.md](docs/project-requirements.md).
 

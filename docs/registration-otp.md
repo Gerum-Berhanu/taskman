@@ -20,9 +20,12 @@ Body: `{ "email", "password" }` (same as before).
 | Status | When |
 |--------|------|
 | **202** | Ticket created; body `RegisterPendingResponse` (`registration_id`, detail) |
+| **400** | Email domain not in `ALLOWED_EMAIL_DOMAINS` when that list is non-empty |
 | **409** | Email already registered |
 | **503** | Registration Redis unavailable, or OTP `.delay` cannot publish (`Service temporarily unavailable`) |
 | **429** | `auth.register` rate limit |
+
+Domain allowlist runs in `start_registration` only (before Redis / Celery). Verify uses the ticket email as-is and does not re-check the domain.
 
 No `users` row yet. OTP mail is enqueued on Celery after the ticket is written (see [email.md](email.md#background-jobs-celery--rabbitmq)). If publish fails, the ticket is **not** cleared; TTL expires the orphan.
 
@@ -57,6 +60,7 @@ Passwords use the normal argon hash; OTPs are SHA-256 digests (same idea as refr
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
+| `ALLOWED_EMAIL_DOMAINS` | JSON array of allowed email domains → `settings.allowed_email_domains` (`frozenset`). `[]` or unset = allow any syntactically valid email. Example: `["gmail.com","googlemail.com"]` | `[]` |
 | `REGISTRATION_OTP_TTL_SECONDS` | Ticket TTL | `600` |
 | `REGISTRATION_OTP_LENGTH` | Digit count | `6` |
 | `REGISTRATION_OTP_MAX_ATTEMPTS` | Wrong-OTP budget before clear | `5` |
