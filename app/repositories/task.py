@@ -14,6 +14,11 @@ class TaskRepository(BaseRepository[Task, TaskRecord, TaskCreateData]):
     model = Task
     record = TaskRecord
 
+    async def create_many(self, items: list[TaskCreateData]) -> list[TaskRecord]:
+        return await self._insert_many_returning(
+            [item.model_dump() for item in items]
+        )
+
     async def _get_orm(self, *, workspace_id: UUID, task_id: UUID) -> Task | None:
         """Load the ORM task scoped to a workspace, or None."""
         statement = select(Task).where(

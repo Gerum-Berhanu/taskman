@@ -2,8 +2,11 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Annotated
 
 from pydantic import UUID4, BaseModel, Field
+
+from app.core.config import settings
 
 
 class TaskStatus(str, Enum):
@@ -17,6 +20,12 @@ class TaskCreate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     due_date: datetime | None = None
     assigned_user_id: UUID4 | None = None
+
+
+TaskCreateBatch = Annotated[
+    list[TaskCreate],
+    Field(min_length=1, max_length=settings.task_bulk_max_items)
+]
 
 
 class TaskRead(BaseModel):

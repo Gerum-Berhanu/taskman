@@ -1,7 +1,9 @@
 """Shared repository helpers for flush/refresh and ORM-to-record mapping."""
 
+from typing import Any
+
 from pydantic import BaseModel
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, insert
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
@@ -41,6 +43,18 @@ class BaseRepository[
         await self._session.flush()
         await self._session.refresh(entity)
         return entity
+
+    async def _insert_many_returning(self, rows: list[dict[str, Any]]) -> list[RecordT]:
+        """Multi-row INSERT ... RETURNING mapped to records (one round trip)."""
+        if not rows:
+            return []
+        result = await self._session.execute(
+            insert(self.model).values(rows).returning(self.model)
+        )
+        return [
+            self.record.model_validate(obj, from_attributes=True)
+            for obj in result.scalars().all()
+        ]
 
     async def _get_orm(self, *identity: object) -> ModelT | None:
         pk = identity[0] if len(identity) == 1 else identity

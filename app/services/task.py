@@ -4,13 +4,12 @@ from logging import ERROR, INFO, getLogger
 from uuid import UUID
 
 from celery.exceptions import OperationalError
-from pydantic import UUID4, ValidationError
+from pydantic import ValidationError
 
 from app.exceptions import (
     AssigneeNotInWorkspaceError,
     ServiceUnavailableError,
     TaskNotFoundError,
-    UserNotFoundError,
 )
 from app.core.request_context import current_user_id_ctx
 from app.infrastructure.redis.cache import (
@@ -22,7 +21,7 @@ from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.repository import TaskCreateData, TaskRecord, TaskUpdateData
 from app.observability.events.domain import (
     CACHE_BACKEND_ERROR,
-    TASK_CREATED,
+    TASKS_CREATED,
     TASK_DELETED,
     TASK_UPDATED,
 )
@@ -37,39 +36,42 @@ logger = getLogger(__name__)
 class TaskService(BaseService):
     """Create, read, update, and delete tasks within a workspace."""
 
-    async def _validate_assignee(
-        self, workspace_id: UUID, assigned_user_id: UUID4 | None
-    ) -> None:
-        """Ensure an assignee exists and belongs to the workspace (no-op if None)."""
-        if assigned_user_id is None:
-            return
-        if await self._uow.users.get(assigned_user_id) is None:
-            raise UserNotFoundError
-        membership = await self._uow.workspace_members.get(
-            workspace_id, assigned_user_id
-        )
-        if membership is None:
-            raise AssigneeNotInWorkspaceError
-
     def _to_read(self, record: TaskRecord) -> TaskRead:
         return TaskRead.model_validate(record, from_attributes=True)
 
-    async def create(self, payload: TaskCreate, workspace_id: UUID) -> TaskRead:
+    async def _assert_assignees_in_workspace(
+        self, workspace_id: UUID, user_ids: set[UUID]
+    ) -> None:
+        if not user_ids:
+            return
+        found = await self._uow.workspace_members.list_in_workspace(workspace_id, user_ids)
+        if {m.user_id for m in found} != user_ids:
+            raise AssigneeNotInWorkspaceError
+
+    async def create(self, payload: list[TaskCreate], workspace_id: UUID) -> list[TaskRead]:
         """Create a task in the workspace after validating the optional assignee."""
-        await self._validate_assignee(workspace_id, payload.assigned_user_id)
-        fields = TaskCreateData(**payload.model_dump(), workspace_id=workspace_id)
-        task = await self._uow.tasks.create(fields)
+        user_ids = set[UUID]()
+        fields = []
+        for p in payload:
+            if p.assigned_user_id is not None:
+                user_ids.add(p.assigned_user_id)
+            fields.append(
+                TaskCreateData(**p.model_dump(), workspace_id=workspace_id)
+            )
+        await self._assert_assignees_in_workspace(workspace_id, user_ids)
+
+        tasks = await self._uow.tasks.create_many(fields)
         log_event(
             logger,
             INFO,
-            TASK_CREATED,
+            TASKS_CREATED,
             after_commit=self._uow,
+            count=len(tasks),
             workspace_id=workspace_id,
-            task_id=task.id,
             actor_id=current_user_id_ctx.get(),
         )
         await invalidate_summary_cache(workspace_id)
-        return self._to_read(task)
+        return [self._to_read(task) for task in tasks]
 
     async def get(self, workspace_id: UUID, task_id: UUID) -> TaskRead:
         """Return a task in the workspace or raise not-found."""
@@ -91,8 +93,11 @@ class TaskService(BaseService):
             raise TaskNotFoundError
 
         updates = payload.model_dump(exclude_unset=True)
+        uid = updates["assigned_user_id"]
         if "assigned_user_id" in updates:
-            await self._validate_assignee(workspace_id, updates["assigned_user_id"])
+            await self._assert_assignees_in_workspace(
+                workspace_id, {uid} if uid is not None else set()
+            )
 
         task = await self._uow.tasks.update(
             workspace_id,

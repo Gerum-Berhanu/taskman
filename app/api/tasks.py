@@ -13,7 +13,7 @@ from app.dependencies import (
     TaskServiceDep,
     get_current_user,
 )
-from app.dto.api.task import TaskCreate, TaskRead, TaskSummaryRead, TaskUpdate
+from app.dto.api.task import TaskCreateBatch, TaskRead, TaskSummaryRead, TaskUpdate
 from app.dto.api.workspace_member import WorkspaceMemberRole
 
 router = APIRouter(
@@ -30,7 +30,7 @@ OWNER = WorkspaceMemberRole.OWNER
 
 @router.post(
     "",
-    response_model=TaskRead,
+    response_model=list[TaskRead],
     status_code=HTTP_201_CREATED,
     dependencies=[
         DomainWriteLimit,
@@ -38,8 +38,8 @@ OWNER = WorkspaceMemberRole.OWNER
     ],
 )
 async def create_task(
-    payload: TaskCreate, workspace_id: UUID4, task_service: TaskServiceDep
-) -> TaskRead:
+    payload: TaskCreateBatch, workspace_id: UUID4, task_service: TaskServiceDep
+) -> list[TaskRead]:
     return await task_service.create(payload, workspace_id)
 
 
