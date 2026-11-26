@@ -2,9 +2,9 @@
 
 from enum import StrEnum
 import os
-from typing import TypedDict
+from typing import Self, TypedDict
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,13 @@ class AppEnv(StrEnum):
     STAGING = "staging"
     TEST = "test"
     PRODUCTION = "production"
+
+
+class EmailProvider(StrEnum):
+    """Outbound mail transport selected by EMAIL_PROVIDER."""
+
+    SMTP = "smtp"
+    RESEND = "resend"
 
 
 class FastAPIDocsKwargs(TypedDict, total=False):
@@ -93,12 +100,24 @@ class EmailSettings(BaseSettings):
 
     email_enabled: bool = False
     email_from: str = ""
+    email_provider: EmailProvider = EmailProvider.SMTP
     resend_api_key: str = ""
     resend_from: str = "onboarding@resend.dev"
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+
+    @model_validator(mode="after")
+    def email_provider_credentials(self) -> Self:
+        # When email is on, require credentials for the selected provider.
+        if not self.email_enabled:
+            return self
+        if self.email_provider is EmailProvider.RESEND and not self.resend_api_key:
+            raise ValueError(
+                "RESEND_API_KEY is required when EMAIL_ENABLED and EMAIL_PROVIDER=resend"
+            )
+        return self
 
 
 class FeatureSettings(BaseSettings):
