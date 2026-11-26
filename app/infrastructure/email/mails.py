@@ -7,8 +7,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from resend.exceptions import ResendError
 
 from app.core.config import settings
-from app.infrastructure.email.providers.resend import send_via_resend
-from app.infrastructure.email.providers.smtp import send_via_smtp
+from app.infrastructure.email.providers.registry import ProviderRegistry
 from app.observability.events.infra import EMAIL_SEND_FAILED, EMAIL_SENT, EMAIL_SKIPPED
 from app.observability.log_event import log_event
 
@@ -36,7 +35,7 @@ def send_mail(
 ) -> None:
     """Send one HTML message. No-op when email is disabled; never raises.
 
-    Prefers Resend HTTPS when RESEND_API_KEY is set; otherwise SMTP.
+    Transport is selected from EMAIL_PROVIDER via the provider registry.
     """
     if not settings.email_enabled:
         log_event(
@@ -49,25 +48,16 @@ def send_mail(
         )
         return
 
+    send = ProviderRegistry[settings.email_provider]
     try:
-        if settings.resend_api_key:
-            send_via_resend(
-                to=to,
-                subject=subject,
-                html=html,
-                attachment_filename=attachment_filename,
-                attachment_bytes=attachment_bytes,
-                attachment_mime=attachment_mime,
-            )
-        else:
-            send_via_smtp(
-                to=to,
-                subject=subject,
-                html=html,
-                attachment_filename=attachment_filename,
-                attachment_bytes=attachment_bytes,
-                attachment_mime=attachment_mime,
-            )
+        send(
+            to=to,
+            subject=subject,
+            html=html,
+            attachment_filename=attachment_filename,
+            attachment_bytes=attachment_bytes,
+            attachment_mime=attachment_mime,
+        )
     except _SEND_ERRORS:
         log_event(
             logger,
@@ -75,6 +65,7 @@ def send_mail(
             EMAIL_SEND_FAILED,
             exc_info=True,
             email=to,
+            provider=settings.email_provider,
             subject=subject,
         )
         return
@@ -84,6 +75,7 @@ def send_mail(
         logging.INFO,
         EMAIL_SENT,
         email=to,
+        provider=settings.email_provider,
         subject=subject,
     )
 
