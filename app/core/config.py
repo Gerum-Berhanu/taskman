@@ -40,21 +40,25 @@ def _resolve_app_env() -> AppEnv:
 _APP_ENV: AppEnv = _resolve_app_env()
 
 
-class Settings(BaseSettings):
-    """Process env > `env/.env.{TASKMAN_ENV}` > `env/.env` > field defaults."""
+class AppSettings(BaseSettings):
+    """Process identity and FastAPI surface knobs."""
 
-    model_config = SettingsConfigDict(
-        env_file=("env/.env", f"env/.env.{_APP_ENV.value}"),
-        extra="ignore",
-    )
-
-    # App identity
     app_name: str = "Taskman"
     app_env: AppEnv = _APP_ENV
     debug: bool = False
 
-    # Auth / sessions
-    secret_key: str = ""
+    @property
+    def docs_kwargs(self) -> FastAPIDocsKwargs:
+        """FastAPI docs/OpenAPI URLs; empty in development (framework defaults)."""
+        if self.app_env == AppEnv.DEVELOPMENT:
+            return {}
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
+class AuthSettings(BaseSettings):
+    """JWT, cookies, and client-session caps."""
+
+    secret_key: str = Field(default="", min_length=32)
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
     refresh_token_expire_minutes: int = 10_080  # 7 days
@@ -64,22 +68,29 @@ class Settings(BaseSettings):
     max_client_sessions_per_user: int = Field(default=15, ge=1)
     session_purge_interval_seconds: int = Field(default=3600, ge=1)
 
-    # Data stores / broker
+
+class InfraSettings(BaseSettings):
+    """Database, Redis, RabbitMQ, and rate-limit enable flag."""
+
     database_url: str = "sqlite+aiosqlite:///./database.db"
     redis_cache_url: str = "redis://127.0.0.1:6379/0"
     redis_rate_limit_url: str = "redis://127.0.0.1:6379/1"
     redis_registration_url: str = "redis://127.0.0.1:6379/2"
     rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
+    rate_limit_enabled: bool = True
 
-    # Observability
+
+class ObservabilitySettings(BaseSettings):
+    """Log level and sink format flags."""
+
     log_level: str = "INFO"
     log_json: bool = False
     log_file: bool = True
 
-    # Rate limiting
-    rate_limit_enabled: bool = True
 
-    # Email
+class EmailSettings(BaseSettings):
+    """Enable flag, From addresses, Resend, and SMTP knobs."""
+
     email_enabled: bool = False
     email_from: str = ""
     resend_api_key: str = ""
@@ -88,21 +99,17 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    allowed_email_domains: frozenset[str] = Field(default_factory=frozenset)
 
-    # Feature TTLs / OTP
+
+class FeatureSettings(BaseSettings):
+    """Task cache/bulk limits, OTP knobs, and allowed signup domains."""
+
     task_summary_cache_ttl_seconds: int = 300  # 5 minutes
     task_bulk_max_items: int = Field(default=50, ge=1)
     registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
     registration_otp_length: int = Field(default=6, ge=4, le=10)
     registration_otp_max_attempts: int = Field(default=5, ge=1)
-
-    @field_validator("secret_key")
-    @classmethod
-    def secret_key_must_be_set(cls, value: str) -> str:
-        if not value:
-            raise ValueError("SECRET_KEY must be set in environment or .env file")
-        return value
+    allowed_email_domains: frozenset[str] = Field(default_factory=frozenset)
 
     @field_validator("allowed_email_domains", mode="before")
     @classmethod
@@ -115,12 +122,21 @@ class Settings(BaseSettings):
             )
         raise TypeError("allowed_email_domains must be a JSON array of domains")
 
-    @property
-    def docs_kwargs(self) -> FastAPIDocsKwargs:
-        """FastAPI docs/OpenAPI URLs; empty in development (framework defaults)."""
-        if self.app_env == AppEnv.DEVELOPMENT:
-            return {}
-        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+class Settings(
+    AppSettings,
+    AuthSettings,
+    InfraSettings,
+    ObservabilitySettings,
+    EmailSettings,
+    FeatureSettings,
+):
+    """Process env > `env/.env.{TASKMAN_ENV}` > `env/.env` > field defaults."""
+
+    model_config = SettingsConfigDict(
+        env_file=("env/.env", f"env/.env.{_APP_ENV.value}"),
+        extra="ignore",
+    )
 
 
 settings = Settings()
