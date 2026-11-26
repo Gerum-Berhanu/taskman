@@ -12,24 +12,24 @@ class AppEnv(StrEnum):
     """Deployed application environment names."""
 
     DEVELOPMENT = "development"
+    PRODUCTION = "production"
     STAGING = "staging"
     TEST = "test"
-    PRODUCTION = "production"
 
 
 class EmailProvider(StrEnum):
     """Outbound mail transport selected by EMAIL_PROVIDER."""
 
-    SMTP = "smtp"
     RESEND = "resend"
+    SMTP = "smtp"
 
 
 class FastAPIDocsKwargs(TypedDict, total=False):
     """Optional FastAPI constructor kwargs that control docs/OpenAPI routes."""
 
     docs_url: str | None
-    redoc_url: str | None
     openapi_url: str | None
+    redoc_url: str | None
 
 
 def _resolve_app_env() -> AppEnv:
@@ -50,8 +50,8 @@ _APP_ENV: AppEnv = _resolve_app_env()
 class AppSettings(BaseSettings):
     """Process identity and FastAPI surface knobs."""
 
-    app_name: str = "Taskman"
     app_env: AppEnv = _APP_ENV
+    app_name: str = "Taskman"
     debug: bool = False
 
     @property
@@ -59,40 +59,21 @@ class AppSettings(BaseSettings):
         """FastAPI docs/OpenAPI URLs; empty in development (framework defaults)."""
         if self.app_env == AppEnv.DEVELOPMENT:
             return {}
-        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+        return {"docs_url": None, "openapi_url": None, "redoc_url": None}
 
 
 class AuthSettings(BaseSettings):
     """JWT, cookies, and client-session caps."""
 
-    secret_key: str = Field(default="", min_length=32)
-    algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
-    refresh_token_expire_minutes: int = 10_080  # 7 days
-    refresh_token_cookie_name: str = "refresh_token"
-    device_id_cookie_name: str = "device_id"
+    algorithm: str = "HS256"
     device_id_cookie_max_age_seconds: int = 34_560_000  # ~400 days
+    device_id_cookie_name: str = "device_id"
     max_client_sessions_per_user: int = Field(default=15, ge=1)
+    refresh_token_cookie_name: str = "refresh_token"
+    refresh_token_expire_minutes: int = 10_080  # 7 days
+    secret_key: str = Field(default="", min_length=32)
     session_purge_interval_seconds: int = Field(default=3600, ge=1)
-
-
-class InfraSettings(BaseSettings):
-    """Database, Redis, RabbitMQ, and rate-limit enable flag."""
-
-    database_url: str = "sqlite+aiosqlite:///./database.db"
-    redis_cache_url: str = "redis://127.0.0.1:6379/0"
-    redis_rate_limit_url: str = "redis://127.0.0.1:6379/1"
-    redis_registration_url: str = "redis://127.0.0.1:6379/2"
-    rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
-    rate_limit_enabled: bool = True
-
-
-class ObservabilitySettings(BaseSettings):
-    """Log level and sink format flags."""
-
-    log_level: str = "INFO"
-    log_json: bool = False
-    log_file: bool = True
 
 
 class EmailSettings(BaseSettings):
@@ -104,9 +85,9 @@ class EmailSettings(BaseSettings):
     resend_api_key: str = ""
     resend_from: str = "onboarding@resend.dev"
     smtp_host: str = "smtp.gmail.com"
+    smtp_password: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
-    smtp_password: str = ""
 
     @model_validator(mode="after")
     def email_provider_credentials(self) -> Self:
@@ -123,12 +104,12 @@ class EmailSettings(BaseSettings):
 class FeatureSettings(BaseSettings):
     """Task cache/bulk limits, OTP knobs, and allowed signup domains."""
 
-    task_summary_cache_ttl_seconds: int = 300  # 5 minutes
-    task_bulk_max_items: int = Field(default=50, ge=1)
-    registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
+    allowed_email_domains: frozenset[str] = Field(default_factory=frozenset)
     registration_otp_length: int = Field(default=6, ge=4, le=10)
     registration_otp_max_attempts: int = Field(default=5, ge=1)
-    allowed_email_domains: frozenset[str] = Field(default_factory=frozenset)
+    registration_otp_ttl_seconds: int = Field(default=600, ge=1)  # 10 minutes
+    task_bulk_max_items: int = Field(default=50, ge=1)
+    task_summary_cache_ttl_seconds: int = 300  # 5 minutes
 
     @field_validator("allowed_email_domains", mode="before")
     @classmethod
@@ -142,13 +123,32 @@ class FeatureSettings(BaseSettings):
         raise TypeError("allowed_email_domains must be a JSON array of domains")
 
 
+class InfraSettings(BaseSettings):
+    """Database, Redis, RabbitMQ, and rate-limit enable flag."""
+
+    database_url: str = "sqlite+aiosqlite:///./database.db"
+    rabbitmq_url: str = "amqp://guest:guest@127.0.0.1:5672//"
+    rate_limit_enabled: bool = True
+    redis_cache_url: str = "redis://127.0.0.1:6379/0"
+    redis_rate_limit_url: str = "redis://127.0.0.1:6379/1"
+    redis_registration_url: str = "redis://127.0.0.1:6379/2"
+
+
+class ObservabilitySettings(BaseSettings):
+    """Log level and sink format flags."""
+
+    log_file: bool = True
+    log_json: bool = False
+    log_level: str = "INFO"
+
+
 class Settings(
     AppSettings,
     AuthSettings,
-    InfraSettings,
-    ObservabilitySettings,
     EmailSettings,
     FeatureSettings,
+    InfraSettings,
+    ObservabilitySettings,
 ):
     """Process env > `env/.env.{TASKMAN_ENV}` > `env/.env` > field defaults."""
 
