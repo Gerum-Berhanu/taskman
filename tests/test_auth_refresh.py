@@ -169,7 +169,7 @@ def test_refresh_reuse_deletes_session(client: TestClient) -> None:
     assert rotated.status_code == 200, rotated.text
     new_refresh = assert_httponly_refresh_cookie(rotated)
 
-    # Presenting the old token after rotation = reuse → kill this session
+    # Presenting the old token after rotation = reuse -> kill this session
     assert_unauthorized(refresh(client, old_refresh))
 
     # Previously valid successor is dead with the session
@@ -196,7 +196,7 @@ def test_logout_reuse_deletes_session(client: TestClient) -> None:
     assert rotated.status_code == 200, rotated.text
     new_refresh = assert_httponly_refresh_cookie(rotated)
 
-    # Logout with the retired token = reuse → kill this session
+    # Logout with the retired token = reuse -> kill this session
     assert_unauthorized(logout(client, old_refresh))
 
     # Previously valid successor is dead with the session
@@ -244,7 +244,7 @@ def test_logout_all_reuse_deletes_session(client: TestClient) -> None:
     clear_device_cookie(client)
     other_session = login_tokens(client)
 
-    # Logout-all with the retired token = reuse → kill this session only
+    # Logout-all with the retired token = reuse -> kill this session only
     assert_unauthorized(_logout_all_with_only(client, old_refresh))
     assert_unauthorized(_refresh_with_only(client, new_refresh))
 

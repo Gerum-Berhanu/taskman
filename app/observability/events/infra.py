@@ -1,4 +1,4 @@
-"""Infra log event tags (``app.infrastructure.*`` → envelope ``infra``)."""
+"""Infra log event tags (app.infrastructure.* -> envelope infra)."""
 
 REDIS_UNAVAILABLE_AT_STARTUP = "redis_unavailable_at_startup"
 EMAIL_SENT = "email_sent"

@@ -36,7 +36,7 @@ def send_mail(
 ) -> None:
     """Send one HTML message. No-op when email is disabled; never raises.
 
-    Prefers Resend HTTPS when ``RESEND_API_KEY`` is set; otherwise SMTP.
+    Prefers Resend HTTPS when RESEND_API_KEY is set; otherwise SMTP.
     """
     if not settings.email_enabled:
         log_event(

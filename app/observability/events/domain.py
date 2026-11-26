@@ -1,4 +1,4 @@
-"""Domain log event tags (``app.services.*`` → envelope ``domain``)."""
+"""Domain log event tags (app.services.* -> envelope domain)."""
 
 USER_REGISTERED = "user_registered"
 USER_LOGIN_SUCCEEDED = "user_login_succeeded"

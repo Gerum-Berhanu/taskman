@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # 1) Session table first — column present, FK to refresh_tokens deferred (circular).
+    # 1) Session table first - column present, FK to refresh_tokens deferred (circular).
     op.create_table(
         "client_sessions",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -58,7 +58,7 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # 3) Close the circle: active pointer → refresh_tokens.
+    # 3) Close the circle: active pointer -> refresh_tokens.
     # batch_alter_table recreates the table on SQLite (no ADD CONSTRAINT support).
     with op.batch_alter_table("client_sessions") as batch_op:
         batch_op.create_foreign_key(

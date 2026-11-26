@@ -1,1 +1,1 @@
-"""Out-of-request job runners (export, purge, …)."""
+"""Out-of-request job runners (export, purge, ...)."""

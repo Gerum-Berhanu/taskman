@@ -1,4 +1,4 @@
-"""Ops log event tags (``app.repositories.*`` / ``app.jobs.*`` → envelope ``ops``)."""
+"""Ops log event tags (app.repositories.* / app.jobs.* -> envelope ops)."""
 
 AFTER_COMMIT_FAILED = "after_commit_failed"
 CLIENT_SESSIONS_PURGED = "client_sessions_purged"

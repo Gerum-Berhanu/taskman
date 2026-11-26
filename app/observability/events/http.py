@@ -1,4 +1,4 @@
-"""HTTP log event tags (``app.middleware.*`` / ``app.exceptions.handlers`` → envelope ``http``)."""
+"""HTTP log event tags (app.middleware.* / app.exceptions.handlers -> envelope http)."""
 
 HTTP_ACCESS = "http_access"
 RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"

@@ -180,7 +180,7 @@ class AuthService(BaseService):
         """Validate a refresh token; delete the session on reuse, expiry, or inactive user."""
         row, session = await self._get_token_and_session_rows(token)
 
-        # Presented token belongs to a live session but is not the active one → reuse/theft.
+        # Presented token belongs to a live session but is not the active one -> reuse/theft.
         if row.id != session.active_token_id:
             await self._delete_and_reject(session.id)
 
@@ -219,7 +219,7 @@ class AuthService(BaseService):
         """Delete the client session for this refresh token; reuse deletes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
 
-        # Non-active refresh on a live session → same reuse/theft response as refresh.
+        # Non-active refresh on a live session -> same reuse/theft response as refresh.
         if token_row.id != session.active_token_id:
             await self._delete_and_reject(session.id)
 
@@ -240,7 +240,7 @@ class AuthService(BaseService):
         """Delete every other client session for the user; reuse deletes then rejects."""
         token_row, session = await self._get_token_and_session_rows(token)
 
-        # Non-active refresh on a live session → same reuse/theft response as refresh/logout.
+        # Non-active refresh on a live session -> same reuse/theft response as refresh/logout.
         if token_row.id != session.active_token_id:
             await self._delete_and_reject(session.id)
 

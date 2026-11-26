@@ -1,4 +1,4 @@
-"""HTTP access-log middleware (``http_access`` per request)."""
+"""HTTP access-log middleware (http_access per request)."""
 
 import logging
 import time
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class AccessLogMiddleware(BaseHTTPMiddleware):
-    """Emit ``http_access`` with method, path, status, and duration after each response."""
+    """Emit http_access with method, path, status, and duration after each response."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.perf_counter()

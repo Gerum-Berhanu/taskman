@@ -13,9 +13,8 @@ from app.workers.celery_app import celery_app
 def _run_async(factory: Callable[[], Coroutine[Any, Any, None]]) -> None:
     """Run an async job from sync Celery code.
 
-    Normal workers have no running loop, so ``asyncio.run`` is enough.
-    Eager mode under TestClient already owns a loop; nest ``asyncio.run``
-    there raises, so run the coroutine on a one-shot thread instead.
+    Normal workers have no running loop, so asyncio.run is enough.
+    Eager mode under TestClient already owns a loop; nest asyncio.run    there raises, so run the coroutine on a one-shot thread instead.
     """
     try:
         asyncio.get_running_loop()

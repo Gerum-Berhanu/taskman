@@ -13,7 +13,7 @@ import app.models
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-# Alembic uses a sync driver: aiosqlite → sqlite, asyncpg → psycopg (v3).
+# Alembic uses a sync driver: aiosqlite -> sqlite, asyncpg -> psycopg (v3).
 sync_database_url = (
     settings.database_url
     .replace("+aiosqlite", "")

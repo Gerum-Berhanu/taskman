@@ -17,7 +17,7 @@ def start_register(
     email: str = "alice@example.com",
     password: str = PASSWORD,
 ) -> dict:
-    """POST /auth/register → 202 pending ticket (OTP generation patched)."""
+    """POST /auth/register -> 202 pending ticket (OTP generation patched)."""
     with (
         patch("app.services.user.generate_registration_otp", return_value=FIXED_OTP),
         patch(
@@ -40,7 +40,7 @@ def verify_register(
     registration_id: str,
     otp: str = FIXED_OTP,
 ) -> dict:
-    """POST /auth/register/verify → 201 user (welcome mail patched)."""
+    """POST /auth/register/verify -> 201 user (welcome mail patched)."""
     with patch(
         "app.workers.tasks.send_welcome_email",
         return_value="Welcome to Taskman",
@@ -364,7 +364,7 @@ def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
     assert cleared.status_code == 200
     assert cleared.json()["assigned_user_id"] is None
 
-    # Existing task + non-member assignee → assignee error
+    # Existing task + non-member assignee -> assignee error
     bad_assignee = client.patch(
         tasks_url(workspace_id, task_id),
         json={"assigned_user_id": outsider["id"]},
@@ -373,7 +373,7 @@ def test_task_assignee_must_be_workspace_member(client: TestClient) -> None:
     assert bad_assignee.status_code == 400
     assert bad_assignee.json()["detail"] == "Assignee is not a member of the workspace"
 
-    # Missing task + non-member assignee → not-found (exist check before assignee)
+    # Missing task + non-member assignee -> not-found (exist check before assignee)
     missing_with_assignee = client.patch(
         tasks_url(workspace_id, str(uuid4())),
         json={"assigned_user_id": outsider["id"]},

@@ -53,7 +53,7 @@ def log_event(
     exc_info: bool = False,
     **fields: object,
 ) -> None:
-    """Log ``event`` now, or queue on ``after_commit`` until a successful UoW commit."""
+    """Log event now, or queue on after_commit until a successful UoW commit."""
     if after_commit is not None:
         after_commit.after_commit(
             partial(_emit_event, logger, level, event, fields, exc_info=exc_info)

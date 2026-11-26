@@ -13,7 +13,7 @@ class LogCategory(StrEnum):
     OPS = "ops"
 
 
-# Logger-name prefixes → envelope category. Longest match wins via walk-up.
+# Logger-name prefixes -> envelope category. Longest match wins via walk-up.
 _PACKAGE_CATEGORY: dict[str, LogCategory] = {
     "app.services": LogCategory.DOMAIN,
     "app.infrastructure": LogCategory.INFRA,

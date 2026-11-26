@@ -1,1 +1,1 @@
-"""Infrastructure adapters (database, Redis, …)."""
+"""Infrastructure adapters (database, Redis, ...)."""
