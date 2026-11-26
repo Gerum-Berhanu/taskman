@@ -69,7 +69,7 @@ Also needs `REDIS_REGISTRATION_URL` (and the other Redis URLs for limits/cache) 
 
 ## Local Mailpit walkthrough
 
-1. Start Mailpit and Redis; set SMTP as in [email.md](email.md#local-mailpit) (`EMAIL_ENABLED=true`, empty Resend key).
+1. Start Mailpit and Redis; set SMTP as in [email.md](email.md#local-mailpit) (`EMAIL_ENABLED=true`, `EMAIL_PROVIDER=smtp`).
 2. `POST /auth/register` with a new email → **202** + `registration_id`.
 3. Open http://localhost:8025 - subject like `Your Taskman verification code`; copy the digits.
 4. `POST /auth/register/verify` with that `registration_id` and OTP → **201**.

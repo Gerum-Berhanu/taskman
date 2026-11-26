@@ -2,34 +2,35 @@
 
 Taskman sends HTML emails. Bodies are Jinja2 templates under `app/infrastructure/email/templates/`, with shared layout and CSS in `base.html`.
 
-Transport is chosen in `send_mail`:
+Transport is chosen in `send_mail` from `EMAIL_PROVIDER` via a small provider registry (`smtp` | `resend`):
 
-1. If `RESEND_API_KEY` is set → **Resend HTTPS** (official `resend` Python SDK)
-2. Otherwise → **SMTP** (`smtplib`)
-   - If `SMTP_USER` and `SMTP_PASSWORD` are both set → STARTTLS + login (Gmail, etc.)
-   - If either is empty → plain SMTP (local catchers like **Mailpit**)
+1. `EMAIL_PROVIDER=resend` -> **Resend HTTPS** (official `resend` Python SDK; requires `RESEND_API_KEY`)
+2. `EMAIL_PROVIDER=smtp` -> **SMTP** (`smtplib`)
+   - If `SMTP_USER` and `SMTP_PASSWORD` are both set -> STARTTLS + login (Gmail, etc.)
+   - If either is empty -> plain SMTP (local catchers like **Mailpit**)
 
-Use Resend on hosts that block outbound SMTP (e.g. Render free web services). For local development, prefer Mailpit over a real mailbox.
+`RESEND_API_KEY` is a Resend credential, not a transport switch. Use Resend on hosts that block outbound SMTP (e.g. Render free web services). For local development, prefer Mailpit over a real mailbox.
 
 ## Local Mailpit
 
-[Mailpit](https://mailpit.axllent.org/) catches outbound SMTP and shows messages in a UI. No code changes beyond empty SMTP credentials.
+[Mailpit](https://mailpit.axllent.org/) catches outbound SMTP and shows messages in a UI. No code changes beyond `EMAIL_PROVIDER=smtp` and empty SMTP credentials.
 
 1. Install (Windows): `winget install axllent.mailpit` (or use the binary you already have).
 2. Run: `mailpit` - UI at http://localhost:8025, SMTP at `127.0.0.1:1025`.
-3. In `env/.env.development` (keep `RESEND_API_KEY` empty so SMTP is used):
+3. In `env/.env.development`:
 
 ```env
 EMAIL_ENABLED=true
+EMAIL_FROM=taskman@localhost
+EMAIL_PROVIDER=smtp
 RESEND_API_KEY=
 SMTP_HOST=127.0.0.1
 SMTP_PORT=1025
 SMTP_USER=
 SMTP_PASSWORD=
-EMAIL_FROM=taskman@localhost
 ```
 
-4. Restart the API, then exercise registration OTP (see [registration-otp.md](registration-otp.md#local-mailpit-walkthrough)): start → OTP in UI → verify → welcome mail after verify.
+4. Restart the API, then exercise registration OTP (see [registration-otp.md](registration-otp.md#local-mailpit-walkthrough)): start -> OTP in UI -> verify -> welcome mail after verify.
 
 A version-check timeout from `mailpit version` is harmless; the server still runs.
 
@@ -41,7 +42,7 @@ OTP mail, welcome mail, and task export are **enqueued** with Celery (`.delay`) 
 |-----|---------------|-----------------|-------------|-------------|
 | Registration OTP | `UserService.start_registration` after Redis ticket | **503** (`Service temporarily unavailable`); ticket left for TTL | `taskman.send_registration_otp_email_task` | `send_registration_otp_email` |
 | Welcome | `UserService` `after_commit` after verify | Log `after_commit_failed`; verify stays **201** | `taskman.send_welcome_email_task` | `send_welcome_email` |
-| Task export | `TaskService.export` | **503** (not **202**) | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync→async bridge) |
+| Task export | `TaskService.export` | **503** (not **202**) | `taskman.export_workspace_tasks` | `run_tasks_export` (via sync->async bridge) |
 | Expired sessions | Celery Beat (`SESSION_PURGE_INTERVAL_SECONDS`) | N/A (scheduler); job logs `client_sessions_purge_failed` | `taskman.purge_expired_client_sessions` | `run_purge_expired_sessions` |
 
 Local host: run RabbitMQ, then `celery -A app.workers.celery_app worker` (on Windows prefer `--pool=solo`) and `celery -A app.workers.celery_app beat` in separate terminals. Compose staging/prod include `rabbitmq` + `worker` + `beat` (see README). Manual purge without waiting for Beat: `just purge-expired-sessions`.
@@ -60,7 +61,7 @@ After a successful `POST /auth/register/verify` commit, Taskman enqueues a welco
 2. One callback logs `user_registered` in-process via `log_event(..., after_commit=uow)` (not on the broker).
 3. Another calls `send_welcome_email_task.delay(...)` so Celery publishes to RabbitMQ after a successful commit.
 4. Session / UoW use `scope="function"`, so commit (and those `after_commit` callbacks) run after the path function returns and **before** the response is sent.
-5. A Celery worker later runs `send_welcome_email` → `send_mail`. Job outcome does not climb back on the HTTP response.
+5. A Celery worker later runs `send_welcome_email` -> `send_mail`. Job outcome does not climb back on the HTTP response.
 6. If welcome `.delay` raises (broker down), `UnitOfWork.commit` logs `after_commit_failed` and continues; verify still returns **201**.
 
 `send_mail` is the transport control point: if `EMAIL_ENABLED=false` it logs `email_skipped` and returns; on transport failure (`smtplib.SMTPException`, `OSError`, `TimeoutError`, `resend.exceptions.ResendError`) it logs `email_send_failed` and returns without raising so registration stays 201. Non-transport errors are not swallowed.
@@ -93,8 +94,9 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 
 | Path | Role |
 |------|------|
-| `app/core/config.py` | `EMAIL_*` / `RESEND_*` / `SMTP_*` settings |
-| `app/infrastructure/email/mails.py` | `send_mail` router + Jinja helpers (`email_enabled` + transport logs) |
+| `app/core/config.py` | `EMAIL_*` / `RESEND_*` / `SMTP_*` settings (`EMAIL_PROVIDER`) |
+| `app/infrastructure/email/mails.py` | `send_mail` router + Jinja helpers (`email_enabled` + registry lookup + transport logs) |
+| `app/infrastructure/email/providers/registry.py` | `EmailProvider` -> `send_via_*` map |
 | `app/infrastructure/email/providers/smtp.py` | Pure SMTP transport (raises on failure) |
 | `app/infrastructure/email/providers/resend.py` | Sync Resend SDK send |
 | `app/infrastructure/email/templates/base.html` | Shared HTML shell and internal CSS |
@@ -108,28 +110,29 @@ Transport behavior (`EMAIL_ENABLED`, `email_sent`, `email_send_failed`, `email_s
 | `app/jobs/purge/expired_sessions.py` | Expired session purge job body |
 | `app/services/user.py` | OTP `.delay`; welcome `.delay` in `after_commit` |
 | `app/services/task.py` | Export `.delay` |
-| `app/api/tasks.py` | `POST …/tasks/export` → 202 |
+| `app/api/tasks.py` | `POST .../tasks/export` -> 202 |
 
 ## Env
 
 | Variable | Purpose |
 |----------|---------|
 | `EMAIL_ENABLED` | Master switch for all sends (`false` in test). Enforced in `send_mail`. |
-| `RESEND_API_KEY` | When set, send via Resend HTTPS instead of SMTP |
-| `RESEND_FROM` | From address for Resend (default `onboarding@resend.dev`) |
-| `SMTP_HOST` | SMTP host (e.g. `127.0.0.1` for Mailpit, `smtp.gmail.com` for Gmail); used when Resend key is empty |
-| `SMTP_PORT` | SMTP port (`1025` Mailpit, `587` typical STARTTLS) |
-| `SMTP_USER` | SMTP username; empty with password → skip STARTTLS/login (Mailpit) |
-| `SMTP_PASSWORD` | SMTP password / Gmail App Password; empty with user → skip STARTTLS/login |
+| `EMAIL_PROVIDER` | Transport: `smtp` or `resend` (case-sensitive). Resolved via the registry in `send_mail`. |
 | `EMAIL_FROM` | From address for SMTP sends (required when `SMTP_USER` is empty) |
+| `RESEND_API_KEY` | Resend API credential (required when `EMAIL_ENABLED` and `EMAIL_PROVIDER=resend`) |
+| `RESEND_FROM` | From address for Resend (default `onboarding@resend.dev`) |
+| `SMTP_HOST` | SMTP host (e.g. `127.0.0.1` for Mailpit, `smtp.gmail.com` for Gmail); used when `EMAIL_PROVIDER=smtp` |
+| `SMTP_PORT` | SMTP port (`1025` Mailpit, `587` typical STARTTLS) |
+| `SMTP_USER` | SMTP username; empty with password -> skip STARTTLS/login (Mailpit) |
+| `SMTP_PASSWORD` | SMTP password / Gmail App Password; empty with user -> skip STARTTLS/login |
 | `SESSION_PURGE_INTERVAL_SECONDS` | Celery Beat interval for expired session purge (default `3600`) |
 | `RABBITMQ_URL` | Celery broker for workers and Beat |
 
-On Render free: set `EMAIL_ENABLED=true` and `RESEND_API_KEY`. Resend uses `RESEND_FROM` (defaults to `onboarding@resend.dev`). SMTP vars can stay unset.
+On Render free: set `EMAIL_ENABLED=true`, `EMAIL_PROVIDER=resend`, and a real `RESEND_API_KEY`. Resend uses `RESEND_FROM` (defaults to `onboarding@resend.dev`). SMTP vars can stay unset.
 
-Local Mailpit: leave `RESEND_API_KEY` empty and use the SMTP block in [Local Mailpit](#local-mailpit).
+Local Mailpit: set `EMAIL_PROVIDER=smtp` and use the SMTP block in [Local Mailpit](#local-mailpit). `RESEND_API_KEY` may be empty.
 
-Put real secrets only in local `env/.env.*` (gitignored) or the host’s secret store. `env-example/` keeps placeholders.
+Put real secrets only in local `env/.env.*` (gitignored) or the host's secret store. `env-example/` keeps placeholders.
 
 ## Tests
 
